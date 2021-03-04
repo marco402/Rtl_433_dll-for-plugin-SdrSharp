@@ -20,6 +20,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// *********************************************************************************
+// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+//						    for Rtl_433_Plugin
+//							Plugin for SdrSharp
+//History : V1.00 2021-04-01 - First release
+//
+// **********************************************************************************
+
+#include "dll_rtl_433.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -52,7 +61,12 @@
 #include "fatal.h"
 #include "write_sigrok.h"
 #include "mongoose.h"
-
+#ifdef DLL_RTL_433
+#include <windows.h>
+#include <tchar.h>
+#include <conio.h>
+#include <strsafe.h>
+#endif
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
@@ -81,6 +95,91 @@
 #define _Noreturn
 #endif
 #endif
+#ifdef DLL_RTL_433
+typedef void(__stdcall *prt_call_back_message)(char *);
+typedef void(__stdcall *prt_call_back_init)(char *);
+prt_call_back_message PTRCallBack = NULL;
+uint32_t _param_samp_rate         = 0;
+int _param_sample_size            = 0;
+uint32_t _centerFrequency         = 0;
+uint32_t _frequency               = 0;
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
+{
+    switch (dwReason) {
+    case DLL_PROCESS_ATTACH:
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
+}
+export char *__stdcall test_dll_get_version()
+{
+    return "dll_rtl_433 v1.0";
+}
+export void __stdcall setFrequency(uint32_t frequency)
+{
+    _frequency = frequency;
+}
+export void __stdcall setCenterFrequency(uint32_t centerFrequency)
+{
+    _centerFrequency = centerFrequency;
+}
+export void __stdcall stop_sdr(void *ctx) // necessary function compilation const to sdr433
+{
+    sdr_dev_t *dev = ctx;
+    sdr_stop(ctx);
+}
+//https : //www.i-programmer.info/programming/c/1039-using-the-console.html
+void MakeConsole()
+{
+    int retour = 0;
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+        retour = AllocConsole();
+    };
+}
+void init_console()
+{
+    MakeConsole();
+    FILE *fDummy;
+    freopen_s(&fDummy, "CONOUT$", "w", stdout);
+    freopen_s(&fDummy, "CONOUT$", "w", stderr);
+    //  freopen_s(&fDummy, "CONIN$", "r", stdin);
+    HANDLE hConOut = CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    //   HANDLE hConIn  = CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
+    SetStdHandle(STD_ERROR_HANDLE, hConOut);
+}
+export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, int argc, char *argv[])
+{
+    init_console();
+    PTRCallBack = ptr_message;
+    setPtrInit(ptr_init);
+    _param_samp_rate   = param_samp_rate;
+    _param_sample_size = param_sample_size;
+    main(argc, argv);
+}
+//callBack to SDRSharp
+int my_fprintf(_Inout_ FILE *const _Stream,
+        _In_z_ _Printf_format_string_ char const *_Format, ...)
+{
+    va_list _ArgList;
+    __crt_va_start(_ArgList, _Format);
+    char line[1024];
+    sprintf(line, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
+                                                      //than 2 unsigned int only 2 first ok
+    __crt_va_end(_ArgList);
+    char line1[81];
+    for (int i = 0; i < 80; i++)
+        line1[i] = line[i];
+    line1[80] = '\0';
+    if (PTRCallBack)
+        (*PTRCallBack)(line1);
+    return 0;
+}
+
+#endif //DLL_RTL_433
 
 r_device *flex_create_device(char *spec); // maybe put this in some header file?
 
@@ -90,8 +189,7 @@ static void print_version(void)
     fprintf(stderr, "Use -h for usage help and see https://triq.org/ for documentation.\n");
 }
 
-_Noreturn
-static void usage(int exit_code)
+_Noreturn static void usage(int exit_code)
 {
     term_help_printf(
             "Generic RF data receiver and decoder for ISM band devices using RTL-SDR and SoapySDR.\n"
@@ -144,8 +242,7 @@ static void usage(int exit_code)
     exit(exit_code);
 }
 
-_Noreturn
-static void help_protocols(r_device *devices, unsigned num_devices, int exit_code)
+_Noreturn static void help_protocols(r_device *devices, unsigned num_devices, int exit_code)
 {
     unsigned i;
     char disabledc;
@@ -162,8 +259,7 @@ static void help_protocols(r_device *devices, unsigned num_devices, int exit_cod
     exit(exit_code);
 }
 
-_Noreturn
-static void help_device(void)
+_Noreturn static void help_device(void)
 {
     term_help_printf(
             "\t\t= Input device selection =\n"
@@ -188,8 +284,7 @@ static void help_device(void)
     exit(0);
 }
 
-_Noreturn
-static void help_gain(void)
+_Noreturn static void help_gain(void)
 {
     term_help_printf(
             "\t\t= Gain option =\n"
@@ -200,8 +295,7 @@ static void help_gain(void)
     exit(0);
 }
 
-_Noreturn
-static void help_output(void)
+_Noreturn static void help_output(void)
 {
     term_help_printf(
             "\t\t= Output format option =\n"
@@ -226,8 +320,7 @@ static void help_output(void)
     exit(0);
 }
 
-_Noreturn
-static void help_tags(void)
+_Noreturn static void help_tags(void)
 {
     term_help_printf(
             "\t\t= Data tags option =\n"
@@ -247,8 +340,7 @@ static void help_tags(void)
     exit(0);
 }
 
-_Noreturn
-static void help_meta(void)
+_Noreturn static void help_meta(void)
 {
     term_help_printf(
             "\t\t= Meta information option =\n"
@@ -272,8 +364,7 @@ static void help_meta(void)
     exit(0);
 }
 
-_Noreturn
-static void help_read(void)
+_Noreturn static void help_read(void)
 {
     term_help_printf(
             "\t\t= Read file option =\n"
@@ -294,8 +385,7 @@ static void help_read(void)
     exit(0);
 }
 
-_Noreturn
-static void help_write(void)
+_Noreturn static void help_write(void)
 {
     term_help_printf(
             "\t\t= Write file option =\n"
@@ -315,20 +405,24 @@ static void help_write(void)
 
 static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 {
-    r_cfg_t *cfg = ctx;
+    r_cfg_t *cfg           = ctx;
     struct dm_state *demod = cfg->demod;
     char time_str[LOCAL_TIME_BUFLEN];
     unsigned long n_samples;
 
+#ifdef DLL_RTL_433
+    cfg->frequency[0]     = _frequency;
+    cfg->center_frequency = _centerFrequency;
+#endif
     if ((cfg->bytes_to_read > 0) && (cfg->bytes_to_read <= len)) {
-        len = cfg->bytes_to_read;
+        len             = cfg->bytes_to_read;
         cfg->exit_async = 1;
     }
 
     get_time_now(&demod->now);
 
     n_samples = len / 2 / demod->sample_size;
-    if (n_samples * 2 * demod->sample_size != len) {
+    if (n_samples * 2 * demod->sample_size != len) { //always true
         fprintf(stderr, "Sample buffer length not aligned to sample size!\n");
     }
     if (!n_samples) {
@@ -359,7 +453,8 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         else { // amp est
             envelope_detect(iq_buf, demod->buf.temp, n_samples);
         }
-    } else { // CS16
+    }
+    else { // CS16
         //magnitude_true_cs16((int16_t *)iq_buf, demod->buf.temp, n_samples);
         magnitude_est_cs16((int16_t *)iq_buf, demod->buf.temp, n_samples);
     }
@@ -379,7 +474,8 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         float low_pass = demod->low_pass != 0.0f ? demod->low_pass : fpdm ? 0.2f : 0.1f;
         if (demod->sample_size == 1) { // CU8
             baseband_demod_FM(iq_buf, demod->buf.fm, n_samples, cfg->samp_rate, low_pass, &demod->demod_FM_state);
-        } else { // CS16
+        }
+        else { // CS16
             baseband_demod_FM_cs16((int16_t *)iq_buf, demod->buf.fm, n_samples, cfg->samp_rate, low_pass, &demod->demod_FM_state);
         }
     }
@@ -387,7 +483,8 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     // Handle special input formats
     if (demod->load_info.format == S16_AM) { // The IQ buffer is really AM demodulated data
         memcpy(demod->am_buf, iq_buf, len);
-    } else if (demod->load_info.format == S16_FM) { // The IQ buffer is really FM demodulated data
+    }
+    else if (demod->load_info.format == S16_FM) { // The IQ buffer is really FM demodulated data
         // we would need AM for the envelope too
         memcpy(demod->buf.fm, iq_buf, len);
     }
@@ -395,7 +492,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     int d_events = 0; // Sensor events successfully detected
     if (demod->r_devs.len || demod->analyze_pulses || demod->dumper.len || demod->samp_grab) {
         // Detect a package and loop through demodulators with pulse data
-        int package_type = PULSE_DATA_OOK;  // Just to get us started
+        int package_type = PULSE_DATA_OOK; // Just to get us started
         for (void **iter = demod->dumper.elems; iter && *iter; ++iter) {
             file_info_t const *dumper = *iter;
             if (dumper->format == U8_LOGIC) {
@@ -415,7 +512,8 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
             }
             if (package_type == PULSE_DATA_OOK) {
                 calc_rssi_snr(cfg, &demod->pulse_data);
-                if (demod->analyze_pulses) fprintf(stderr, "Detected OOK package\t%s\n", time_pos_str(cfg, demod->pulse_data.start_ago, time_str));
+                if (demod->analyze_pulses)
+                    fprintf(stderr, "Detected OOK package\t%s\n", time_pos_str(cfg, demod->pulse_data.start_ago, time_str));
 
                 p_events += run_ook_demods(&demod->r_devs, &demod->pulse_data);
                 cfg->frames_count++;
@@ -423,23 +521,28 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 
                 for (void **iter = demod->dumper.elems; iter && *iter; ++iter) {
                     file_info_t const *dumper = *iter;
-                    if (dumper->format == VCD_LOGIC) pulse_data_print_vcd(dumper->file, &demod->pulse_data, '\'');
-                    if (dumper->format == U8_LOGIC) pulse_data_dump_raw(demod->u8_buf, n_samples, cfg->input_pos, &demod->pulse_data, 0x02);
-                    if (dumper->format == PULSE_OOK) pulse_data_dump(dumper->file, &demod->pulse_data);
+                    if (dumper->format == VCD_LOGIC)
+                        pulse_data_print_vcd(dumper->file, &demod->pulse_data, '\'');
+                    if (dumper->format == U8_LOGIC)
+                        pulse_data_dump_raw(demod->u8_buf, n_samples, cfg->input_pos, &demod->pulse_data, 0x02);
+                    if (dumper->format == PULSE_OOK)
+                        pulse_data_dump(dumper->file, &demod->pulse_data);
                 }
 
-                if (cfg->verbosity > 2) pulse_data_print(&demod->pulse_data);
+                if (cfg->verbosity > 2)
+                    pulse_data_print(&demod->pulse_data);
                 if (cfg->raw_mode == 1 || (cfg->raw_mode == 2 && p_events == 0) || (cfg->raw_mode == 3 && p_events > 0)) {
                     data_t *data = pulse_data_print_data(&demod->pulse_data);
                     event_occurred_handler(cfg, data);
                 }
-                if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0)) ) {
+                if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) {
                     pulse_analyzer(&demod->pulse_data, package_type);
                 }
-
-            } else if (package_type == PULSE_DATA_FSK) {
+            }
+            else if (package_type == PULSE_DATA_FSK) {
                 calc_rssi_snr(cfg, &demod->fsk_pulse_data);
-                if (demod->analyze_pulses) fprintf(stderr, "Detected FSK package\t%s\n", time_pos_str(cfg, demod->fsk_pulse_data.start_ago, time_str));
+                if (demod->analyze_pulses)
+                    fprintf(stderr, "Detected FSK package\t%s\n", time_pos_str(cfg, demod->fsk_pulse_data.start_ago, time_str));
 
                 p_events += run_fsk_demods(&demod->r_devs, &demod->fsk_pulse_data);
                 cfg->frames_fsk++;
@@ -447,12 +550,16 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 
                 for (void **iter = demod->dumper.elems; iter && *iter; ++iter) {
                     file_info_t const *dumper = *iter;
-                    if (dumper->format == VCD_LOGIC) pulse_data_print_vcd(dumper->file, &demod->fsk_pulse_data, '"');
-                    if (dumper->format == U8_LOGIC) pulse_data_dump_raw(demod->u8_buf, n_samples, cfg->input_pos, &demod->fsk_pulse_data, 0x04);
-                    if (dumper->format == PULSE_OOK) pulse_data_dump(dumper->file, &demod->fsk_pulse_data);
+                    if (dumper->format == VCD_LOGIC)
+                        pulse_data_print_vcd(dumper->file, &demod->fsk_pulse_data, '"');
+                    if (dumper->format == U8_LOGIC)
+                        pulse_data_dump_raw(demod->u8_buf, n_samples, cfg->input_pos, &demod->fsk_pulse_data, 0x04);
+                    if (dumper->format == PULSE_OOK)
+                        pulse_data_dump(dumper->file, &demod->fsk_pulse_data);
                 }
 
-                if (cfg->verbosity > 2) pulse_data_print(&demod->fsk_pulse_data);
+                if (cfg->verbosity > 2)
+                    pulse_data_print(&demod->fsk_pulse_data);
                 if (cfg->raw_mode == 1 || (cfg->raw_mode == 2 && p_events == 0) || (cfg->raw_mode == 3 && p_events > 0)) {
                     data_t *data = pulse_data_print_data(&demod->fsk_pulse_data);
                     event_occurred_handler(cfg, data);
@@ -470,17 +577,15 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         // end frame tracking if older than a whole buffer
         if (demod->frame_start_ago && demod->frame_end_ago > n_samples) {
             if (demod->samp_grab) {
-                if (cfg->grab_mode == 1
-                        || (cfg->grab_mode == 2 && demod->frame_event_count == 0)
-                        || (cfg->grab_mode == 3 && demod->frame_event_count > 0)) {
-                    unsigned frame_pad = n_samples / 8; // this could also be a fixed value, e.g. 10000 samples
+                if (cfg->grab_mode == 1 || (cfg->grab_mode == 2 && demod->frame_event_count == 0) || (cfg->grab_mode == 3 && demod->frame_event_count > 0)) {
+                    unsigned frame_pad    = n_samples / 8; // this could also be a fixed value, e.g. 10000 samples
                     unsigned start_padded = demod->frame_start_ago + frame_pad;
-                    unsigned end_padded = demod->frame_end_ago - frame_pad;
-                    unsigned len_padded = start_padded - end_padded;
+                    unsigned end_padded   = demod->frame_end_ago - frame_pad;
+                    unsigned len_padded   = start_padded - end_padded;
                     samp_grab_write(demod->samp_grab, len_padded, end_padded);
                 }
             }
-            demod->frame_start_ago = 0;
+            demod->frame_start_ago   = 0;
             demod->frame_event_count = 0;
         }
 
@@ -501,11 +606,9 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 
     for (void **iter = demod->dumper.elems; iter && *iter; ++iter) {
         file_info_t const *dumper = *iter;
-        if (!dumper->file
-                || dumper->format == VCD_LOGIC
-                || dumper->format == PULSE_OOK)
+        if (!dumper->file || dumper->format == VCD_LOGIC || dumper->format == PULSE_OOK)
             continue;
-        uint8_t *out_buf = iq_buf;  // Default is to dump IQ samples
+        uint8_t *out_buf      = iq_buf; // Default is to dump IQ samples
         unsigned long out_len = n_samples * 2 * demod->sample_size;
 
         if (dumper->format == CU8_IQ) {
@@ -520,7 +623,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
             if (demod->sample_size == 1) {
                 for (unsigned long n = 0; n < n_samples * 2; ++n)
                     ((int16_t *)demod->buf.temp)[n] = (iq_buf[n] * 256) - 32768; // scale Q0.7 to Q0.15
-                out_buf = (uint8_t *)demod->buf.temp; // this buffer is too small if out_block_size is large
+                out_buf = (uint8_t *)demod->buf.temp;                            // this buffer is too small if out_block_size is large
                 out_len = n_samples * 2 * sizeof(int16_t);
             }
         }
@@ -619,8 +722,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     time(&rawtime);
     // choose hop_index as frequency_index, if there are too few hop_times use the last one
     int hop_index = cfg->hop_times > cfg->frequency_index ? cfg->frequency_index : cfg->hop_times - 1;
-    if (cfg->hop_times > 0 && cfg->frequencies > 1
-            && difftime(rawtime, cfg->hop_start_time) > cfg->hop_time[hop_index]) {
+    if (cfg->hop_times > 0 && cfg->frequencies > 1 && difftime(rawtime, cfg->hop_start_time) > cfg->hop_time[hop_index]) {
 #ifndef _WIN32
         alarm(0); // cancel the watchdog timer
 #endif
@@ -802,7 +904,8 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
                 fprintf(stderr, "\nNew defaults active, use \"-Y classic -s 250k\" for the old defaults!\n\n");
             }
             cfg->frequency[cfg->frequencies++] = sr;
-        } else
+        }
+        else
             fprintf(stderr, "Max number of frequencies reached %d\n", MAX_FREQS);
         break;
     case 'H':
@@ -978,8 +1081,8 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
             cfg->old_model_keys = 1;
         else if (!strncasecmp(arg, "stats", 5)) {
             // there also should be options to set wether to flush on report
-            char *p = arg_param(arg);
-            cfg->report_stats = atoiv(p, 1);
+            char *p             = arg_param(arg);
+            cfg->report_stats   = atoiv(p, 1);
             cfg->stats_interval = atoiv(arg_param(p), 600);
             time(&cfg->stats_time);
             cfg->stats_time += cfg->stats_interval;
@@ -1182,7 +1285,7 @@ static void sighandler(int signum)
     if (signum == SIGPIPE) {
         signal(SIGPIPE, SIG_IGN);
     }
-    else if (signum == SIGINFO/* TODO: maybe SIGUSR1 */) {
+    else if (signum == SIGINFO /* TODO: maybe SIGUSR1 */) {
         g_cfg.stats_now++;
         return;
     }
@@ -1221,6 +1324,7 @@ static void sdr_handler(sdr_event_t *ev, void *ctx)
         data = data_append(data,
                 "center_frequency", "", DATA_INT, ev->center_frequency,
                 "frequencies", "", DATA_COND, cfg->frequencies > 1, DATA_ARRAY, data_array(cfg->frequencies, DATA_INT, cfg->frequency),
+
                 "hop_times", "", DATA_COND, cfg->frequencies > 1, DATA_ARRAY, data_array(cfg->hop_times, DATA_INT, cfg->hop_time),
                 NULL);
     }
@@ -1239,7 +1343,8 @@ static void sdr_handler(sdr_event_t *ev, void *ctx)
     if (ev->ev == SDR_EV_DATA) {
         if (cfg->mgr) {
             int max_polls = 16;
-            while (max_polls-- && mg_mgr_poll(cfg->mgr, 0));
+            while (max_polls-- && mg_mgr_poll(cfg->mgr, 0))
+                ;
         }
 
         if (!cfg->exit_async)
@@ -1250,7 +1355,8 @@ static void sdr_handler(sdr_event_t *ev, void *ctx)
         sdr_stop(cfg->dev);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 #ifndef _WIN32
     struct sigaction sigact;
 #endif
@@ -1263,7 +1369,9 @@ int main(int argc, char **argv) {
     print_version(); // always print the version info
 
     r_init_cfg(cfg);
-
+#ifdef NO_OPEN_SDR
+    cfg->samp_rate = _param_samp_rate;
+#endif
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
 
@@ -1278,7 +1386,7 @@ int main(int argc, char **argv) {
 #define DECL(name) name,
             DEVICES
 #undef DECL
-            };
+    };
 
     cfg->num_r_devices = sizeof(r_devices) / sizeof(*r_devices);
     for (i = 0; i < cfg->num_r_devices; i++) {
@@ -1349,8 +1457,8 @@ int main(int argc, char **argv) {
     for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
         r_device *r_dev = *iter;
         if (r_dev->modulation >= FSK_DEMOD_MIN_VAL) {
-          demod->enable_FM_demod = 1;
-          break;
+            demod->enable_FM_demod = 1;
+            break;
         }
     }
 
@@ -1362,11 +1470,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, " [");
         for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
             r_device *r_dev = *iter;
-            unsigned num = r_dev->protocol_num;
+            unsigned num    = r_dev->protocol_num;
             if (num == 0)
                 continue;
-            while (iter[1]
-                    && r_dev->protocol_num + 1 == ((r_device *)iter[1])->protocol_num)
+            while (iter[1] && r_dev->protocol_num + 1 == ((r_device *)iter[1])->protocol_num)
                 r_dev = *++iter;
             if (num == r_dev->protocol_num)
                 fprintf(stderr, " %u", num);
@@ -1400,7 +1507,8 @@ int main(int argc, char **argv) {
         if (*cfg->test_data == '@') {
             fprintf(stderr, "Reading test data from \"%s\"\n", &cfg->test_data[1]);
             fp = fopen(&cfg->test_data[1], "r");
-        } else {
+        }
+        else {
             fprintf(stderr, "Reading test data from stdin\n");
             fp = stdin;
         }
@@ -1415,7 +1523,7 @@ int main(int argc, char **argv) {
             r = 0;
             // test a single decoder?
             if (*line == '[') {
-                char *e = NULL;
+                char *e    = NULL;
                 unsigned d = (unsigned)strtol(&line[1], &e, 10);
                 if (!e || *e != ']') {
                     fprintf(stderr, "Bad protocol number %.5s.\n", line);
@@ -1446,8 +1554,9 @@ int main(int argc, char **argv) {
                     else
                         r += run_fsk_demods(&single_dev, &pulse_data);
                     list_free_elems(&single_dev, NULL);
-                } else
-                r += pulse_demod_string(e, r_dev);
+                }
+                else
+                    r += pulse_demod_string(e, r_dev);
                 continue;
             }
             // otherwise test all decoders
@@ -1458,13 +1567,14 @@ int main(int argc, char **argv) {
                     r += run_ook_demods(&demod->r_devs, &pulse_data);
                 else
                     r += run_fsk_demods(&demod->r_devs, &pulse_data);
-            } else
-            for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
-                r_device *r_dev = *iter;
-                if (cfg->verbosity)
-                    fprintf(stderr, "Verifying test data with device %s.\n", r_dev->name);
-                r += pulse_demod_string(line, r_dev);
             }
+            else
+                for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
+                    r_device *r_dev = *iter;
+                    if (cfg->verbosity)
+                        fprintf(stderr, "Verifying test data with device %s.\n", r_dev->name);
+                    r += pulse_demod_string(line, r_dev);
+                }
         }
 
         if (*cfg->test_data == '@') {
@@ -1484,13 +1594,14 @@ int main(int argc, char **argv) {
                 r += run_ook_demods(&demod->r_devs, &pulse_data);
             else
                 r += run_fsk_demods(&demod->r_devs, &pulse_data);
-        } else
-        for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
-            r_device *r_dev = *iter;
-            if (cfg->verbosity)
-                fprintf(stderr, "Verifying test data with device %s.\n", r_dev->name);
-            r += pulse_demod_string(cfg->test_data, r_dev);
         }
+        else
+            for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
+                r_device *r_dev = *iter;
+                if (cfg->verbosity)
+                    fprintf(stderr, "Verifying test data with device %s.\n", r_dev->name);
+                r += pulse_demod_string(cfg->test_data, r_dev);
+            }
         r_free_cfg(cfg);
         exit(!r);
     }
@@ -1514,26 +1625,27 @@ int main(int argc, char **argv) {
 
             parse_file_info(cfg->in_filename, &demod->load_info);
             if (strcmp(demod->load_info.path, "-") == 0) { /* read samples from stdin */
-                in_file = stdin;
+                in_file          = stdin;
                 cfg->in_filename = "<stdin>";
-            } else {
+            }
+            else {
                 in_file = fopen(demod->load_info.path, "rb");
                 if (!in_file) {
                     fprintf(stderr, "Opening file: %s failed!\n", cfg->in_filename);
                     break;
                 }
             }
-            fprintf(stderr, "Test mode active. Reading samples from file: %s\n", cfg->in_filename);  // Essential information (not quiet)
-            if (demod->load_info.format == CU8_IQ
-                    || demod->load_info.format == S16_AM
-                    || demod->load_info.format == S16_FM) {
+            fprintf(stderr, "Test mode active. Reading samples from file: %s\n", cfg->in_filename); // Essential information (not quiet)
+            if (demod->load_info.format == CU8_IQ || demod->load_info.format == S16_AM || demod->load_info.format == S16_FM) {
                 demod->sample_size = sizeof(uint8_t); // CU8, AM, FM
-            } else if (demod->load_info.format == CS16_IQ
-                    || demod->load_info.format == CF32_IQ) {
+            }
+            else if (demod->load_info.format == CS16_IQ || demod->load_info.format == CF32_IQ) {
                 demod->sample_size = sizeof(int16_t); // CF32, CS16
-            } else if (demod->load_info.format == PULSE_OOK) {
+            }
+            else if (demod->load_info.format == PULSE_OOK) {
                 // ignore
-            } else {
+            }
+            else {
                 fprintf(stderr, "Input format invalid: %s\n", file_info_string(&demod->load_info));
                 break;
             }
@@ -1553,9 +1665,11 @@ int main(int argc, char **argv) {
                         file_info_t const *dumper = *iter2;
                         if (dumper->format == VCD_LOGIC) {
                             pulse_data_print_vcd(dumper->file, &demod->pulse_data, '\'');
-                        } else if (dumper->format == PULSE_OOK) {
+                        }
+                        else if (dumper->format == PULSE_OOK) {
                             pulse_data_dump(dumper->file, &demod->pulse_data);
-                        } else {
+                        }
+                        else {
                             fprintf(stderr, "Dumper (%s) not supported on OOK input\n", dumper->spec);
                             exit(1);
                         }
@@ -1596,24 +1710,26 @@ int main(int argc, char **argv) {
                         ((int16_t *)test_mode_buf)[n] = s_tmp;
                     }
                     n_read *= 2; // convert to byte count
-                } else {
+                }
+                else {
                     n_read = fread(test_mode_buf, 1, DEFAULT_BUF_LENGTH, in_file);
                 }
-                if (n_read == 0) break;  // sdr_callback() will Segmentation Fault with len=0
+                if (n_read == 0)
+                    break; // sdr_callback() will Segmentation Fault with len=0
                 demod->sample_file_pos = ((float)n_blocks * DEFAULT_BUF_LENGTH + n_read) / cfg->samp_rate / 2 / demod->sample_size;
                 n_blocks++; // this assumes n_read == DEFAULT_BUF_LENGTH
                 sdr_callback(test_mode_buf, n_read, cfg);
             } while (n_read != 0 && !cfg->exit_async);
 
             // Call a last time with cleared samples to ensure EOP detection
-            if (demod->sample_size == 1) { // CU8
+            if (demod->sample_size == 1) {                      // CU8
                 memset(test_mode_buf, 128, DEFAULT_BUF_LENGTH); // 128 is 0 in unsigned data
                 // or is 127.5 a better 0 in cu8 data?
                 //for (unsigned long n = 0; n < DEFAULT_BUF_LENGTH/2; n++)
                 //    ((uint16_t *)test_mode_buf)[n] = 0x807f;
             }
             else { // CF32, CS16
-                    memset(test_mode_buf, 0, DEFAULT_BUF_LENGTH);
+                memset(test_mode_buf, 0, DEFAULT_BUF_LENGTH);
             }
             demod->sample_file_pos = ((float)n_blocks + 1) * DEFAULT_BUF_LENGTH / cfg->samp_rate / 2 / demod->sample_size;
             sdr_callback(test_mode_buf, DEFAULT_BUF_LENGTH, cfg);
@@ -1643,7 +1759,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "SR writing not recommended for live input\n");
         exit(1);
     }
-
+#ifndef NO_OPEN_SDR
     // Normal case, no test data, no in files
     r = sdr_open(&cfg->dev, &demod->sample_size, cfg->dev_query, cfg->verbosity);
     if (r < 0) {
@@ -1683,10 +1799,10 @@ int main(int argc, char **argv) {
     if (r < 0)
         fprintf(stderr, "WARNING: Failed to reset buffers.\n");
     r = sdr_activate(cfg->dev);
-
+#endif
     if (cfg->frequencies == 0) {
         cfg->frequency[0] = DEFAULT_FREQUENCY;
-        cfg->frequencies = 1;
+        cfg->frequencies  = 1;
     }
     if (cfg->frequencies > 1 && cfg->hop_times == 0) {
         cfg->hop_time[cfg->hop_times++] = DEFAULT_HOP_TIME;
@@ -1700,20 +1816,30 @@ int main(int argc, char **argv) {
     }
 
     cfg->center_frequency = cfg->frequency[cfg->frequency_index];
-    r = sdr_set_center_freq(cfg->dev, cfg->center_frequency, 1); // always verbose
-
-        time(&cfg->hop_start_time);
-#ifndef _WIN32
-        signal(SIGALRM, sighandler);
-        alarm(3); // require callback to run every 3 second, abort otherwise
+#ifndef NO_OPEN_SDR
+    r                     = sdr_set_center_freq(cfg->dev, cfg->center_frequency, 1); // always verbose
 #endif
-        r = sdr_start(cfg->dev, sdr_handler, (void *)cfg,
-                DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
-        if (r < 0) {
-            fprintf(stderr, "WARNING: async read failed (%i).\n", r);
-        }
+    time(&cfg->hop_start_time);
 #ifndef _WIN32
-        alarm(0); // cancel the watchdog timer
+    signal(SIGALRM, sighandler);
+    alarm(3); // require callback to run every 3 second, abort otherwise
+#endif
+
+#ifdef NO_OPEN_SDR //NO_OPEN_SDR
+    demod->sample_size = _param_sample_size;
+    cfg->dev           = init_sdr_dev();
+    cfg->demod         = demod;
+#endif
+
+#ifndef NO_OPEN_SDR
+
+    r = sdr_start(cfg->dev, sdr_handler, (void *)cfg,
+            DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
+    if (r < 0) {
+        fprintf(stderr, "WARNING: async read failed (%i).\n", r);
+    }
+#ifndef _WIN32
+    alarm(0); // cancel the watchdog timer
 #endif
 
     if (cfg->report_stats > 0) {
@@ -1729,6 +1855,9 @@ int main(int argc, char **argv) {
     if (cfg->exit_code >= 0)
         r = cfg->exit_code;
     r_free_cfg(cfg);
-
+#else //NO_OPEN_SDR
+    r = sdr_start_dll(cfg->dev, sdr_handler, (void *)cfg,
+            DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
+#endif
     return r >= 0 ? r : -r;
 }

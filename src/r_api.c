@@ -35,7 +35,7 @@
 #include "compat_time.h"
 #include "fatal.h"
 #include "http_server.h"
-
+#include "dll_rtl_433.h" //for fprintf
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>

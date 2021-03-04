@@ -1,0 +1,13 @@
+; rtl_433.def : Declares the module parameters for the application
+LIBRARY rtl_433
+DESCRIPTION 'DLL for Rtl_433_Plugin'
+EXPORTS
+; Explicitly exported initialization routine
+test_dll_get_version @1
+rtl_433_call_main @2
+receive_buffer_cb @3
+stop_sdr @4
+setFrequency @5
+setCenterFrequency @6
+
+

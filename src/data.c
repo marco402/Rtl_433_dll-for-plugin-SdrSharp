@@ -9,6 +9,16 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
+// *********************************************************************************
+// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+//						    for Rtl_433_Plugin
+//							Plugin for SdrSharp
+//History : V1.00 2021-04-01 - First release
+//
+// **********************************************************************************
+#include "dll_rtl_433.h"
+
+//#include "util.h"
 
 #include <stdarg.h>
 #include <assert.h>
@@ -656,6 +666,15 @@ static void print_kv_data(data_output_t *output, data_t *data, char const *forma
         data = data->next;
     }
     --kv->data_recursion;
+	//****************************
+#ifdef DLL_RTL_433
+	//end of message
+    char sep[] = KV_SEP KV_SEP KV_SEP KV_SEP;
+    if (kv->term_width < (int)sizeof(sep))
+        sep[kv->term_width > 0 ? kv->term_width - 1 : 40] = '\0';
+    fprintf(output->file, "%s\n", sep);
+#endif
+	//****************************
 
     // top-level: always end with newline
     if (!kv->data_recursion && kv->column > 0) {

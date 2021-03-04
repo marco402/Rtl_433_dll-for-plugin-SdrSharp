@@ -12,7 +12,16 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-
+// *********************************************************************************
+// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+//						    for Rtl_433_Plugin
+//							Plugin for SdrSharp
+//History : V1.00 2021-04-01 - First release
+//
+// **********************************************************************************
+#include "rtl_433.h"
+//#include "util.h"
+#include "dll_rtl_433.h" //for fprintf
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -490,6 +499,55 @@ static void rtlsdr_read_cb(unsigned char *iq_buf, uint32_t len, void *ctx)
     // NOTE: we actually need to copy the buffer to prevent it going away on cancel_async
 }
 
+#ifdef DLL_RTL_433
+
+export void __stdcall receive_buffer_cb(short *iq_buf, uint32_t len, void *ctx)
+{
+    sdr_dev_t *dev = ctx;
+    sdr_event_t ev = {
+            .ev  = SDR_EV_DATA,
+            .buf = iq_buf,
+            .len = len,
+    };
+    if (len > 0) // prevent a crash in callback
+        dev->rtlsdr_cb(&ev, dev->rtlsdr_cb_ctx);
+    // NOTE: we actually need to copy the buffer to prevent it going away on cancel_async
+}
+
+typedef void(__stdcall *prt_call_back_init)(char *);
+void init_cb_to_rtl_433(prt_call_back_init ptr_init, void *ctx)
+{
+    sdr_dev_t *dev = ctx;
+    (*ptr_init)(receive_buffer_cb, DEFAULT_ASYNC_BUF_NUMBER, DEFAULT_BUF_LENGTH, ctx);
+}
+prt_call_back_init PTRInit = NULL;
+void setPtrInit(prt_call_back_init ptr_init)
+{
+    PTRInit = ptr_init;
+}
+
+init_sdr_dev()
+{
+    sdr_dev_t *dev = calloc(1, sizeof(sdr_dev_t));
+    if (!dev) {
+        WARN_CALLOC("sdr_open_rtl()");
+        return -1; // NOTE: returns error on alloc failure.
+    }
+    return dev;
+}
+#endif    //DLL_RTL_433
+#ifdef NO_OPEN_SDR
+static int rtlsdr_read_loop_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
+{
+    int r = 1;
+    dev->rtlsdr_cb     = cb;
+    dev->rtlsdr_cb_ctx = ctx;
+    dev->running = 1;
+   // dev->polling = 1;
+    init_cb_to_rtl_433(PTRInit, (void *)dev);
+    return r;
+}
+#endif
 static int rtlsdr_read_loop(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
     int r = 0;
@@ -1463,7 +1521,18 @@ int sdr_reset(sdr_dev_t *dev, int verbose)
     }
     return r;
 }
-
+ #ifdef NO_OPEN_SDR
+int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
+{
+    if (!dev)
+        return -1;
+#ifdef RTLSDR
+//    if (dev->rtlsdr_dev)
+        return rtlsdr_read_loop_dll(dev, cb, ctx, buf_num, buf_len);
+#endif
+    return -1;
+}
+#endif
 int sdr_start(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
     if (!dev)

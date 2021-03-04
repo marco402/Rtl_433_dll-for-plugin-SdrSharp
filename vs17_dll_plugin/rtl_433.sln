@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.757
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rtl_433", "rtl_433.vcxproj", "{7EB4B17A-2185-47A5-8170-ACDC7EA30515}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.Debug|Win32.Build.0 = Debug|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.Release|Win32.ActiveCfg = Release|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB160192-D2D5-4F46-92B9-183725AEF55C}
+	EndGlobalSection
+EndGlobal
