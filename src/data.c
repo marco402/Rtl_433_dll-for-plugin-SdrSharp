@@ -9,16 +9,14 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-// *********************************************************************************
-// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
-//						    for Rtl_433_Plugin
-//							Plugin for SdrSharp
-//History : V1.00 2021-04-01 - First release
-//
-// **********************************************************************************
+/* modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+							     data.c
+						    for Rtl_433_Plugin
+							Plugin for SdrSharp
+History : V1.00 2021-04-01 - First release
+          V1.10 2021-20-April 
+**********************************************************************************/
 #include "dll_rtl_433.h"
-
-//#include "util.h"
 
 #include <stdarg.h>
 #include <assert.h>
@@ -402,7 +400,7 @@ void data_output_print(data_output_t *output, data_t *data)
         return;
     output->print_data(output, data, NULL);
     if (output->file) {
-        fputc('\n', output->file);
+        fputc('\n', output->file);    //+ 1 cr on console without message for each display 
         fflush(output->file);
     }
 }
@@ -616,12 +614,17 @@ static void print_kv_data(data_output_t *output, data_t *data, char const *forma
             term_set_fg(kv->term, TERM_COLOR_BLACK);
         if (ring_bell)
             term_ring_bell(kv->term);
+#ifdef DLL_RTL_433
+        //start of message
+        fprintf(output->file, "%s\n", "@@@@@@@@@@");
+#else
         char sep[] = KV_SEP KV_SEP KV_SEP KV_SEP;
         if (kv->term_width < (int)sizeof(sep))
             sep[kv->term_width > 0 ? kv->term_width - 1 : 40] = '\0';
         fprintf(output->file, "%s\n", sep);
         if (color)
             term_set_fg(kv->term, TERM_COLOR_RESET);
+#endif
     }
     // nested data object: break before
     else {
@@ -669,10 +672,7 @@ static void print_kv_data(data_output_t *output, data_t *data, char const *forma
 	//****************************
 #ifdef DLL_RTL_433
 	//end of message
-    char sep[] = KV_SEP KV_SEP KV_SEP KV_SEP;
-    if (kv->term_width < (int)sizeof(sep))
-        sep[kv->term_width > 0 ? kv->term_width - 1 : 40] = '\0';
-    fprintf(output->file, "%s\n", sep);
+    fprintf(output->file, "%s\n", "**********");
 #endif
 	//****************************
 

@@ -20,13 +20,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// *********************************************************************************
-// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
-//						    for Rtl_433_Plugin
-//							Plugin for SdrSharp
-//History : V1.00 2021-04-01 - First release
-//
-// **********************************************************************************
+/* modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+							   rtl_433.c
+						    for Rtl_433_Plugin
+							Plugin for SdrSharp
+History : V1.00 2021-04-01 - First release
+          V1.10 2021-20-April
+********************************************************************************* */
 
 #include "dll_rtl_433.h"
 #include <stdio.h>
@@ -95,14 +95,15 @@
 #define _Noreturn
 #endif
 #endif
+static r_cfg_t g_cfg;
 #ifdef DLL_RTL_433
 typedef void(__stdcall *prt_call_back_message)(char *);
 typedef void(__stdcall *prt_call_back_init)(char *);
 prt_call_back_message PTRCallBack = NULL;
-uint32_t _param_samp_rate         = 0;
-int _param_sample_size            = 0;
-uint32_t _centerFrequency         = 0;
-uint32_t _frequency               = 0;
+uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
+int _param_sample_size            = 1;
+uint32_t _centerFrequency         = DEFAULT_FREQUENCY;
+uint32_t _frequency               = DEFAULT_FREQUENCY;
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
     switch (dwReason) {
@@ -116,7 +117,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "dll_rtl_433 v1.0";
+    return "dll_rtl_433 v1.10";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -154,8 +155,9 @@ void init_console()
 export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, int argc, char *argv[])
 {
     init_console();
-    PTRCallBack = ptr_message;
-    setPtrInit(ptr_init);
+    PTRCallBack  = ptr_message;
+    intptr_t cfg = &g_cfg;
+    setPtrInit(ptr_init, cfg);
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size;
     main(argc, argv);
@@ -170,10 +172,10 @@ int my_fprintf(_Inout_ FILE *const _Stream,
     sprintf(line, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
                                                       //than 2 unsigned int only 2 first ok
     __crt_va_end(_ArgList);
-    char line1[81];
-    for (int i = 0; i < 80; i++)
+    char line1[100];
+    for (int i = 0; i < 99; i++)
         line1[i] = line[i];
-    line1[80] = '\0';
+    line1[99] = '\0';
     if (PTRCallBack)
         (*PTRCallBack)(line1);
     return 0;
@@ -410,6 +412,16 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     char time_str[LOCAL_TIME_BUFLEN];
     unsigned long n_samples;
 
+    /*   cfg->mgr = 10;
+    demod->sample_file_pos         = 30;
+    demod->pulse_data.offset      = 45;
+    demod->pulse_data.sample_rate = 46;
+    demod->pulse_data.num_pulses  = 47;
+    demod->pulse_data.pulse[0]    = 48;
+    demod->pulse_data.gap[1199]   = 49;
+    demod->pulse_data.fsk_f2_est  = 50;
+    demod->pulse_data.noise_db    = 51;
+    fprintf(stderr, "test!\n");*/
 #ifdef DLL_RTL_433
     cfg->frequency[0]     = _frequency;
     cfg->center_frequency = _centerFrequency;
@@ -420,7 +432,8 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     }
 
     get_time_now(&demod->now);
-
+    if (demod->sample_size == 0)
+        return;
     n_samples = len / 2 / demod->sample_size;
     if (n_samples * 2 * demod->sample_size != len) { //always true
         fprintf(stderr, "Sample buffer length not aligned to sample size!\n");
@@ -756,11 +769,12 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 static int hasopt(int test, int argc, char *argv[], char const *optstring)
 {
     int opt;
-
-    optind = 1; // reset getopt
-    while ((opt = getopt(argc, argv, optstring)) != -1) {
+    int resetNextchar = 1; //for restart without unload dll
+    optind            = 1; // reset getopt
+    while ((opt = getopt(argc, argv, optstring, resetNextchar)) != -1) {
         if (opt == test || optopt == test)
             return opt;
+        resetNextchar = 0;
     }
     return 0;
 }
@@ -1256,8 +1270,6 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
     }
 }
 
-static r_cfg_t g_cfg;
-
 // TODO: SIGINFO is not in POSIX...
 #ifndef SIGINFO
 #define SIGINFO 29
@@ -1370,7 +1382,12 @@ int main(int argc, char **argv)
 
     r_init_cfg(cfg);
 #ifdef NO_OPEN_SDR
-    cfg->samp_rate = _param_samp_rate;
+    //cfg->samp_rate       = _param_samp_rate;
+    cfg->verbosity       = 0;
+    //cfg->report_protocol = 0;
+    //cfg->input_pos       = 0;
+    //cfg->num_r_devices   = 0;
+
 #endif
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -1381,7 +1398,7 @@ int main(int argc, char **argv)
 
     /* initialize tables */
     baseband_init();
-
+    //************************************************************************************************
     r_device r_devices[] = {
 #define DECL(name) name,
             DEVICES
@@ -1393,7 +1410,7 @@ int main(int argc, char **argv)
         r_devices[i].protocol_num = i + 1;
     }
     cfg->devices = r_devices;
-
+    //***********************************************************************************************
     // if there is no explicit conf file option look for default conf files
     if (!hasopt('c', argc, argv, OPTSTRING)) {
         parse_conf_try_default_files(cfg);
@@ -1450,7 +1467,15 @@ int main(int argc, char **argv)
 
     // register default decoders if nothing is configured
     if (!cfg->no_default_devices) {
+#ifdef DLL_RTL_433
+        if (cfg->verbosity)
+			fprintf(stderr, "start devices list");
+#endif
         register_all_protocols(cfg, 0); // register all defaults
+#ifdef DLL_RTL_433
+        if (cfg->verbosity)
+            fprintf(stderr, "end devices list");
+#endif
     }
 
     // check if we need FM demod
@@ -1464,14 +1489,14 @@ int main(int argc, char **argv)
 
     fprintf(stderr, "Registered %zu out of %d device decoding protocols",
             demod->r_devs.len, cfg->num_r_devices);
-
+    //************************************************************************************************
     if (!cfg->verbosity) {
         // print registered decoder ranges
         fprintf(stderr, " [");
         for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
             r_device *r_dev = *iter;
             unsigned num    = r_dev->protocol_num;
-            if (num == 0)
+            if (num == 0) //delta count with demod->r_devs.len
                 continue;
             while (iter[1] && r_dev->protocol_num + 1 == ((r_device *)iter[1])->protocol_num)
                 r_dev = *++iter;
@@ -1482,8 +1507,10 @@ int main(int argc, char **argv)
         }
         fprintf(stderr, " ]");
     }
-    fprintf(stderr, "\n");
 
+
+    fprintf(stderr, "\n");
+    //************************************************************************************************
     char const **well_known = well_known_output_fields(cfg);
     start_outputs(cfg, well_known);
     free(well_known);
@@ -1817,7 +1844,7 @@ int main(int argc, char **argv)
 
     cfg->center_frequency = cfg->frequency[cfg->frequency_index];
 #ifndef NO_OPEN_SDR
-    r                     = sdr_set_center_freq(cfg->dev, cfg->center_frequency, 1); // always verbose
+    r = sdr_set_center_freq(cfg->dev, cfg->center_frequency, 1); // always verbose
 #endif
     time(&cfg->hop_start_time);
 #ifndef _WIN32

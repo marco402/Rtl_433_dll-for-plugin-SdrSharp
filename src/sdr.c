@@ -12,13 +12,13 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-// *********************************************************************************
-// modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
-//						    for Rtl_433_Plugin
-//							Plugin for SdrSharp
-//History : V1.00 2021-04-01 - First release
-//
-// **********************************************************************************
+/*  modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
+                                 sdr.c
+						    for Rtl_433_Plugin
+							Plugin for SdrSharp
+History : V1.00 2021-04-01 - First release
+          V1.10 2021-20-April
+ ********************************************************************************** */
 #include "rtl_433.h"
 //#include "util.h"
 #include "dll_rtl_433.h" //for fprintf
@@ -515,15 +515,18 @@ export void __stdcall receive_buffer_cb(short *iq_buf, uint32_t len, void *ctx)
 }
 
 typedef void(__stdcall *prt_call_back_init)(char *);
-void init_cb_to_rtl_433(prt_call_back_init ptr_init, void *ctx)
+//typedef void(__stdcall *prt_call_back_cfg)(char *);
+void init_cb_to_rtl_433(prt_call_back_init ptr_init, void *ctx, intptr_t ptr_cfg)
 {
     sdr_dev_t *dev = ctx;
-    (*ptr_init)(receive_buffer_cb, DEFAULT_ASYNC_BUF_NUMBER, DEFAULT_BUF_LENGTH, ctx);
+    (*ptr_init)(receive_buffer_cb ,DEFAULT_ASYNC_BUF_NUMBER, DEFAULT_BUF_LENGTH, ctx,ptr_cfg);
 }
 prt_call_back_init PTRInit = NULL;
-void setPtrInit(prt_call_back_init ptr_init)
+intptr_t PTRCfg  = NULL;
+void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg)
 {
     PTRInit = ptr_init;
+    PTRCfg  = ptr_cfg;
 }
 
 init_sdr_dev()
@@ -544,7 +547,7 @@ static int rtlsdr_read_loop_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, ui
     dev->rtlsdr_cb_ctx = ctx;
     dev->running = 1;
    // dev->polling = 1;
-    init_cb_to_rtl_433(PTRInit, (void *)dev);
+    init_cb_to_rtl_433(PTRInit, (void *)dev,PTRCfg);
     return r;
 }
 #endif

@@ -373,6 +373,9 @@ int pulse_demod_pwm(const pulse_data_t *pulses, r_device *device)
             bitbuffer_add_row(&bits);
         }
     }
+
+//fprintf(stderr, "%u\t%s\t%u\t%u\n", device->protocol_num, device->name, pulses->start_ago,pulses->end_ago);
+
     return events;
 }
 

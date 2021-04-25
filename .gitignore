@@ -55,7 +55,9 @@ build*/
 *.opendb
 
 _*/
-
+.github
+vs17_dll_plugin/Debug/*
+vs17_dll_plugin/Release/*
 rtl_433_tests
 
 .idea
