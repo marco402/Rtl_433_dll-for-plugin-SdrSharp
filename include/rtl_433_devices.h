@@ -187,6 +187,7 @@
     DECL(burnhardbbq) \
     DECL(secplus_v1) \
     DECL(cavius) \
+	DECL(tech_433) \
     /* Add new decoders here. */
 
 #define DECL(name) extern r_device name;

@@ -7,6 +7,7 @@ Vous pouvez visualiser des captures fenêtres
 
 For informations on plugin see to :https://github.com/marco402/plugin-Rtl433-for-SdrSharp.  
 
+Version 1.11 May 2021
 ______________________________________________________________________________________________________________  
 ## Original Readme rtl_433  
 

@@ -97,8 +97,17 @@ History : V1.00 2021-04-01 - First release
 #endif
 static r_cfg_t g_cfg;
 #ifdef DLL_RTL_433
+
 typedef void(__stdcall *prt_call_back_message)(char *);
 typedef void(__stdcall *prt_call_back_init)(char *);
+int main(int argc, char **argv);
+void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
+sdr_dev_t *init_sdr_dev();
+int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
+
+
+
+
 prt_call_back_message PTRCallBack = NULL;
 uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
 int _param_sample_size            = 1;
@@ -117,7 +126,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "dll_rtl_433 v1.10";
+    return "dll_rtl_433 v1.11";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -127,57 +136,59 @@ export void __stdcall setCenterFrequency(uint32_t centerFrequency)
 {
     _centerFrequency = centerFrequency;
 }
+HANDLE hConOut = NULL;
 export void __stdcall stop_sdr(void *ctx) // necessary function compilation const to sdr433
 {
     sdr_dev_t *dev = ctx;
     sdr_stop(ctx);
+    setbuf(stdout, NULL);
+    setbuf(stderr, NULL);
+
+    fclose(stdout);
+    fclose(stderr);  //pb en release pas sdrsharp v1811
+    if (hConOut != NULL)
+        CloseHandle(hConOut);
+    hConOut = NULL;
+    int ret = FreeConsole();
 }
 //https : //www.i-programmer.info/programming/c/1039-using-the-console.html
-void MakeConsole()
-{
-    int retour = 0;
-    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
-        retour = AllocConsole();
-    };
-}
+//void MakeConsole()
+//{
+//    int ret = AttachConsole(ATTACH_PARENT_PROCESS);
+//}
 void init_console()
 {
-    MakeConsole();
     FILE *fDummy;
     freopen_s(&fDummy, "CONOUT$", "w", stdout);
     freopen_s(&fDummy, "CONOUT$", "w", stderr);
     //  freopen_s(&fDummy, "CONIN$", "r", stdin);
-    HANDLE hConOut = CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    hConOut = CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); //HANDLE
     //   HANDLE hConIn  = CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
 }
 export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, int argc, char *argv[])
 {
-    init_console();
+    if (param_samp_rate > 0)
+        init_console();
     PTRCallBack  = ptr_message;
-    intptr_t cfg = &g_cfg;
+    intptr_t cfg =(int) &g_cfg;
     setPtrInit(ptr_init, cfg);
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size;
     main(argc, argv);
 }
 //callBack to SDRSharp
-int my_fprintf(_Inout_ FILE *const _Stream,
-        _In_z_ _Printf_format_string_ char const *_Format, ...)
+int my_fprintf(_Inout_ FILE *const _Stream,_In_z_ _Printf_format_string_ char const *_Format, ...)
 {
     va_list _ArgList;
     __crt_va_start(_ArgList, _Format);
-    char line[1024];
-    sprintf(line, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
-                                                      //than 2 unsigned int only 2 first ok
+    char line[100];
+    _snprintf(line, 99, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
+    line[99] = '\0';
     __crt_va_end(_ArgList);
-    char line1[100];
-    for (int i = 0; i < 99; i++)
-        line1[i] = line[i];
-    line1[99] = '\0';
-    if (PTRCallBack)
-        (*PTRCallBack)(line1);
+     if (PTRCallBack)
+        (*PTRCallBack)(line);
     return 0;
 }
 
@@ -933,7 +944,7 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
             help_gain();
 
         free(cfg->gain_str);
-        cfg->gain_str = strdup(arg);
+        cfg->gain_str = _strdup(arg);
         if (!cfg->gain_str)
             FATAL_STRDUP("parse_conf_option()");
         break;
@@ -1383,7 +1394,7 @@ int main(int argc, char **argv)
     r_init_cfg(cfg);
 #ifdef NO_OPEN_SDR
     //cfg->samp_rate       = _param_samp_rate;
-    cfg->verbosity       = 0;
+    cfg->verbosity = 0;
     //cfg->report_protocol = 0;
     //cfg->input_pos       = 0;
     //cfg->num_r_devices   = 0;
@@ -1469,7 +1480,7 @@ int main(int argc, char **argv)
     if (!cfg->no_default_devices) {
 #ifdef DLL_RTL_433
         if (cfg->verbosity)
-			fprintf(stderr, "start devices list");
+            fprintf(stderr, "start devices list");
 #endif
         register_all_protocols(cfg, 0); // register all defaults
 #ifdef DLL_RTL_433
@@ -1507,7 +1518,6 @@ int main(int argc, char **argv)
         }
         fprintf(stderr, " ]");
     }
-
 
     fprintf(stderr, "\n");
     //************************************************************************************************

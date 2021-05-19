@@ -685,6 +685,9 @@
     <ClCompile Include="..\src\data_tag.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\devices\tech_433.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="rtl_433.def">

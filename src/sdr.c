@@ -519,7 +519,7 @@ typedef void(__stdcall *prt_call_back_init)(char *);
 void init_cb_to_rtl_433(prt_call_back_init ptr_init, void *ctx, intptr_t ptr_cfg)
 {
     sdr_dev_t *dev = ctx;
-    (*ptr_init)(receive_buffer_cb ,DEFAULT_ASYNC_BUF_NUMBER, DEFAULT_BUF_LENGTH, ctx,ptr_cfg);
+    (*ptr_init)(receive_buffer_cb ,(int)DEFAULT_ASYNC_BUF_NUMBER,(unsigned int) DEFAULT_BUF_LENGTH, ctx,ptr_cfg);
 }
 prt_call_back_init PTRInit = NULL;
 intptr_t PTRCfg  = NULL;
@@ -529,7 +529,7 @@ void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg)
     PTRCfg  = ptr_cfg;
 }
 
-init_sdr_dev()
+sdr_dev_t* init_sdr_dev()
 {
     sdr_dev_t *dev = calloc(1, sizeof(sdr_dev_t));
     if (!dev) {
