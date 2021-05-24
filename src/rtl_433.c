@@ -104,15 +104,12 @@ int main(int argc, char **argv);
 void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
 sdr_dev_t *init_sdr_dev();
 int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
-
-
-
-
 prt_call_back_message PTRCallBack = NULL;
 uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
 int _param_sample_size            = 1;
 uint32_t _centerFrequency         = DEFAULT_FREQUENCY;
 uint32_t _frequency               = DEFAULT_FREQUENCY;
+//bool _allToConsole                = false;
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
     switch (dwReason) {
@@ -145,7 +142,7 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
     setbuf(stderr, NULL);
 
     fclose(stdout);
-    fclose(stderr);  //pb en release pas sdrsharp v1811
+    fclose(stderr); //pb en release pas sdrsharp v1811
     if (hConOut != NULL)
         CloseHandle(hConOut);
     hConOut = NULL;
@@ -172,23 +169,28 @@ export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_c
     if (param_samp_rate > 0)
         init_console();
     PTRCallBack  = ptr_message;
-    intptr_t cfg =(int) &g_cfg;
+    intptr_t cfg = (int)&g_cfg;
     setPtrInit(ptr_init, cfg);
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size;
+    //_allToConsole      = allToConsole;
     main(argc, argv);
 }
 //callBack to SDRSharp
-int my_fprintf(_Inout_ FILE *const _Stream,_In_z_ _Printf_format_string_ char const *_Format, ...)
+int my_fprintf(_Inout_ FILE *const _Stream, _In_z_ _Printf_format_string_ char const *_Format, ...)
 {
-    va_list _ArgList;
-    __crt_va_start(_ArgList, _Format);
-    char line[100];
-    _snprintf(line, 99, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
-    line[99] = '\0';
-    __crt_va_end(_ArgList);
-     if (PTRCallBack)
-        (*PTRCallBack)(line);
+    //if (!_allToConsole) {
+        va_list _ArgList;
+        __crt_va_start(_ArgList, _Format);
+        char line[100];
+        _snprintf(line, 99, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
+        line[99] = '\0';
+        __crt_va_end(_ArgList);
+        if (PTRCallBack)
+            (*PTRCallBack)(line);
+    //}
+    //else
+    //    fprintf(_Stream, _Format);
     return 0;
 }
 

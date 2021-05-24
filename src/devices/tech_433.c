@@ -179,10 +179,10 @@ static char *output_fields[] = {
 r_device tech_433 = {
         .name        = "tech_433",
         .modulation  = OOK_PULSE_PPM,
-        .short_width = 50*4,  //short gap  "0"   //*4=/0.25 for 0.25 samples /µs
-        .long_width  = 500*4, //long gap   "1"  500->450
-        .reset_limit = 2500*4, //2500->1000   1.9ms
-        .tolerance   = 20*4,       //20->50
+        .short_width = 50*4,   //50  short gap  "0"   //*4=/0.25 for 0.25 samples /µs
+        .long_width  = 500*4,  //500  long gap   "1" 
+        .reset_limit = 2500*4, //2500   1.9ms
+        .tolerance   = 20*4,   //20
         .decode_fn   = &tech_433_callback,
         .fields      = output_fields,
 };
