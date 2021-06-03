@@ -57,8 +57,15 @@ build*/
 _*/
 .github
 vs17_dll_plugin/Debug/*
+vs17_dll_plugin/Debug_4.5/*
+vs17_dll_plugin/Debug_5.0/*
 vs17_dll_plugin/Debug_1788_c/*
 vs17_dll_plugin/Release/*
+vs17_dll_plugin/Release_4.5/*
+vs17_dll_plugin/Release_5.0/*
+vs17_dll_plugin/Release_light_1811_5.0/*
+vs17_dll_plugin/x64/Release_light_1811_5.0/*
+vs17_dll_plugin/x64/Debug/*
 vs17_dll_plugin/.vs/*
 rtl_433_tests
 

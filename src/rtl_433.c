@@ -109,7 +109,6 @@ uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
 int _param_sample_size            = 1;
 uint32_t _centerFrequency         = DEFAULT_FREQUENCY;
 uint32_t _frequency               = DEFAULT_FREQUENCY;
-//bool _allToConsole                = false;
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
     switch (dwReason) {
@@ -123,7 +122,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "dll_rtl_433 v1.11";
+    return "1.3.0.0";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -142,7 +141,10 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
     setbuf(stderr, NULL);
 
     fclose(stdout);
-    fclose(stderr); //pb en release pas sdrsharp v1811
+    fclose(stderr); //pb if old versions v1632 and ??:Exception non gérée à 0x75B7D132
+	//(ucrtbase.dll) dans SDRSharp.exe : Un paramètre non valide a été passé à une fonction qui considère
+	//les paramètres non valides comme une cause d'erreur irrécupérable.
+
     if (hConOut != NULL)
         CloseHandle(hConOut);
     hConOut = NULL;
@@ -173,13 +175,11 @@ export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_c
     setPtrInit(ptr_init, cfg);
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size;
-    //_allToConsole      = allToConsole;
     main(argc, argv);
 }
 //callBack to SDRSharp
 int my_fprintf(_Inout_ FILE *const _Stream, _In_z_ _Printf_format_string_ char const *_Format, ...)
 {
-    //if (!_allToConsole) {
         va_list _ArgList;
         __crt_va_start(_ArgList, _Format);
         char line[100];
@@ -188,9 +188,6 @@ int my_fprintf(_Inout_ FILE *const _Stream, _In_z_ _Printf_format_string_ char c
         __crt_va_end(_ArgList);
         if (PTRCallBack)
             (*PTRCallBack)(line);
-    //}
-    //else
-    //    fprintf(_Stream, _Format);
     return 0;
 }
 
