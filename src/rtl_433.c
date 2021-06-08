@@ -122,7 +122,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.3.0.0";
+    return "1.3.1.0";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -1392,7 +1392,7 @@ int main(int argc, char **argv)
 
     r_init_cfg(cfg);
 #ifdef NO_OPEN_SDR
-    //cfg->samp_rate       = _param_samp_rate;
+    cfg->samp_rate       = _param_samp_rate;
     cfg->verbosity = 0;
     //cfg->report_protocol = 0;
     //cfg->input_pos       = 0;

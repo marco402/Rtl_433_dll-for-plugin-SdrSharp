@@ -73,6 +73,7 @@ detail. Many thanks to kodarn!
 
 
 #include "decoder.h"
+#include "dll_rtl_433.h"                 //for fprintf
 #define IKEA_SPARSNAS_MESSAGE_BITLEN 160    // 20 bytes incl 8 bit length, 8 bit address, 128 bits data, and 16 bits of CRC. Excluding preamble and sync word
 #define IKEA_SPARSNAS_MESSAGE_BYTELEN    ((IKEA_SPARSNAS_MESSAGE_BITLEN + 7) / 8)
 #define IKEA_SPARSNAS_MESSAGE_BITLEN_MAX 260 // Just for early sanity checks
@@ -84,7 +85,6 @@ static const uint8_t preamble_pattern[4] = {0xAA, 0xAA, 0xD2, 0x01};
 #define IKEA_SPARSNAS_CRC_POLY 0x8005
 
 #define IKEA_SPARSNAS_ID_KEY_SUB 0x5D38E8CB
-
 static uint16_t ikea_sparsnas_pulses_per_kwh = 1000;
 static uint32_t ikea_sparsnas_sensor_id = 0;
 
@@ -138,7 +138,9 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if ((bitbuffer->bits_per_row[0] < IKEA_SPARSNAS_MESSAGE_BITLEN) || (bitbuffer->bits_per_row[0] > IKEA_SPARSNAS_MESSAGE_BITLEN_MAX)) {
         if (decoder->verbose > 1) {
+#ifndef DLL_RTL_433  //window zombi if -vvv
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
+#endif
             fprintf(stderr, "%s: Too short or too long packet received. Expected %d, received %d\n", __func__, IKEA_SPARSNAS_MESSAGE_BITLEN, bitbuffer->bits_per_row[0]);
         }
         return DECODE_ABORT_LENGTH;
@@ -149,7 +151,9 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if ((bitbuffer->bits_per_row[0] == bitpos) || (bitpos + IKEA_SPARSNAS_MESSAGE_BITLEN > bitbuffer->bits_per_row[0])) {
         if (decoder->verbose > 1) {
+#ifndef DLL_RTL_433 //window zombi if -vvv
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
+#endif
             fprintf(stderr, "%s: malformed package, preamble not found. (Expected 0xAAAAD201)\n", __func__);
         }
         return DECODE_ABORT_EARLY;
@@ -160,7 +164,9 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, 0, bitpos + IKEA_SPARSNAS_PREAMBLE_BITLEN, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN);
 
     if (decoder->verbose > 1) {
+#ifndef DLL_RTL_433 //window zombi if -vvv
         decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
+#endif
         decoder_output_bitrowf(decoder, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN, "Encrypted message");
     }
     // CRC check
