@@ -53,8 +53,11 @@ static int solight_te44_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     b = bitbuffer->bb[r];
 
-    if (bitbuffer->bits_per_row[r] < 36)
-        return DECODE_ABORT_LENGTH;
+    //if (bitbuffer->bits_per_row[r] > 37)
+    //   return DECODE_ABORT_LENGTH;
+
+    //if (bitbuffer->bits_per_row[r] != 36)
+    //    fprintf(stderr, "%d: Length\n", bitbuffer->bits_per_row[r]);
 
     if ((b[3] & 0xf0) != 0xf0)
         return DECODE_ABORT_EARLY; // const not 1111
@@ -99,7 +102,7 @@ r_device solight_te44 = {
         .short_width = 972,  // short gap = 972 us
         .long_width  = 1932, // long gap = 1932 us
         .gap_limit   = 3000, // packet gap = 3880 us
-        .tolerance   = 200,
+        //.tolerance   = 200,
         .reset_limit = 6000,
         .decode_fn   = &solight_te44_callback,
         .fields      = output_fields,

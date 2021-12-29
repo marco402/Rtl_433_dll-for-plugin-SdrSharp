@@ -155,7 +155,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     search_index = 0;
     while (search_index < bitbuffer->bits_per_row[0] && status == 0) {
         int dr            = 0;
-        uint8_t buffy[32] = {0};
+        uint8_t buffy[32] = {0};   //one--> Run-Time Check Failure #2 - Stack around the variable 'buffy' was corrupted. a eu lieu ???
         uint8_t buffi[32] = {0};
 
         search_index = find_next(bitbuffer, search_index);

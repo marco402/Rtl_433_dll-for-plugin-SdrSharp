@@ -109,6 +109,7 @@ uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
 int _param_sample_size            = 1;
 uint32_t _centerFrequency         = DEFAULT_FREQUENCY;
 uint32_t _frequency               = DEFAULT_FREQUENCY;
+uint32_t _disabled                = DEFAULT_DISABLED;                //process devices disabled or hidden
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
     switch (dwReason) {
@@ -122,7 +123,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.3.1.0";
+    return "1.3.3.0";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -137,18 +138,18 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 {
     sdr_dev_t *dev = ctx;
     sdr_stop(ctx);
-    setbuf(stdout, NULL);
-    setbuf(stderr, NULL);
+ ////   setbuf(stdout, NULL);
+ ////   setbuf(stderr, NULL);
 
-    fclose(stdout);
-    fclose(stderr); //pb if old versions v1632 and ??:Exception non gérée à 0x75B7D132
-	//(ucrtbase.dll) dans SDRSharp.exe : Un paramètre non valide a été passé à une fonction qui considère
-	//les paramètres non valides comme une cause d'erreur irrécupérable.
+ ////   fclose(stdout);
+ ////   fclose(stderr); //pb if old versions v1632 and ??:Exception non gérée à 0x75B7D132
+	//////(ucrtbase.dll) dans SDRSharp.exe : Un paramètre non valide a été passé à une fonction qui considère
+	//////les paramètres non valides comme une cause d'erreur irrécupérable.
 
-    if (hConOut != NULL)
-        CloseHandle(hConOut);
-    hConOut = NULL;
-    int ret = FreeConsole();
+ ////   if (hConOut != NULL)
+ ////       CloseHandle(hConOut);
+ ////   hConOut = NULL;
+ ////   int ret = FreeConsole();
 }
 //https : //www.i-programmer.info/programming/c/1039-using-the-console.html
 //void MakeConsole()
@@ -166,13 +167,14 @@ void init_console()
     SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
 }
-export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, int argc, char *argv[])
+export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
 {
     if (param_samp_rate > 0)
         init_console();
     PTRCallBack  = ptr_message;
     intptr_t cfg = (int)&g_cfg;
     setPtrInit(ptr_init, cfg);
+    _disabled           = disabled;
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size;
     main(argc, argv);
@@ -1394,6 +1396,9 @@ int main(int argc, char **argv)
 #ifdef NO_OPEN_SDR
     cfg->samp_rate       = _param_samp_rate;
     cfg->verbosity = 0;
+    cfg->demod->level_limit = 0;
+
+
     //cfg->report_protocol = 0;
     //cfg->input_pos       = 0;
     //cfg->num_r_devices   = 0;
@@ -1481,7 +1486,7 @@ int main(int argc, char **argv)
         if (cfg->verbosity)
             fprintf(stderr, "start devices list");
 #endif
-        register_all_protocols(cfg, 0); // register all defaults
+        register_all_protocols(cfg, _disabled); // register all defaults
 #ifdef DLL_RTL_433
         if (cfg->verbosity)
             fprintf(stderr, "end devices list");

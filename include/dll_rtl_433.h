@@ -27,6 +27,21 @@
 #include <errno.h>
 #include <signal.h>
 
+/******************************************mise a jour rtl_433*************************************************
+1-found all  DLL_RTL_433 in project
+	src\data.c
+	src\r_api.c
+	src\rtl_433.c
+	src\sdr.c
+2-found all NO_OPEN_SDR in project
+	src\rtl_433.c
+	src\sdr.c
+3-save all files found
+4-paste all files new version rtl_433
+5-load new files in project mainly new devices
+6-compare and modifie files found, normaly it's more easy modifie old files.
+**************************************************************************************************************/
+
 //add code dll_rtl_433 
 #define DLL_RTL_433
 //no open sdr
@@ -38,5 +53,8 @@
 
 int my_fprintf(_Inout_ FILE *const _Stream,
         _In_z_ _Printf_format_string_ char const *const _Format, ...);
+
+typedef void(__stdcall *prt_call_back_init)(char *);
+void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
 
 #endif /* INCLUDE_DLL_RTL_433_H_ */

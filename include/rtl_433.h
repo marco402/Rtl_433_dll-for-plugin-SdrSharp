@@ -12,6 +12,7 @@
 
 #define DEFAULT_SAMPLE_RATE     250000
 #define DEFAULT_FREQUENCY       433920000
+#define DEFAULT_DISABLED        0
 #define DEFAULT_HOP_TIME        (60*10)
 #define DEFAULT_ASYNC_BUF_NUMBER    0 // Force use of default value (librtlsdr default: 15)
 #define DEFAULT_BUF_LENGTH      (16 * 32 * 512) // librtlsdr default

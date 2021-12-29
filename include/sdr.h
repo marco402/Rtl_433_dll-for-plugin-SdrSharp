@@ -162,8 +162,4 @@ int sdr_reset(sdr_dev_t *dev, int verbose);
 int sdr_start(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
 int sdr_stop(sdr_dev_t *dev);
 
-#ifdef DLL_RTL_433
-typedef void(__stdcall *prt_call_back_init)(char *);
-void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
-#endif
 #endif /* INCLUDE_SDR_H_ */

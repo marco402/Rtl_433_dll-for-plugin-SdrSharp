@@ -685,7 +685,7 @@
     <ClCompile Include="..\src\data_tag.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\devices\tech_433.c">
+    <ClCompile Include="..\src\devices\atech_ws308.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
   </ItemGroup>
