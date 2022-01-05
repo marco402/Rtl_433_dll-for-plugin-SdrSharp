@@ -53,11 +53,8 @@ static int solight_te44_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     b = bitbuffer->bb[r];
 
-    //if (bitbuffer->bits_per_row[r] > 37)
-    //   return DECODE_ABORT_LENGTH;
-
-    //if (bitbuffer->bits_per_row[r] != 36)
-    //    fprintf(stderr, "%d: Length\n", bitbuffer->bits_per_row[r]);
+    if (bitbuffer->bits_per_row[r] != 37)
+        return DECODE_ABORT_LENGTH;
 
     if ((b[3] & 0xf0) != 0xf0)
         return DECODE_ABORT_EARLY; // const not 1111
@@ -73,10 +70,10 @@ static int solight_te44_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     /* clang-format off */
     data = data_make(
-            "model",            "",             DATA_STRING, _X("Solight-TE44","Solight TE44"),
+            "model",            "",             DATA_STRING, "Solight-TE44",
             "id",               "Id",           DATA_INT,    id,
             "channel",          "Channel",      DATA_INT,    channel + 1,
-//            "battery",          "Battery",      DATA_STRING, battery ? "OK" : "LOW",
+//            "battery_ok",       "Battery",      DATA_INT,    !!battery,
             "temperature_C",    "Temperature",  DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp_c,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
@@ -90,7 +87,7 @@ static char *output_fields[] = {
         "model",
         "id",
         "channel",
-        //"battery",
+        //"battery_ok",
         "temperature_C",
         "mic",
         NULL,
@@ -102,7 +99,6 @@ r_device solight_te44 = {
         .short_width = 972,  // short gap = 972 us
         .long_width  = 1932, // long gap = 1932 us
         .gap_limit   = 3000, // packet gap = 3880 us
-        //.tolerance   = 200,
         .reset_limit = 6000,
         .decode_fn   = &solight_te44_callback,
         .fields      = output_fields,

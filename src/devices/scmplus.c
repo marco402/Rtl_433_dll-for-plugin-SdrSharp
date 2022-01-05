@@ -175,6 +175,7 @@ static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
 static char *output_fields[] = {
         "model",
+        "id",
         "ProtocolID",
         "EndpointType",
         "EndpointID",
@@ -193,7 +194,7 @@ r_device scmplus = {
         .name        = "Standard Consumption Message Plus (SCMplus)",
         .modulation  = OOK_PULSE_MANCHESTER_ZEROBIT,
         .short_width = 30,
-        .long_width  = 30,
+        .long_width  = 0, // not used
         .gap_limit   = 0,
         .reset_limit = 64,
         .decode_fn   = &scmplus_decode,

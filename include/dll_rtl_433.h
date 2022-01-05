@@ -27,19 +27,49 @@
 #include <errno.h>
 #include <signal.h>
 
-/******************************************mise a jour rtl_433*************************************************
-1-found all  DLL_RTL_433 in project
-	src\data.c
-	src\r_api.c
-	src\rtl_433.c
-	src\sdr.c
-2-found all NO_OPEN_SDR in project
-	src\rtl_433.c
-	src\sdr.c
-3-save all files found
-4-paste all files new version rtl_433
-5-load new files in project mainly new devices
-6-compare and modifie files found, normaly it's more easy modifie old files.
+/******************************************update rtl_433*************************************************
+sources .c
+	rtl_433.c
+				header
+				includes
+				6*#ifdef DLL_RTL_433
+				1*#ifndef DLL_RTL_433
+				1*#ifdef NO_OPEN_SDR
+				3*#ifndef NO_OPEN_SDR 
+				1*#else  NO_OPEN_SDR 
+	sdr.c			add:
+				header
+				#includes "dll_rtl_433.h" //for fprintf
+				#ifdef DLL_RTL_433  	1 fois
+				#ifdef NO_OPEN_SDR	2 fois
+ 
+add#include "dll_rtl_433.h" //for fprintf to output_file.c
+
+
+	data.c			#include "dll_rtl_433.h" //for fprintf
+	r_api.c			#include "dll_rtl_433.h" //for fprintf
+
+  devices .c
+	update for zombi with decoder_output_bitbufferf and verbose >1
+	digitech_xc0324.c   add #include "dll_rtl_433.h" //for fprintf and #ifndef DLL_RTL_433 //window zombi if -vvv
+	ikea_sparsnas.c     add #include "dll_rtl_433.h" //for fprintf and 3 fois #ifndef DLL_RTL_433 //window zombi if -vvv
+	found decoder_output_bitbufferf if new
+add new file output_file.c
+	copy  2*#ifdef DLL_RTL_433 de data.c to output_file.c
+		change *2  output->file to kv->file
+
+		
+  include .h
+	add      	dll_rtl_433.h-------->copy
+	rtl_433.h	add #define DEFAULT_DISABLED 0      //DLL_RTL_433
+	sdr.h		no uodate for dll
+
+for this version only(rtl_433-21.12)  rtl_433.c->rtl_433_call_main->_param_sample_size*2 
+
+SdrSharp.Rtl_433_Plugin
+
+verify if change structure and enum in NativeMethods.cs with project rtl_433 r_private.h,pulse_detect.h,sdr.c,baseband.h...
+
 **************************************************************************************************************/
 
 //add code dll_rtl_433 

@@ -79,12 +79,12 @@ detail. Many thanks to kodarn!
 #define IKEA_SPARSNAS_MESSAGE_BITLEN_MAX 260 // Just for early sanity checks
 
 #define IKEA_SPARSNAS_PREAMBLE_BITLEN 32
-static const uint8_t preamble_pattern[4] = {0xAA, 0xAA, 0xD2, 0x01};
 
 #define IKEA_SPARSNAS_CRC_INIT 0xffff
 #define IKEA_SPARSNAS_CRC_POLY 0x8005
 
 #define IKEA_SPARSNAS_ID_KEY_SUB 0x5D38E8CB
+
 static uint16_t ikea_sparsnas_pulses_per_kwh = 1000;
 static uint32_t ikea_sparsnas_sensor_id = 0;
 
@@ -135,25 +135,22 @@ static uint32_t ikea_sparsnas_brute_force_encryption(uint8_t buffer[18])
 
 static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
+    uint8_t const preamble_pattern[4] = {0xAA, 0xAA, 0xD2, 0x01};
 
     if ((bitbuffer->bits_per_row[0] < IKEA_SPARSNAS_MESSAGE_BITLEN) || (bitbuffer->bits_per_row[0] > IKEA_SPARSNAS_MESSAGE_BITLEN_MAX)) {
         if (decoder->verbose > 1) {
-#ifndef DLL_RTL_433  //window zombi if -vvv
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
-#endif
             fprintf(stderr, "%s: Too short or too long packet received. Expected %d, received %d\n", __func__, IKEA_SPARSNAS_MESSAGE_BITLEN, bitbuffer->bits_per_row[0]);
         }
         return DECODE_ABORT_LENGTH;
     }
 
     // Look for preamble
-    uint16_t bitpos = bitbuffer_search(bitbuffer, 0, 0, (const uint8_t *)&preamble_pattern, IKEA_SPARSNAS_PREAMBLE_BITLEN);
+    uint16_t bitpos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, IKEA_SPARSNAS_PREAMBLE_BITLEN);
 
     if ((bitbuffer->bits_per_row[0] == bitpos) || (bitpos + IKEA_SPARSNAS_MESSAGE_BITLEN > bitbuffer->bits_per_row[0])) {
         if (decoder->verbose > 1) {
-#ifndef DLL_RTL_433 //window zombi if -vvv
             decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
-#endif
             fprintf(stderr, "%s: malformed package, preamble not found. (Expected 0xAAAAD201)\n", __func__);
         }
         return DECODE_ABORT_EARLY;
@@ -164,9 +161,7 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, 0, bitpos + IKEA_SPARSNAS_PREAMBLE_BITLEN, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN);
 
     if (decoder->verbose > 1) {
-#ifndef DLL_RTL_433 //window zombi if -vvv
         decoder_output_bitbufferf(decoder, bitbuffer, "%s: ", __func__);
-#endif
         decoder_output_bitrowf(decoder, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN, "Encrypted message");
     }
     // CRC check
@@ -271,19 +266,18 @@ static int ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     //}
     float cumulative_kWh = ((float)pulses) / ((float)ikea_sparsnas_pulses_per_kwh);
 
-    data_t *data;
     /* clang-format off */
-    data = data_make(
+    data_t *data = data_make(
             "model",         "Model",               DATA_STRING, "Ikea-Sparsnas",
-            "id",            "Sensor ID",           DATA_INT, rcv_sensor_id,
-            "sequence",      "Sequence Number",     DATA_INT, sequence_number,
-            "battery",       "Battery",             DATA_FORMAT, "%d%%", DATA_INT, battery,
-            "pulses_per_kWh", "Pulses per kWh",     DATA_INT, ikea_sparsnas_pulses_per_kwh,
+            "id",            "Sensor ID",           DATA_INT,    rcv_sensor_id,
+            "sequence",      "Sequence Number",     DATA_INT,    sequence_number,
+            "battery_ok",    "Battery level",       DATA_INT,    battery * 0.01f, // 0-100
+            "pulses_per_kWh", "Pulses per kWh",     DATA_INT,    ikea_sparsnas_pulses_per_kwh,
             "cumulative_kWh", "Cumulative kWh",     DATA_FORMAT, "%7.3fkWh", DATA_DOUBLE,  cumulative_kWh,
             "effect",        "Effect",              DATA_FORMAT, "%dW", DATA_INT,  effect,
-            "pulses",        "Pulses",              DATA_INT,  pulses,
-            "mode",          "Mode",                DATA_INT, mode,
-            "mic",           "Integrity",           DATA_STRING,    "CRC",
+            "pulses",        "Pulses",              DATA_INT,    pulses,
+            "mode",          "Mode",                DATA_INT,    mode,
+            "mic",           "Integrity",           DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
@@ -295,7 +289,7 @@ static char *output_fields[] = {
     "model",
     "id",
     "sequence",
-    "battery",
+    "battery_ok",
     "pulses_per_kwh",
     "cumulative_kWh",
     "effect",
