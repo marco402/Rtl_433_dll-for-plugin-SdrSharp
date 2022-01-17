@@ -49,7 +49,7 @@ typedef struct {
     uint8_t crc;
 } message_t;
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
 static data_t *add_hex_string(data_t *data, const char *name, const uint8_t *buf, size_t buf_sz)
 {
     if (buf && buf_sz > 0)  {
@@ -59,7 +59,7 @@ static data_t *add_hex_string(data_t *data, const char *name, const uint8_t *buf
     }
     return data;
 }
-#endif
+//#endif
 
 typedef struct {
     int t;
@@ -116,7 +116,7 @@ static data_t *decode_device_ids(const message_t *msg, data_t *data, int style)
         strcat(ds, buf);
     }
 
-    return data_append(data, "ids", "Device IDs", DATA_STRING, ds, NULL);
+    return data_append(data, "id", "Device IDs", DATA_STRING, ds, NULL);
 }
 
 #define UNKNOWN_IF(C) do { \
@@ -191,7 +191,7 @@ static data_t *interpret_message(const message_t *msg, data_t *data, int verbose
                     data = data_append(data, "status", "", DATA_DOUBLE, msg->payload[1] / 200.0 /* 0xC8 */, NULL);
                     break;
                 case 6:
-                    data = data_append(data, "boiler_modulation_level", "", DATA_DOUBLE, msg->payload[1] / 200.0 /* 0xC8 */, NULL);
+                    data = data_append(data, "boiler_modulation_level(%)", "", DATA_INT, msg->payload[2] / 2 /* 0xC8 */, NULL);
                     data = data_append(data, "flame_status", "", DATA_INT, msg->payload[3], NULL);
                     break;
             }
@@ -240,8 +240,15 @@ static data_t *interpret_message(const message_t *msg, data_t *data, int verbose
           }
           break;
         }
+		case 0x1fd4: {
+            data_append(data, "command", "", DATA_STRING, "ticker", NULL);
+            data = add_hex_string(data, "value", msg->payload, msg->payload_length);
+            break;
+        }
         default: /* Unknown command */
+			{
             UNKNOWN_IF(1);
+		}
     }
     return r;
 }
@@ -345,7 +352,6 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             bitbuffer_add_bit(&bytes, (byte >> i) & 0x1);
         pos += 10;
     }
-
     // Skip Manchester breaking header
     uint8_t header[3] = { 0x33, 0x55, 0x53 };
     if (bitrow_get_byte(bytes.bb[row], 0) != header[0] ||
@@ -411,7 +417,7 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
 static char *output_fields[] = {
         "model",
-        "ids",
+        "id",
 #ifdef _DEBUG
         "Packet",
         "Header",
@@ -421,6 +427,9 @@ static char *output_fields[] = {
         "CRC",
         "# man errors",
 #endif
+        "ticker",
+        "command",
+        "value",
         "datetime",
         "domain_id",
         "state",

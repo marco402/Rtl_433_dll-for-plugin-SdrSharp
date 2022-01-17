@@ -185,9 +185,9 @@ export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_c
     PTRCallBack  = ptr_message;
     intptr_t cfg = (int)&g_cfg;
     setPtrInit(ptr_init, cfg);
-    _disabled                 = disabled;
-    _param_samp_rate          = param_samp_rate;
-    _param_sample_size        = param_sample_size * 2;
+    _disabled          = disabled;
+    _param_samp_rate   = param_samp_rate;
+    _param_sample_size = param_sample_size * 2;
     main(argc, argv);
 }
 //callBack to SDRSharp
@@ -1485,9 +1485,25 @@ int main(int argc, char **argv)
 
     print_version(); // always print the version info
 #ifdef NO_OPEN_SDR
-    cfg->no_default_devices = 0;  //=1 0 device au départ
+    cfg->no_default_devices = 0; //=1 0 device au départ
 #endif
     r_init_cfg(cfg);
+    //-Y option:
+	//already init in r_init_cfg
+	//cfg->fsk_pulse_detect_mode FSK_PULSE_DETECT_AUTO
+    //cfg->demod->level_limit = 0.0;
+    //cfg->demod->min_level   = -12.1442;
+    //cfg->demod->min_snr     = 9.0;
+    //          demod->auto_level  no init->default=0
+    //          demod->squelch_offset  no init->default=0
+	//          demod->use_mag_est  no init->default=0
+    //          demod->detect_verbosity no add this option 'verbose' not in help
+	//          demod->low_pass no add this option 'filter' not in help
+
+    setbuf(stdout, NULL);
+    setbuf(stderr, NULL);
+
+    demod = cfg->demod;
 #ifdef NO_OPEN_SDR
     cfg->samp_rate          = _param_samp_rate;
     cfg->verbosity          = 0;
@@ -1498,12 +1514,13 @@ int main(int argc, char **argv)
     //cfg->report_protocol = 0;
     //cfg->input_pos       = 0;
     //cfg->num_r_devices   = 0;
-
+    //add for -Y option
+    demod->auto_level     = 0;
+    demod->squelch_offset = 0;
+    demod->use_mag_est = 0;
+	//****end add
 #endif
-    setbuf(stdout, NULL);
-    setbuf(stderr, NULL);
 
-    demod = cfg->demod;
 
     // if there is no explicit conf file option look for default conf files
     if (!hasopt('c', argc, argv, OPTSTRING)) {
