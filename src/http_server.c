@@ -107,7 +107,7 @@ or `(echo "GET /stream HTTP/1.0\n"; sleep 600) | socat - tcp:127.0.0.1:8433`
 #include "mongoose.h"
 #include "fatal.h"
 #include <stdbool.h>
-
+#include "dll_rtl_433.h" //for #ifndef DLL_RTL_433
 // embed index.html so browsers allow access as local
 #define INDEX_HTML \
     "<!DOCTYPE html>" \
@@ -128,7 +128,7 @@ or `(echo "GET /stream HTTP/1.0\n"; sleep 600) | socat - tcp:127.0.0.1:8433`
     "<script src=\"https://triq.org/rxui/js/app.js\"></script>"
 
 // generic ring list
-
+#ifndef DLL_RTL_433
 #define DEFAULT_HISTORY_SIZE 100
 
 typedef struct {
@@ -1251,3 +1251,4 @@ struct data_output *data_output_http_create(struct mg_mgr *mgr, char const *host
 
     return &http->output;
 }
+#endif

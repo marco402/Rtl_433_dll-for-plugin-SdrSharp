@@ -268,7 +268,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
@@ -406,7 +406,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <GenerateMapFile>true</GenerateMapFile>

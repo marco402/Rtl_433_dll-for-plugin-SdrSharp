@@ -14,6 +14,15 @@ Honeywell CM921 Thermostat (subset of Evohome).
 868Mhz FSK, PCM, Start/Stop bits, reversed, Manchester.
 */
 
+/**                         header  device 1     device 2    command                       crc
+ticker                      14      ffffff                   1fd4       0300ca24           0b
+boiler modulation level     3c      2a8f43       8887d4      3ef0       060000110000ffff   a2      8%  flame status  0
+boiler modulation level     3c      28ad9a       884dd3      3ef0       060000100a00ff     60      8%  flame status 10
+heat demand                 18      28ad9a       884dd3      3150       0200c6             88 
+heat demand                 18      ffffff       880f71      3150       0200c6             9a
+unknown                     18      8887d4       8887d4      3120       070070b0000000ff   ab
+temperature(zone)           18      8887d4       8887d4      30c9       03000512           0f      12.85°  
+*/
 #include "decoder.h"
 
 // #define _DEBUG
@@ -241,8 +250,15 @@ static data_t *interpret_message(const message_t *msg, data_t *data, int verbose
           break;
         }
 		case 0x1fd4: {
-            data_append(data, "command", "", DATA_STRING, "ticker", NULL);
-            data = add_hex_string(data, "value", msg->payload, msg->payload_length);
+            data = data_append(data, "command", "", DATA_STRING, "ticker", NULL);
+            int32_t temp =  msg->payload[1] << 8 | msg->payload[2];
+            data = data_append(data, "value", "", DATA_INT, temp, NULL);
+            break;
+        }
+        case 0x3150: {
+            data = data_append(data, "command", "", DATA_STRING, "Heat Demand", NULL);
+            data = data_append(data, "zone/domaine", "", DATA_INT, msg->payload[0], NULL);
+            data = data_append(data, "value", "", DATA_INT, msg->payload[1], NULL);
             break;
         }
         default: /* Unknown command */
@@ -313,6 +329,8 @@ static int parse_msg(bitbuffer_t *bmsg, int row, message_t *msg)
 
 static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 {
+   // fprintf(stderr, "honeywell_cm921_decode!\n");  nok
+    //fprintf(stderr, "%d", cptTest);
     // Sources of inspiration:
     // https://www.domoticaforum.eu/viewtopic.php?f=7&t=5806&start=240
 
@@ -382,6 +400,25 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (man_errors != 0)
         return DECODE_FAIL_SANITY;
 #endif
+#define _TESTXX
+#ifdef _TEST
+    //18      28ad9a       884dd3      3150       0200c6             88
+    packet.bits_per_row[row] = 104;
+    packet.bb[row][0]   =  0x18;
+    packet.bb[row][1]   =  0x28;
+    packet.bb[row][2]   =  0xad;
+    packet.bb[row][3]   =  0x9a;
+    packet.bb[row][4]   =  0x88;
+    packet.bb[row][5]   =  0x4d;
+    packet.bb[row][6]   =  0xd3;
+    packet.bb[row][7]   =  0x31;
+    packet.bb[row][8]   =  0x50;
+    packet.bb[row][9]   =  0x02;
+    packet.bb[row][10]  =  0x00;
+    packet.bb[row][11]  =  0xc6;
+    packet.bb[row][12]  =  0x88;
+
+#endif
 
     message_t message;
 
@@ -398,9 +435,8 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     /* clang-format on */
 
     data = interpret_message(&message, data, decoder->verbose);
-
+	data = add_hex_string(data, "Packet", packet.bb[row], packet.bits_per_row[row] / 8);
 #ifdef _DEBUG
-    data = add_hex_string(data, "Packet", packet.bb[row], packet.bits_per_row[row] / 8);
     data = add_hex_string(data, "Header", &message.header, 1);
     uint8_t cmd[2] = {message.command >> 8, message.command & 0x00FF};
     data = add_hex_string(data, "Command", cmd, 2);
@@ -417,7 +453,7 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
 static char *output_fields[] = {
         "model",
-        "id",
+        "ids",
 #ifdef _DEBUG
         "Packet",
         "Header",

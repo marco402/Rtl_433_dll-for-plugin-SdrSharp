@@ -9,5 +9,7 @@ receive_buffer_cb @3
 stop_sdr @4
 setFrequency @5
 setCenterFrequency @6
+free_console @7
+
 
 

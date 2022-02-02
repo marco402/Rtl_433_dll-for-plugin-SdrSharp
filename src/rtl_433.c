@@ -167,6 +167,16 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 //{
 //    int ret = AttachConsole(ATTACH_PARENT_PROCESS);
 //}
+bool consoleIsOpen = false; //for error after freeconsole
+export void __stdcall free_console(void)
+{
+    consoleIsOpen = false;
+    CloseHandle(hConOut);
+    fclose(stdout);
+    fclose(stderr);
+    bool ret = FreeConsole();
+}
+
 void init_console()
 {
     FILE *fDummy;
@@ -177,10 +187,11 @@ void init_console()
     //   HANDLE hConIn  = CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
+    consoleIsOpen = true;
 }
 export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
 {
-    if (param_samp_rate > 0)
+    if (param_samp_rate > 0 && !consoleIsOpen)
         init_console();
     PTRCallBack  = ptr_message;
     intptr_t cfg = (int)&g_cfg;
@@ -474,6 +485,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     if ((cfg->bytes_to_read > 0) && (cfg->bytes_to_read <= len)) {
         len             = cfg->bytes_to_read;
         cfg->exit_async = 1;
+        fprintf(stderr, "cfg->bytes_to_read > 0) && (cfg->bytes_to_read <= len!\n");
     }
 
     // save last frame time to see if a new second started
@@ -494,9 +506,11 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         demod->frame_start_ago += n_samples;
     if (demod->frame_end_ago)
         demod->frame_end_ago += n_samples;
-
+#ifdef DLL_RTL_433
+    alarm(0); //3->10 stop ib -vvv with source SDRSharp =file. require callback to run every 3 second, abort otherwise
+#else
     alarm(3); // require callback to run every 3 second, abort otherwise
-
+#endif
     if (demod->samp_grab) {
         samp_grab_push(demod->samp_grab, iq_buf, len);
     }
@@ -802,6 +816,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         alarm(0); // cancel the watchdog timer
         if (cfg->after_successful_events_flag == 1) {
             cfg->exit_async = 1;
+            fprintf(stderr, "cfg->after_successful_events_flag && (d_events > 0)!\n");
         }
         else {
             cfg->hop_now = 1;
@@ -834,7 +849,9 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         cfg->hop_now = 0;
         time(&cfg->hop_start_time);
         cfg->frequency_index = (cfg->frequency_index + 1) % cfg->frequencies;
+
         sdr_set_center_freq(cfg->dev, cfg->frequency[cfg->frequency_index], 0);
+
     }
 }
 
@@ -1250,9 +1267,11 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
         else if (strncmp(arg, "syslog", 6) == 0) {
             add_syslog_output(cfg, arg_param(arg));
         }
+#ifndef DLL_RTL_433
         else if (strncmp(optarg, "http", 4) == 0) {
             add_http_output(cfg, arg_param(optarg));
         }
+#endif
         else if (strncmp(arg, "null", 4) == 0) {
             add_null_output(cfg, arg_param(arg));
         }
@@ -1390,13 +1409,21 @@ console_handler(int signum)
 
 /* Only called for SIGALRM
  */
+#ifdef DLL_RTL_433
+static void sighandler(int signum)
+{
+    if (consoleIsOpen)
+        console_handler(signum);
+}
+#else
 static void sighandler(int signum)
 {
     console_handler(signum);
 }
-
+#endif
 #else
-static void sighandler(int signum)
+static void
+sighandler(int signum)
 {
     if (signum == SIGPIPE) {
         signal(SIGPIPE, SIG_IGN);
@@ -1421,7 +1448,8 @@ static void sighandler(int signum)
 }
 #endif
 
-static void sdr_handler(sdr_event_t *ev, void *ctx)
+static void
+sdr_handler(sdr_event_t *ev, void *ctx)
 {
     r_cfg_t *cfg = ctx;
 
@@ -1489,16 +1517,16 @@ int main(int argc, char **argv)
 #endif
     r_init_cfg(cfg);
     //-Y option:
-	//already init in r_init_cfg
-	//cfg->fsk_pulse_detect_mode FSK_PULSE_DETECT_AUTO
+    //already init in r_init_cfg
+    //cfg->fsk_pulse_detect_mode FSK_PULSE_DETECT_AUTO
     //cfg->demod->level_limit = 0.0;
     //cfg->demod->min_level   = -12.1442;
     //cfg->demod->min_snr     = 9.0;
     //          demod->auto_level  no init->default=0
     //          demod->squelch_offset  no init->default=0
-	//          demod->use_mag_est  no init->default=0
+    //          demod->use_mag_est  no init->default=0
     //          demod->detect_verbosity no add this option 'verbose' not in help
-	//          demod->low_pass no add this option 'filter' not in help
+    //          demod->low_pass no add this option 'filter' not in help
 
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -1517,10 +1545,9 @@ int main(int argc, char **argv)
     //add for -Y option
     demod->auto_level     = 0;
     demod->squelch_offset = 0;
-    demod->use_mag_est = 0;
-	//****end add
+    demod->use_mag_est    = 0;
+    //****end add
 #endif
-
 
     // if there is no explicit conf file option look for default conf files
     if (!hasopt('c', argc, argv, OPTSTRING)) {
@@ -1999,9 +2026,10 @@ int main(int argc, char **argv)
 
     time(&cfg->hop_start_time);
     signal(SIGALRM, sighandler);
-    alarm(3); // require callback to run every 3 second, abort otherwise
+    //    alarm(3); // require callback to run every 3 second, abort otherwise
 
 #ifndef NO_OPEN_SDR
+    alarm(3); // require callback to run every 3 second, abort otherwise
     r = sdr_start(cfg->dev, sdr_handler, (void *)cfg,
             DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
     if (r < 0) {
@@ -2024,6 +2052,7 @@ int main(int argc, char **argv)
         r = cfg->exit_code;
     r_free_cfg(cfg);
 #else //NO_OPEN_SDR
+    alarm(0); //3->10 stop ib -vvv with source SDRSharp =file. require callback to run every 3 second, abort otherwise
     demod->sample_size = _param_sample_size;
     cfg->dev = init_sdr_dev();
     cfg->demod = demod;

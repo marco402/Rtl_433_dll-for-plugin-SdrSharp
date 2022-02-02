@@ -64,7 +64,7 @@ running this decoder with debug level :
 
 #include "decoder.h"
 
-#include "dll_rtl_433.h" //for fprintf
+#include "dll_rtl_433.h"  //for fprintf  + add 1 #ifndef DLL_RTL_433 //window zombi if -vvv
 //#define XC0324_DEVICE_BITLEN      148
 #define XC0324_MESSAGE_BITLEN     48
 #define XC0324_MESSAGE_BYTELEN    (XC0324_MESSAGE_BITLEN + 7)/ 8
@@ -168,7 +168,9 @@ static int xc0324_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Only for simulating initial package level deciphering / debug.
     if (decoder->verbose == 2) {
         // Verbosely output the bitbuffer
+#ifndef DLL_RTL_433 //window zombi if -vvv
         decoder_output_bitbufferf(decoder, bitbuffer, "XC0324:vvv hex(/binary) version of bitbuffer");
+#endif
         // And then output each row to csv, json or whatever was specified.
         for (r = 0; r < bitbuffer->num_rows; ++r) {
             decoder_output_bitrowf(decoder, bitbuffer->bb[r], bitbuffer->bits_per_row[r],
