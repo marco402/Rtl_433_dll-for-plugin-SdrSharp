@@ -150,7 +150,7 @@ void r_init_cfg(r_cfg_t *cfg)
     for (unsigned i = 0; i < cfg->num_r_devices; i++) {
         r_devices[i].protocol_num = i + 1;
     }
-    cfg->devices = malloc(sizeof(r_devices));
+    cfg->devices = malloc(sizeof(r_devices)); //ici
     if (!cfg->devices)
         FATAL_CALLOC("r_init_cfg()");
 
@@ -212,6 +212,8 @@ void r_free_cfg(r_cfg_t *cfg)
 
     pulse_detect_free(cfg->demod->pulse_detect);
 
+	free(cfg->demod->samp_grab);  //marc
+
     free(cfg->demod);
 
     free(cfg->devices);
@@ -223,6 +225,7 @@ void r_free_cfg(r_cfg_t *cfg)
     list_free_elems(&cfg->in_files, NULL);
 
     mg_mgr_free(cfg->mgr);
+
     free(cfg->mgr);
 
     //free(cfg);
@@ -252,7 +255,7 @@ void register_protocol(r_cfg_t *cfg, r_device *r_dev, char *arg)
         if (arg && *arg) {
             fprintf(stderr, "Protocol [%u] \"%s\" does not take arguments \"%s\"!\n", r_dev->protocol_num, r_dev->name, arg);
         }
-        p = malloc(sizeof(*p));
+        p = malloc(sizeof(*p)); //ici
         if (!p)
             FATAL_CALLOC("register_protocol()");
         *p = *r_dev; // copy

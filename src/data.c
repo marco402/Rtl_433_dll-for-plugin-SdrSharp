@@ -32,9 +32,9 @@ History : V1.00 2021-04-01 - First release
 // from generating a warning.
 #define UNUSED(x) (void)(x)
 
-typedef void* (*array_elementwise_import_fn)(void*);
-typedef void (*array_element_release_fn)(void*);
-typedef void (*value_release_fn)(void*);
+typedef void *(*array_elementwise_import_fn)(void *);
+typedef void (*array_element_release_fn)(void *);
+typedef void (*value_release_fn)(void *);
 
 typedef struct {
     /* what is the element size when put inside an array? */
@@ -61,45 +61,45 @@ typedef struct {
 } data_meta_type_t;
 
 static data_meta_type_t dmt[DATA_COUNT] = {
-    //  DATA_DATA
-    { .array_element_size       = sizeof(data_t*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = NULL,
-      .array_element_release    = (array_element_release_fn) data_free,
-      .value_release            = (value_release_fn) data_free },
+        //  DATA_DATA
+        {.array_element_size              = sizeof(data_t *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = NULL,
+                .array_element_release    = (array_element_release_fn)data_free,
+                .value_release            = (value_release_fn)data_free},
 
-    //  DATA_INT
-    { .array_element_size       = sizeof(int),
-      .array_is_boxed           = false,
-      .array_elementwise_import = NULL,
-      .array_element_release    = NULL,
-      .value_release            = NULL },
+        //  DATA_INT
+        {.array_element_size              = sizeof(int),
+                .array_is_boxed           = false,
+                .array_elementwise_import = NULL,
+                .array_element_release    = NULL,
+                .value_release            = NULL},
 
-    //  DATA_DOUBLE
-    { .array_element_size       = sizeof(double),
-      .array_is_boxed           = false,
-      .array_elementwise_import = NULL,
-      .array_element_release    = NULL,
-      .value_release            = NULL },
+        //  DATA_DOUBLE
+        {.array_element_size              = sizeof(double),
+                .array_is_boxed           = false,
+                .array_elementwise_import = NULL,
+                .array_element_release    = NULL,
+                .value_release            = NULL},
 
-    //  DATA_STRING
-    { .array_element_size       = sizeof(char*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = (array_elementwise_import_fn) strdup,
-      .array_element_release    = (array_element_release_fn) free,
-      .value_release            = (value_release_fn) free },
+        //  DATA_STRING
+        {.array_element_size              = sizeof(char *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = (array_elementwise_import_fn)strdup,
+                .array_element_release    = (array_element_release_fn)free,
+                .value_release            = (value_release_fn)free},
 
-    //  DATA_ARRAY
-    { .array_element_size       = sizeof(data_array_t*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = NULL,
-      .array_element_release    = (array_element_release_fn) data_array_free ,
-      .value_release            = (value_release_fn) data_array_free },
+        //  DATA_ARRAY
+        {.array_element_size              = sizeof(data_array_t *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = NULL,
+                .array_element_release    = (array_element_release_fn)data_array_free,
+                .value_release            = (value_release_fn)data_array_free},
 };
 
 static bool import_values(void *dst, void *src, int num_values, data_type_t type)
 {
-    int element_size = dmt[type].array_element_size;
+    int element_size                   = dmt[type].array_element_size;
     array_elementwise_import_fn import = dmt[type].array_elementwise_import;
     if (import) {
         for (int i = 0; i < num_values; ++i) {
@@ -111,11 +111,13 @@ static bool import_values(void *dst, void *src, int num_values, data_type_t type
                     --i;
                 }
                 return false;
-            } else {
+            }
+            else {
                 *((char **)dst + i) = copy;
             }
         }
-    } else {
+    }
+    else {
         memcpy(dst, src, (size_t)element_size * num_values);
     }
     return true; // error is returned early
@@ -126,7 +128,7 @@ static bool import_values(void *dst, void *src, int num_values, data_type_t type
 data_array_t *data_array(int num_values, data_type_t type, void *values)
 {
     if (num_values < 0) {
-      return NULL;
+        return NULL;
     }
     data_array_t *array = calloc(1, sizeof(data_array_t));
     if (!array) {
@@ -164,8 +166,8 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
     while (prev && prev->next)
         prev = prev->next;
     char *format = NULL;
-    int skip = 0; // skip the data item if this is set
-    type = va_arg(ap, data_type_t);
+    int skip     = 0; // skip the data item if this is set
+    type         = va_arg(ap, data_type_t);
     do {
         data_t *current;
         data_value_t value = {0};
@@ -194,7 +196,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             break;
         case DATA_DATA:
             value_release = (value_release_fn)data_free; // appease CSA checker
-            value.v_ptr = va_arg(ap, data_t *);
+            value.v_ptr   = va_arg(ap, data_t *);
             break;
         case DATA_INT:
             value.v_int = va_arg(ap, int);
@@ -204,13 +206,13 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             break;
         case DATA_STRING:
             value_release = (value_release_fn)free; // appease CSA checker
-            value.v_ptr = strdup(va_arg(ap, char *));
+            value.v_ptr   = strdup(va_arg(ap, char *));
             if (!value.v_ptr)
                 WARN_STRDUP("vdata_make()");
             break;
         case DATA_ARRAY:
             value_release = (value_release_fn)data_array_free; // appease CSA checker
-            value.v_ptr = va_arg(ap, data_array_t *);
+            value.v_ptr   = va_arg(ap, data_array_t *);
             break;
         default:
             fprintf(stderr, "vdata_make() bad data type (%d)\n", type);
@@ -222,7 +224,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
                 value_release(value.v_ptr);
             free(format);
             format = NULL;
-            skip = 0;
+            skip   = 0;
         }
         else {
             current = calloc(1, sizeof(*current));
@@ -260,7 +262,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
         key = va_arg(ap, const char *);
         if (key) {
             pretty_key = va_arg(ap, const char *);
-            type = va_arg(ap, data_type_t);
+            type       = va_arg(ap, data_type_t);
         }
     } while (key);
     va_end(ap);
@@ -357,9 +359,10 @@ void data_output_print(data_output_t *output, data_t *data)
     if (!output)
         return;
     output->print_data(output, data, NULL);
-
+#ifndef DLL_RTL_433  //empty line to console 
     if (output->output_flush)
         output->output_flush(output);
+#endif
 }
 
 void data_output_start(struct data_output *output, char const *const *fields, int num_fields)
@@ -406,14 +409,15 @@ void print_value(data_output_t *output, data_type_t type, data_value_t value, ch
 
 void print_array_value(data_output_t *output, data_array_t *array, char const *format, int idx)
 {
-    int element_size = dmt[array->type].array_element_size;
+    int element_size   = dmt[array->type].array_element_size;
     data_value_t value = {0};
 
     if (!dmt[array->type].array_is_boxed) {
         memcpy(&value, (char *)array->values + element_size * idx, element_size);
         print_value(output, array->type, value, format);
-    } else {
-        print_value(output, array->type, *(data_value_t*)((char *)array->values + element_size * idx), format);
+    }
+    else {
+        print_value(output, array->type, *(data_value_t *)((char *)array->values + element_size * idx), format);
     }
 }
 

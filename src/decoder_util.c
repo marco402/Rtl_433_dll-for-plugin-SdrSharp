@@ -20,7 +20,7 @@
 
 r_device *create_device(r_device *dev_template)
 {
-    r_device *r_dev = malloc(sizeof (*r_dev));
+    r_device *r_dev = malloc(sizeof(*r_dev)); //ici
     if (!r_dev) {
         WARN_MALLOC("create_device()");
         return NULL; // NOTE: returns NULL on alloc failure.

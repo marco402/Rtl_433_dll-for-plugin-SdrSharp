@@ -1662,7 +1662,7 @@ int sdr_start(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, ui
 
     return -1;
 }
-#endif
+
 
 int sdr_stop(sdr_dev_t *dev)
 {
@@ -1684,13 +1684,11 @@ int sdr_stop(sdr_dev_t *dev)
 #ifdef RTLSDR
     if (dev->rtlsdr_dev) {
         dev->running = 0;
-#ifndef DLL_RTL_433
         return rtlsdr_cancel_async(dev->rtlsdr_dev);
-#else
         return 0;
-#endif
     }
 #endif
 
     return -1;
 }
+#endif

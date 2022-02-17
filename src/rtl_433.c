@@ -109,6 +109,7 @@ History : V1.00 2021-04-01 - First release
 
 #ifdef DLL_RTL_433
 static r_cfg_t g_cfg;
+intptr_t cfg;
 typedef void(__stdcall *prt_call_back_message)(char *);
 typedef void(__stdcall *prt_call_back_init)(char *);
 int main(int argc, char **argv);
@@ -134,7 +135,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.4.0.0(rtl_433->21.12)";
+    return "1.5.0.0";  //(rtl_433->17/02/2021)
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -147,8 +148,11 @@ export void __stdcall setCenterFrequency(uint32_t centerFrequency)
 HANDLE hConOut = NULL;
 export void __stdcall stop_sdr(void *ctx) // necessary function compilation const to sdr433
 {
-    sdr_dev_t *dev = ctx;
-    sdr_stop(ctx);
+    //sdr_dev_t *dev = ctx;
+    //sdr_stop(ctx);
+    if (cfg)
+        r_free_cfg(cfg);
+
     ////   setbuf(stdout, NULL);
     ////   setbuf(stderr, NULL);
 
@@ -193,8 +197,9 @@ export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_c
 {
     if (param_samp_rate > 0 && !consoleIsOpen)
         init_console();
-    PTRCallBack  = ptr_message;
-    intptr_t cfg = (int)&g_cfg;
+    PTRCallBack = ptr_message;
+    /*intptr_t cfg = (int)&g_cfg;*/
+    cfg = (int)&g_cfg;
     setPtrInit(ptr_init, cfg);
     _disabled          = disabled;
     _param_samp_rate   = param_samp_rate;
@@ -851,7 +856,6 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         cfg->frequency_index = (cfg->frequency_index + 1) % cfg->frequencies;
 
         sdr_set_center_freq(cfg->dev, cfg->frequency[cfg->frequency_index], 0);
-
     }
 }
 
@@ -949,8 +953,10 @@ static void parse_conf_try_default_files(r_cfg_t *cfg)
 static void parse_conf_args(r_cfg_t *cfg, int argc, char *argv[])
 {
     int opt;
-
     optind = 1; // reset getopt
+#ifdef DLL_RTL_433
+    __getopt_initialized = 0;
+#endif
     while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
         if (opt == '?')
             opt = optopt; // allow missing arguments
@@ -1389,7 +1395,9 @@ console_handler(int signum)
     if (CTRL_C_EVENT == signum) {
         write_err("Signal caught, exiting!\n");
         g_cfg.exit_async = 1;
+#ifndef NO_OPEN_SDR
         sdr_stop(g_cfg.dev);
+#endif
         return TRUE;
     }
     else if (CTRL_BREAK_EVENT == signum) {
@@ -1401,7 +1409,9 @@ console_handler(int signum)
         write_err("Async read stalled, exiting!\n");
         g_cfg.exit_code  = 3;
         g_cfg.exit_async = 1;
+#ifndef NO_OPEN_SDR
         sdr_stop(g_cfg.dev);
+#endif
         return TRUE;
     }
     return FALSE;
@@ -1496,9 +1506,10 @@ sdr_handler(sdr_event_t *ev, void *ctx)
         if (!cfg->exit_async)
             sdr_callback((unsigned char *)ev->buf, ev->len, ctx);
     }
-
+#ifndef NO_OPEN_SDR
     if (cfg->exit_async)
         sdr_stop(cfg->dev);
+#endif
 }
 
 int main(int argc, char **argv)
@@ -1547,13 +1558,14 @@ int main(int argc, char **argv)
     demod->squelch_offset = 0;
     demod->use_mag_est    = 0;
     //****end add
-#endif
-
+    //optind = 1; // reset getopt
+    __getopt_initialized = 0;
+#else
     // if there is no explicit conf file option look for default conf files
     if (!hasopt('c', argc, argv, OPTSTRING)) {
         parse_conf_try_default_files(cfg);
     }
-
+#endif
     parse_conf_args(cfg, argc, argv);
     // apply hop defaults and set first frequency
     if (cfg->frequencies == 0) {

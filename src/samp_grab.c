@@ -39,7 +39,7 @@ samp_grab_t *samp_grab_create(unsigned size)
     g->sg_size = size;
     g->sg_counter = 1;
 
-    g->sg_buf = malloc(size);
+    g->sg_buf = malloc(size); //ici if -s
     if (!g->sg_buf) {
         WARN_MALLOC("samp_grab_create()");
         free(g);

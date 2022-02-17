@@ -454,6 +454,7 @@ static int honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 static char *output_fields[] = {
         "model",
         "ids",
+        "id",
 #ifdef _DEBUG
         "Packet",
         "Header",
@@ -463,6 +464,8 @@ static char *output_fields[] = {
         "CRC",
         "# man errors",
 #endif
+        "flame_status",
+        "boiler_modulation_level(%)",
         "ticker",
         "command",
         "value",

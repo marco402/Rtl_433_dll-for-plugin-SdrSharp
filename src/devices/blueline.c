@@ -411,7 +411,7 @@ static r_device *blueline_create(char *arg)
         return NULL; // NOTE: returns NULL on alloc failure.
     }
 
-    struct blueline_stateful_context *context = malloc(sizeof(*context));
+    struct blueline_stateful_context *context = malloc(sizeof(*context)); //ici
     if (!context) {
         WARN_MALLOC("blueline_create()");
         free(r_dev);
