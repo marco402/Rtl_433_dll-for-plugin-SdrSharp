@@ -531,7 +531,8 @@ typedef void(__stdcall *prt_call_back_init)(char *);
 void init_cb_to_rtl_433(prt_call_back_init ptr_init, void *ctx, intptr_t ptr_cfg)
 {
     sdr_dev_t *dev = ctx;
-    (*ptr_init)(receive_buffer_cb, (int)DEFAULT_ASYNC_BUF_NUMBER, (unsigned int)DEFAULT_BUF_LENGTH, ctx, ptr_cfg);
+    (*ptr_init)(receive_buffer_cb,  ctx, ptr_cfg);
+    //(*ptr_init)(receive_buffer_cb, (int)DEFAULT_ASYNC_BUF_NUMBER, (unsigned int)DEFAULT_BUF_LENGTH, ctx, ptr_cfg);
 }
 prt_call_back_init PTRInit = NULL;
 intptr_t PTRCfg            = NULL;
@@ -551,7 +552,7 @@ sdr_dev_t *init_sdr_dev()
     return dev;
 }
 #endif //DLL_RTL_433
-#ifdef NO_OPEN_SDR
+#ifdef DLL_RTL_433
 static int rtlsdr_read_loop_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
     int r              = 1;
@@ -1629,7 +1630,7 @@ int sdr_reset(sdr_dev_t *dev, int verbose)
     return r;
 }
 #endif
-#ifdef NO_OPEN_SDR
+#ifdef DLL_RTL_433
 int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len)
 {
     if (!dev)

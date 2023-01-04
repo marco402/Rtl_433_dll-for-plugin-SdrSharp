@@ -81,7 +81,7 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
         return DECODE_FAIL_MIC; // wrong checksum
 
   /* IIIICCII B???TTTT TTTTTSSS HHHHHHH1 XXXX */
-    int negative_sign = (b[2] & 7);
+    int negative_sign = (b[2] & 7);   //010=>2 température positive donne -
     int temp          = ((rb[2]&0x1F) << 4) | (rb[1]>> 4);
     int humidity      = (rb[3] & 0x7F) - 28;
     int sensor_id     = (rb[0] & 0x0F) | ((rb[0] & 0xC0)>>2);

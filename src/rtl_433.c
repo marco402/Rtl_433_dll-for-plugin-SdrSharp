@@ -116,11 +116,13 @@ int main(int argc, char **argv);
 void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
 sdr_dev_t *init_sdr_dev();
 int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
-prt_call_back_message PTRCallBack = NULL;
-uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
+prt_call_back_message PTRCallBackMessage = NULL;
+prt_call_back_RecordOrder PTRCallBackRecordOrder = NULL;
+        uint32_t _param_samp_rate         = DEFAULT_SAMPLE_RATE;
 int _param_sample_size            = 1;
 uint32_t _centerFrequency         = DEFAULT_FREQUENCY;
 uint32_t _frequency               = DEFAULT_FREQUENCY;
+uint32_t _numberDeviceToRecord    = 0;
 uint32_t _disabled                = DEFAULT_DISABLED; //process devices disabled or hidden
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
@@ -135,7 +137,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.5.0.0";  //(rtl_433->17/02/2021)
+    return "1.5.0.1"; //(rtl_433->17/02/2021)
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -193,11 +195,12 @@ void init_console()
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
     consoleIsOpen = true;
 }
-export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
+export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
 {
     if (param_samp_rate > 0 && !consoleIsOpen)
         init_console();
-    PTRCallBack = ptr_message;
+    PTRCallBackMessage = ptr_message;
+    PTRCallBackRecordOrder = ptr_RecordOrder;
     /*intptr_t cfg = (int)&g_cfg;*/
     cfg = (int)&g_cfg;
     setPtrInit(ptr_init, cfg);
@@ -215,8 +218,8 @@ int my_fprintf(_Inout_ FILE *const _Stream, _In_z_ _Printf_format_string_ char c
     _snprintf(line, 99, _Format, va_arg(_ArgList, double)); //char * all ok except float and if more
     line[99] = '\0';
     __crt_va_end(_ArgList);
-    if (PTRCallBack)
-        (*PTRCallBack)(line);
+    if (PTRCallBackMessage)
+        (*PTRCallBackMessage)(line);
     return 0;
 }
 
@@ -476,7 +479,6 @@ _Noreturn static void help_write(void)
             "\tforced overrides: am:s16:path/filename.ext\n");
     exit(0);
 }
-
 static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 {
     r_cfg_t *cfg           = ctx;
@@ -681,13 +683,14 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
             } // if (package_type == ...
             d_events += p_events;
         } // while (package_type)...
-
+        if (demod->frame_event_count > 1)
+            demod->frame_event_count = demod->frame_event_count;
         // add event counter to the frames currently tracked
         demod->frame_event_count += d_events;
-
         // end frame tracking if older than a whole buffer
         if (demod->frame_start_ago && demod->frame_end_ago > n_samples) {
             if (demod->samp_grab) {
+                (*PTRCallBackRecordOrder)("device");
                 if (cfg->grab_mode == 1 || (cfg->grab_mode == 2 && demod->frame_event_count == 0) || (cfg->grab_mode == 3 && demod->frame_event_count > 0)) {
                     unsigned frame_pad    = n_samples / 8; // this could also be a fixed value, e.g. 10000 samples
                     unsigned start_padded = demod->frame_start_ago + frame_pad;
@@ -857,6 +860,11 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
 
         sdr_set_center_freq(cfg->dev, cfg->frequency[cfg->frequency_index], 0);
     }
+
+    //fprintf(stderr, "demod->frame_start_ago %d\n", demod->frame_start_ago);
+    //   fprintf(stderr, "demod->frame_end_ago %d\n", demod->frame_end_ago);
+    //   fprintf(stderr, "demod->pulse_data.start_ago; %d\n", demod->pulse_data.start_ago);
+    //   fprintf(stderr, "demod->pulse_data.end_ago; %d\n\n", demod->pulse_data.end_ago);
 }
 
 static int hasopt(int test, int argc, char *argv[], char const *optstring)
@@ -1395,7 +1403,7 @@ console_handler(int signum)
     if (CTRL_C_EVENT == signum) {
         write_err("Signal caught, exiting!\n");
         g_cfg.exit_async = 1;
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
         sdr_stop(g_cfg.dev);
 #endif
         return TRUE;
@@ -1409,7 +1417,7 @@ console_handler(int signum)
         write_err("Async read stalled, exiting!\n");
         g_cfg.exit_code  = 3;
         g_cfg.exit_async = 1;
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
         sdr_stop(g_cfg.dev);
 #endif
         return TRUE;
@@ -1506,7 +1514,7 @@ sdr_handler(sdr_event_t *ev, void *ctx)
         if (!cfg->exit_async)
             sdr_callback((unsigned char *)ev->buf, ev->len, ctx);
     }
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
     if (cfg->exit_async)
         sdr_stop(cfg->dev);
 #endif
@@ -1523,7 +1531,7 @@ int main(int argc, char **argv)
     r_cfg_t *cfg = &g_cfg;
 
     print_version(); // always print the version info
-#ifdef NO_OPEN_SDR
+#ifdef DLL_RTL_433
     cfg->no_default_devices = 0; //=1 0 device au départ
 #endif
     r_init_cfg(cfg);
@@ -1543,7 +1551,7 @@ int main(int argc, char **argv)
     setbuf(stderr, NULL);
 
     demod = cfg->demod;
-#ifdef NO_OPEN_SDR
+#ifdef DLL_RTL_433
     cfg->samp_rate          = _param_samp_rate;
     cfg->verbosity          = 0;
     cfg->demod->level_limit = 0;
@@ -1567,6 +1575,10 @@ int main(int argc, char **argv)
     }
 #endif
     parse_conf_args(cfg, argc, argv);
+#ifdef DLL_RTL_433
+    if (!cfg->demod->samp_grab) //for record on form devices without -S
+        cfg->demod->samp_grab = samp_grab_create(SIGNAL_GRABBER_BUFFER);
+#endif
     // apply hop defaults and set first frequency
     if (cfg->frequencies == 0) {
         cfg->frequency[0] = DEFAULT_FREQUENCY;
@@ -1967,7 +1979,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "SR writing not recommended for live input\n");
         exit(1);
     }
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
     // Normal case, no test data, no in files
     r = sdr_open(&cfg->dev, cfg->dev_query, cfg->verbosity);
     if (r < 0) {
@@ -2032,7 +2044,7 @@ int main(int argc, char **argv)
     //voir cette ligne necessaire pour rtl_433.dll
     cfg->center_frequency = cfg->frequency[cfg->frequency_index];
 #endif
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
     r = sdr_set_center_freq(cfg->dev, cfg->center_frequency, 1); // always verbose
 #endif
 
@@ -2040,7 +2052,7 @@ int main(int argc, char **argv)
     signal(SIGALRM, sighandler);
     //    alarm(3); // require callback to run every 3 second, abort otherwise
 
-#ifndef NO_OPEN_SDR
+#ifndef DLL_RTL_433
     alarm(3); // require callback to run every 3 second, abort otherwise
     r = sdr_start(cfg->dev, sdr_handler, (void *)cfg,
             DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
@@ -2063,7 +2075,7 @@ int main(int argc, char **argv)
     if (cfg->exit_code >= 0)
         r = cfg->exit_code;
     r_free_cfg(cfg);
-#else //NO_OPEN_SDR
+#else //DLL_RTL_433
     alarm(0); //3->10 stop ib -vvv with source SDRSharp =file. require callback to run every 3 second, abort otherwise
     demod->sample_size = _param_sample_size;
     cfg->dev = init_sdr_dev();

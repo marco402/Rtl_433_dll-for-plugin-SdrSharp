@@ -28,20 +28,32 @@
 #include <signal.h>
 
 /******************************************update rtl_433*************************************************
+
+***************************************12/2022************************************************
+
+
+nombre de devices 12/2021: 177/208  202/208
+
+
+1>c:\marc\tnt\sources\sdrsharp\rtl_433_dll\src\devices\abmt.c(93): error C2065: 'OOK_PULSE_PCM' : identificateur non déclaré
+1>c:\marc\tnt\sources\sdrsharp\rtl_433_dll\src\devices\atech_ws308.c(132): error C2065: 'OOK_PULSE_RZ' : identificateur non déclaré
+
+
+***************************************12/2021************************************************
 sources .c
 	rtl_433.c
 				header
 				includes
 				6*#ifdef DLL_RTL_433
 				1*#ifndef DLL_RTL_433
-				1*#ifdef NO_OPEN_SDR
-				3*#ifndef NO_OPEN_SDR 
-				1*#else  NO_OPEN_SDR 
+				1*#ifdef DLL_RTL_433
+				3*#ifndef DLL_RTL_433 
+				1*#else  DLL_RTL_433 
 	sdr.c			add:
 				header
 				#includes "dll_rtl_433.h" //for fprintf
 				#ifdef DLL_RTL_433  	1 fois
-				#ifdef NO_OPEN_SDR	2 fois
+				#ifdef DLL_RTL_433	2 fois
  
 add#include "dll_rtl_433.h" //for fprintf to output_file.c
 
@@ -75,7 +87,7 @@ verify if change structure and enum in NativeMethods.cs with project rtl_433 r_p
 //add code dll_rtl_433 
 #define DLL_RTL_433
 //no open sdr
-#define NO_OPEN_SDR
+//#define DLL_RTL_433
 
 #define export __declspec(dllexport)
 
@@ -85,6 +97,7 @@ int my_fprintf(_Inout_ FILE *const _Stream,
         _In_z_ _Printf_format_string_ char const *const _Format, ...);
 
 typedef void(__stdcall *prt_call_back_init)(char *);
+typedef void(__stdcall *prt_call_back_RecordOrder)(char *);
 void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
 
 #endif /* INCLUDE_DLL_RTL_433_H_ */
