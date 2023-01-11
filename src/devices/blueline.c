@@ -155,7 +155,8 @@ struct blueline_stateful_context {
     unsigned searching_for_new_id;
 };
 
-static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t remainder) {
+static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t remainder)
+{
     unsigned byte, bit;
 
     // Run a CRC backwards to find out what the init value would have been.
@@ -165,7 +166,7 @@ static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polyno
     // This logic only works assuming the polynomial has the lowest bit set,
     // Which should be true for most CRC polynomials, but let's be safe...
     if ((polynomial & 0x01) == 0) {
-        fprintf(stderr,"Cannot run reverse CRC-8 with this polynomial!\n");
+        fprintf(stderr, "Cannot run reverse CRC-8 with this polynomial!\n");
         return 0xFF;
     }
     polynomial = (polynomial >> 1) | 0x80;
@@ -176,10 +177,10 @@ static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polyno
         while (bit--) {
             if (remainder & 0x01) {
                 remainder = (remainder >> 1) ^ polynomial;
-            } else {
+            }
+            else {
                 remainder = remainder >> 1;
             }
-
         }
         remainder ^= message[byte];
     }
@@ -232,9 +233,7 @@ static uint16_t guess_blueline_id(r_device *decoder, const uint8_t *current_row)
         working_buffer[1] += 1;
     }
 
-    if (decoder->verbose) {
-        fprintf(stderr, "Attempting Blueline autodetect: best_hits=%u num_at_best_hits=%u\n", best_hits, num_at_best_hits);
-    }
+    decoder_logf(decoder, 1, __func__, "Attempting Blueline autodetect: best_hits=%u num_at_best_hits=%u", best_hits, num_at_best_hits);
     return ((best_hits >= BLUELINE_ID_GUESS_THRESHOLD) && (num_at_best_hits == 1)) ? best_id : 0;
 }
 
@@ -285,9 +284,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             if ((context->searching_for_new_id) && (message_type != BLUELINE_TXID_MSG)) {
                 uint16_t id_guess = guess_blueline_id(decoder, current_row);
                 if (id_guess != 0) {
-                    if (decoder->verbose) {
-                        fprintf(stderr,"Switching to auto-detected Blueline ID %u\n", id_guess);
-                    }
+                    decoder_logf(decoder, 1, __func__,"Switching to auto-detected Blueline ID %u", id_guess);
                     context->current_sensor_id = id_guess;
                     context->searching_for_new_id = 0;
                 }
@@ -310,9 +307,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             decoder_output_data(decoder, data);
             payloads_decoded++;
             if (context->searching_for_new_id) {
-                if (decoder->verbose) {
-                    fprintf(stderr,"Switching to received Blueline ID %u\n", received_sensor_id);
-                }
+                decoder_logf(decoder, 1, __func__,"Switching to received Blueline ID %u", received_sensor_id);
                 context->current_sensor_id = received_sensor_id;
                 context->searching_for_new_id = 0;
             }
@@ -411,13 +406,13 @@ static r_device *blueline_create(char *arg)
         return NULL; // NOTE: returns NULL on alloc failure.
     }
 
-    struct blueline_stateful_context *context = malloc(sizeof(*context)); //ici
+    struct blueline_stateful_context *context = malloc(sizeof(*context));
     if (!context) {
         WARN_MALLOC("blueline_create()");
         free(r_dev);
         return NULL; // NOTE: returns NULL on alloc failure.
     }
-    memset(context,0,sizeof(*context));
+    memset(context, 0, sizeof(*context));
     r_dev->decode_ctx = context;
 
     if (arg != NULL) {
@@ -444,6 +439,5 @@ r_device blueline = {
         .reset_limit = 8000,
         .decode_fn   = &blueline_decode,
         .create_fn   = &blueline_create,
-        .disabled    = 0,
         .fields      = output_fields,
 };

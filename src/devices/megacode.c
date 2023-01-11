@@ -92,12 +92,11 @@ static char *output_fields[] = {
 
 r_device megacode = {
         .name        = "Linear Megacode Garage/Gate Remotes",
-        .modulation  = OOK_PULSE_PCM_RZ,
+        .modulation  = OOK_PULSE_PCM,
         .short_width = 1000,
         .long_width  = 1000,
         .gap_limit   = 9000,
         .reset_limit = 20000,
         .decode_fn   = &megacode_callback,
-        .disabled    = 0,
         .fields      = output_fields,
 };

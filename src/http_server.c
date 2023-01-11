@@ -92,12 +92,19 @@ or `(echo "GET /stream HTTP/1.0\n"; sleep 600) | socat - tcp:127.0.0.1:8433`
 - "protocol":         1
 
 */
+/* Modified by Marc Prieur for plugin sdrsharp (marco40_github@sfr.fr)
+
+History : V1.00 2021-04-01 - First release
+         V1.5.0.1 2023-01 
+
+ All text above must be included in any redistribution.
+*/
 
 #include "http_server.h"
 #include "data.h"
 #include "rtl_433.h"
 #include "r_api.h"
-#include "r_device.h" // used for protocols
+#include "r_device.h"  // used for protocols
 #include "r_private.h" // used for protocols
 #include "r_util.h"
 #include "optparse.h"
@@ -105,6 +112,7 @@ or `(echo "GET /stream HTTP/1.0\n"; sleep 600) | socat - tcp:127.0.0.1:8433`
 #include "list.h" // used for protocols
 #include "jsmn.h"
 #include "mongoose.h"
+#include "logger.h"
 #include "fatal.h"
 #include <stdbool.h>
 #include "dll_rtl_433.h" //for #ifndef DLL_RTL_433
@@ -290,7 +298,7 @@ static data_t *protocols_data(r_cfg_t *cfg)
     for (void **iter = cfg->demod->r_devs.elems; iter && *iter; ++iter) {
         r_device *dev = *iter;
         if (dev->protocol_num > 0) {
-                continue;
+            continue;
         }
         int fields_len = 0;
         for (char **iter2 = dev->fields; iter2 && *iter2; ++iter2) {
@@ -385,13 +393,13 @@ static int json_parse(rpc_t *rpc, struct mg_str const *json)
     jsmn_init(&p);
     r = jsmn_parse(&p, json->p, json->len, t, sizeof(t) / sizeof(t[0]));
     if (r < 0) {
-        printf("Failed to parse JSON: %d\n", r);
+        print_logf(LOG_WARNING, __func__, "Failed to parse JSON: %d", r);
         return -1;
     }
 
     /* Assume the top-level element is an object */
     if (r < 1 || t[0].type != JSMN_OBJECT) {
-        printf("Object expected\n");
+        print_log(LOG_WARNING, __func__, "Object expected");
         return -1;
     }
 
@@ -410,11 +418,11 @@ static int json_parse(rpc_t *rpc, struct mg_str const *json)
         else if (jsoneq(json->p, &t[i], "val") == 0) {
             i++;
             char *endptr = NULL;
-            val = strtol(json->p + t[i].start, &endptr, 10);
+            val          = strtol(json->p + t[i].start, &endptr, 10);
             // compare endptr to t[i].end
         }
         else {
-            printf("Unexpected key: %.*s\n", t[i].end - t[i].start, json->p + t[i].start);
+            print_logf(LOG_WARNING, __func__, "Unexpected key: %.*s", t[i].end - t[i].start, json->p + t[i].start);
         }
     }
 
@@ -422,9 +430,9 @@ static int json_parse(rpc_t *rpc, struct mg_str const *json)
         free(arg);
         return -1;
     }
-    rpc->method     = cmd;
-    rpc->arg        = arg;
-    rpc->val        = val;
+    rpc->method = cmd;
+    rpc->arg    = arg;
+    rpc->val    = val;
     return 0;
 }
 
@@ -443,13 +451,13 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
     jsmn_init(&p);
     r = jsmn_parse(&p, json->p, json->len, t, sizeof(t) / sizeof(t[0]));
     if (r < 0) {
-        printf("Failed to parse JSON: %d\n", r);
+        print_logf(LOG_WARNING, __func__, "Failed to parse JSON: %d", r);
         return -1;
     }
 
     /* Assume the top-level element is an object */
     if (r < 1 || t[0].type != JSMN_OBJECT) {
-        printf("Object expected\n");
+        print_log(LOG_WARNING, __func__, "Object expected");
         return -1;
     }
 
@@ -496,7 +504,7 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
             i += t[i + 1].size + 1;
         }
         else {
-            printf("Unexpected key: %.*s\n", t[i].end - t[i].start, json->p + t[i].start);
+            print_logf(LOG_WARNING, __func__, "Unexpected key: %.*s", t[i].end - t[i].start, json->p + t[i].start);
         }
     }
 
@@ -505,10 +513,10 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
         free(arg);
         return -1;
     }
-    rpc->method  = cmd;
-    rpc->arg     = arg;
-    rpc->val     = val;
-    rpc->id      = id;
+    rpc->method = cmd;
+    rpc->arg    = arg;
+    rpc->val    = val;
+    rpc->id     = id;
     return 0;
 }
 
@@ -557,7 +565,7 @@ static void rpc_exec(rpc_t *rpc, r_cfg_t *cfg)
     }
     else if (!strcmp(rpc->method, "get_stats")) {
         char buf[20480]; // we expect the stats string to be around 15k bytes.
-        data_t *data = create_report_data(cfg, 2/*report active devices*/);
+        data_t *data = create_report_data(cfg, 2 /*report active devices*/);
         // flush_report_data(cfg); // snapshot, do not flush
         data_print_jsons(data, buf, sizeof(buf));
         rpc->response(rpc, 1, buf, 0);
@@ -707,7 +715,8 @@ static void handle_get(struct mg_connection *nc, struct http_message *hm, char c
     mg_printf(nc,
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: %u\r\n"
-            "\r\n", len);
+            "\r\n",
+            len);
     mg_send(nc, buf, (size_t)len);
 }
 
@@ -809,7 +818,7 @@ static void rpc_response_jsoncmd(rpc_t *rpc, int ret_code, char const *message, 
                 "{\"error\": {\"code\": %d, \"message\": \"%s\"}}",
                 ret_code, message);
     }
-    else if (ret_code == 0 &&message) {
+    else if (ret_code == 0 && message) {
         mg_printf_http_chunk(rpc->nc,
                 "{\"result\": \"%s\"}",
                 message);
@@ -886,10 +895,10 @@ static void handle_cmd_rpc(struct mg_connection *nc, struct http_message *hm)
     struct http_server_context *ctx = nc->user_data;
     char cmd[100], arg[100], val[100];
     rpc_t rpc = {
-            .nc = nc,
+            .nc       = nc,
             .response = rpc_response_jsoncmd,
-            .method = cmd,
-            .arg = arg,
+            .method   = cmd,
+            .arg      = arg,
     };
 
     /* Send headers */
@@ -908,7 +917,7 @@ static void handle_cmd_rpc(struct mg_connection *nc, struct http_message *hm)
         mg_get_http_var(&hm->body, "val", val, sizeof(val));
     }
     char *endptr = NULL;
-    rpc.val = strtol(val, &endptr, 10);
+    rpc.val      = strtol(val, &endptr, 10);
     fprintf(stderr, "POST Got %s, arg %s, val %s (%u)\n", cmd, arg, val, rpc.val);
 
     rpc_exec(&rpc, ctx->cfg);
@@ -1122,12 +1131,12 @@ static struct http_server_context *http_server_start(struct mg_mgr *mgr, char co
 
     /* Set HTTP server options */
     memset(&bind_opts, 0, sizeof(bind_opts));
-    bind_opts.user_data = ctx;
+    bind_opts.user_data    = ctx;
     bind_opts.error_string = &err_str;
 
     ctx->conn = mg_bind_opt(mgr, address, ev_handler, bind_opts);
     if (ctx->conn == NULL) {
-        fprintf(stderr, "Error starting server on address %s: %s\n", address,
+        print_logf(LOG_ERROR, __func__, "Error starting server on address %s: %s", address,
                 *bind_opts.error_string);
         free(ctx);
         return NULL;
@@ -1137,7 +1146,7 @@ static struct http_server_context *http_server_start(struct mg_mgr *mgr, char co
     ctx->server_opts.document_root            = "."; // Serve current directory
     ctx->server_opts.enable_directory_listing = "yes";
 
-    printf("Starting HTTP server on address %s, serving %s\n", address,
+    print_logf(LOG_NOTICE, "HTTP server", "Serving HTTP-API on address %s, serving %s", address,
             ctx->server_opts.document_root);
 
     return ctx;
@@ -1167,7 +1176,7 @@ static int http_server_stop(struct http_server_context *ctx)
         else if (cctx && cctx->is_chunked) {
             mg_send_http_chunk(nc, SHUTDOWN_JSON, sizeof(SHUTDOWN_JSON) - 1);
             mg_send_http_chunk(nc, "\r\n", 2);
-            mg_send_http_chunk(nc, "", 0);            /* Send empty chunk, the end of response */
+            mg_send_http_chunk(nc, "", 0); /* Send empty chunk, the end of response */
         }
         else if (cctx && !cctx->is_chunked) {
             mg_send(nc, SHUTDOWN_JSON, sizeof(SHUTDOWN_JSON) - 1);
@@ -1189,7 +1198,7 @@ typedef struct {
     struct http_server_context *server;
 } data_output_http_t;
 
-static void print_http_data(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV print_http_data(data_output_t *output, data_t *data, char const *format)
 {
     UNUSED(format);
     data_output_http_t *http = (data_output_http_t *)output;
@@ -1221,7 +1230,7 @@ static void print_http_data(data_output_t *output, data_t *data, char const *for
     }
 }
 
-static void data_output_http_free(data_output_t *output)
+static void R_API_CALLCONV data_output_http_free(data_output_t *output)
 {
     data_output_http_t *http = (data_output_http_t *)output;
 
@@ -1241,8 +1250,9 @@ struct data_output *data_output_http_create(struct mg_mgr *mgr, char const *host
         return NULL;
     }
 
-    http->output.print_data   = print_http_data;
-    http->output.output_free  = data_output_http_free;
+    http->output.log_level   = LOG_TRACE; // sensible default, not parsed from args
+    http->output.print_data  = print_http_data;
+    http->output.output_free = data_output_http_free;
 
     http->server = http_server_start(mgr, host, port, cfg, &http->output);
     if (!http->server) {

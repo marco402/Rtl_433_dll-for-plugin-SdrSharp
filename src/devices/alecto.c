@@ -1,4 +1,4 @@
-/*** @file
+/** @file
     AlectoV1 Weather Sensor protocol.
 
     This program is free software; you can redistribute it and/or modify
@@ -99,7 +99,7 @@ static uint8_t bcd_decode8(uint8_t x)
 static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     bitrow_t *bb = bitbuffer->bb;
-    uint8_t *b = bitbuffer->bb[1];
+    uint8_t *b   = bitbuffer->bb[1];
     int temp_raw, humidity;
     float temp_c;
     data_t *data;
@@ -108,42 +108,38 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bits != 36)
         return DECODE_ABORT_LENGTH;
 
-    if (bb[1][0] != bb[5][0] || bb[2][0] != bb[6][0]
-            || (bb[1][4] & 0xf) != 0 || (bb[5][4] & 0xf) != 0
-            || bb[5][0] == 0 || bb[5][1] == 0)
+    if (bb[1][0] != bb[5][0] || bb[2][0] != bb[6][0] || (bb[1][4] & 0xf) != 0 || (bb[5][4] & 0xf) != 0 || bb[5][0] == 0 || bb[5][1] == 0)
         return DECODE_ABORT_EARLY;
 
     if (!alecto_checksum(bb[1]) || !alecto_checksum(bb[5])) {
-        if (decoder->verbose) {
-            fprintf(stderr, "AlectoV1 Checksum/Parity error\n");
-        }
+        decoder_log(decoder, 1, __func__, "AlectoV1 Checksum/Parity error");
         return DECODE_FAIL_MIC;
     }
 
     int battery_low = (b[1] & 0x80) >> 7;
     int msg_type    = (b[1] & 0x60) >> 5;
     //int button      = (b[1] & 0x10) >> 4;
-    int msg_rain    = (b[1] & 0x0f) == 0x0c;
+    int msg_rain = (b[1] & 0x0f) == 0x0c;
     //int msg_wind    = (b[1] & 0x0f) == 0x08 && b[2] == 0;
     //int msg_gust    = (b[1] & 0x0e) == 0x0e;
-    int channel     = (b[0] & 0xc) >> 2;
-    int sensor_id   = reverse8(b[0]);
+    int channel   = (b[0] & 0xc) >> 2;
+    int sensor_id = reverse8(b[0]);
 
-    //fprintf(stderr, "AlectoV1 type : %d rain : %d wind : %d gust : %d\n", msg_type, msg_rain, msg_wind, msg_gust);
+    //decoder_logf(decoder, 0, __func__, "AlectoV1 type : %d rain : %d wind : %d gust : %d", msg_type, msg_rain, msg_wind, msg_gust);
 
     if (msg_type == 0x3 && !msg_rain) {
         // Wind sensor
         int skip = -1;
         // Untested code written according to the specification, may not decode correctly
-        if ((b[1]&0xe) == 0x8 && b[2] == 0) {
+        if ((b[1] & 0xe) == 0x8 && b[2] == 0) {
             skip = 0;
         }
-        else if ((b[1]&0xe) == 0xe) {
+        else if ((b[1] & 0xe) == 0xe) {
             skip = 4;
-        } //According to supplied data!
+        } // According to supplied data!
         if (skip >= 0) {
-            double speed = reverse8(bb[1 + skip][3]);
-            double gust = reverse8(bb[5 + skip][3]);
+            double speed  = reverse8(bb[1 + skip][3]);
+            double gust   = reverse8(bb[5 + skip][3]);
             int direction = (reverse8(bb[5 + skip][2]) << 1) | (bb[5 + skip][1] & 0x1);
 
             /* clang-format off */
@@ -181,13 +177,15 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return 1;
     }
 
-    else if (msg_type != 0x3
-            && bb[2][0] == bb[3][0] && bb[3][0] == bb[4][0]
-            && bb[4][0] == bb[5][0] && bb[5][0] == bb[6][0]
-            && (bb[3][4] & 0xf) == 0 && (bb[5][4] & 0xf) == 0) {
+    else if (msg_type != 0x3 && bb[2][0] == bb[3][0] && bb[3][0] == bb[4][0] && bb[4][0] == bb[5][0] && bb[5][0] == bb[6][0] && (bb[3][4] & 0xf) == 0 && (bb[5][4] & 0xf) == 0) {
         //static char * temp_states[4] = {"stable", "increasing", "decreasing", "invalid"};
-        temp_raw = (int16_t)((reverse8(b[1]) & 0xf0) | (reverse8(b[2]) << 8)); // sign-extend
-        temp_c   = (temp_raw >> 4) * 0.1f;
+        //if (((b[1] & 0x0F) == 0) & (b[2] == 0))
+        //    temp_c = 9999;
+        //else
+        //{
+            temp_raw = (int16_t)((reverse8(b[1]) & 0xf0) | (reverse8(b[2]) << 8)); // sign-extend
+			temp_c   = (temp_raw >> 4) * 0.1f;
+		//}
         humidity = bcd_decode8(reverse8(b[3]));
         if (humidity > 100)
             return DECODE_FAIL_SANITY; // detect false positive, prologue is also 36bits and sometimes detected as alecto

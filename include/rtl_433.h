@@ -9,10 +9,12 @@
 #include "list.h"
 #include <time.h>
 #include <signal.h>
-
+#include "dll_rtl_433.h"
 #define DEFAULT_SAMPLE_RATE     250000
 #define DEFAULT_FREQUENCY       433920000
-#define DEFAULT_DISABLED        0
+#ifdef DLL_RTL_433
+#define DEFAULT_DISABLED 0
+#endif
 #define DEFAULT_HOP_TIME        (60*10)
 #define DEFAULT_ASYNC_BUF_NUMBER    0 // Force use of default value (librtlsdr default: 15)
 #define DEFAULT_BUF_LENGTH      (16 * 32 * 512) // librtlsdr default
@@ -95,6 +97,8 @@ typedef struct r_cfg {
     uint16_t num_r_devices;
     list_t data_tags;
     list_t output_handler;
+    list_t raw_handler;
+    int has_logout;
     struct dm_state *demod;
     char const *sr_filename;
     int sr_execopen;

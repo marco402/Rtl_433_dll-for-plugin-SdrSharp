@@ -312,6 +312,8 @@ void am_analyze_classify(am_analyze_t *aa)
                     //                     fprintf(stderr, "\\n [%d] %d > %d\n",i, signal_distance_data[i], (a[1]+a[2])/2);
                     bitbuffer_add_row(&bits);
                 }
+
+
             }
         }
         bitbuffer_print(&bits);

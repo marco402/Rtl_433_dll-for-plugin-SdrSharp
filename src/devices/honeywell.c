@@ -80,8 +80,7 @@ static int honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY; // Reduce collisions
 
     if (len > 50) { // DW11
-        if (decoder->verbose)
-            bitrow_printf(b, (len > 80 ? 80 : len), "%s: ", __func__);
+        decoder_log_bitrow(decoder, 1, __func__, b, (len > 80 ? 80 : len), "");
     }
 
     if (channel == 0x2 || channel == 0x4 || channel == 0xA) {
@@ -147,6 +146,5 @@ r_device honeywell = {
         .long_width  = 0,
         .reset_limit = 292,
         .decode_fn   = &honeywell_decode,
-        .disabled    = 0,
         .fields      = output_fields,
 };

@@ -14,6 +14,8 @@ Cotech 36-7959 Weatherstation, 433Mhz.
 
 Also: SwitchDoc Labs Weather FT020T.
 Also: Sainlogic Weather Station WS019T
+Also: Sainlogic Weather Station FT0300
+Also: Ragova WiFi Weather Station FT-0310
 
 OOK modulated with Manchester encoding, halfbit-width 500 us.
 Message length is 112 bit, every second time it will transmit two identical messages, packet gap 5400 us.
@@ -74,16 +76,12 @@ static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     if (r < 0) {
-        if (decoder->verbose > 1) {
-            fprintf(stderr, "%s: Couldn't find preamble\n", __func__);
-        }
+        decoder_log(decoder, 2, __func__, "Couldn't find preamble");
         return DECODE_FAIL_SANITY;
     }
 
     if (crc8(b, 14, 0x31, 0xc0)) {
-        if (decoder->verbose > 1) {
-            fprintf(stderr, "%s: CRC8 fail\n", __func__);
-        }
+        decoder_log(decoder, 2, __func__, "CRC8 fail");
         return DECODE_FAIL_MIC;
     }
 

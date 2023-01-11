@@ -8,8 +8,8 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/*
-TS-FT002 Wireless Ultrasonic Tank Liquid Level Meter With Temperature Sensor
+/**
+TS-FT002 Wireless Ultrasonic Tank Liquid Level Meter With Temperature Sensor.
 
 PPM with 500 us pulse, 464 us short gap (0), 948 us long gap (1), 1876 us packet gap, two packets per transmission.
 
@@ -123,6 +123,5 @@ r_device ts_ft002 = {
         .gap_limit   = 1200,
         .reset_limit = 2000,
         .decode_fn   = &ts_ft002_decoder,
-        .disabled    = 0,
         .fields      = output_fields,
 };

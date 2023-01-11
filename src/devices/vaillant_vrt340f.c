@@ -31,21 +31,18 @@ All bytes are sent with least significant bit FIRST (1000 0111 = 0xE1)
 
 */
 
-
 #include "decoder.h"
 
 static int validate_checksum(r_device *decoder, uint8_t *b, int from, int to, int cs_from, int cs_to)
 {
     // Fields cs_from and cs_to hold the 2-byte checksum as signed int
-    int expected = (b[cs_from] << 8) | b[cs_to];
-    int calculated = add_bytes(&b[from], to-from+1);
+    int expected   = (b[cs_from] << 8) | b[cs_to];
+    int calculated = add_bytes(&b[from], to - from + 1);
     int chk        = (calculated + expected) & 0xffff;
 
     if (chk) {
-        if (decoder->verbose) {
-            fprintf(stderr, "Checksum error in Vaillant VRT340f.  Expected: %04x  Calculated: %04x\n", expected, calculated);
-            bitrow_printf(&b[from], (to - from + 1) * 8, "Message (data content of bytes %d-%d): ", from, to);
-        }
+        decoder_logf(decoder, 1, __func__, "Checksum error in Vaillant VRT340f.  Expected: %04x  Calculated: %04x", expected, calculated);
+        decoder_logf_bitrow(decoder, 1, __func__, &b[from], (to - from + 1) * 8, "Message (data content of bytes %d-%d)", from, to);
     }
     return !chk;
 }
@@ -158,6 +155,5 @@ r_device vaillant_vrt340f = {
         .reset_limit = 4000,
         .tolerance   = 120, // us
         .decode_fn   = &vaillant_vrt340_callback,
-        .disabled    = 0,
         .fields      = output_fields,
 };

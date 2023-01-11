@@ -59,8 +59,8 @@ extern char *optarg;
    how much of ARGV has been scanned so far.  */
 
 extern int optind;
-//DLL_RTL_433
-extern int __getopt_initialized;
+
+extern int __getopt_initialized;  //pour rtl_433.c DLL_RTL_433
 /* Callers store zero here to inhibit the error message `getopt' prints
    for unrecognized options.  */
 

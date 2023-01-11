@@ -9,14 +9,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/* modified by Marc Prieur (marco40_github@sfr.fr) for project rtl_433.dll
-							     data.c
-						    for Rtl_433_Plugin
-							Plugin for SdrSharp
-History : V1.00 2021-04-01 - First release
-          V1.10 2021-20-April 
-**********************************************************************************/
-#include "dll_rtl_433.h"
+
 #include "data.h"
 
 #include "abuf.h"
@@ -28,13 +21,14 @@ History : V1.00 2021-04-01 - First release
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
 // Macro to prevent unused variables (passed into a function)
 // from generating a warning.
 #define UNUSED(x) (void)(x)
 
-typedef void *(*array_elementwise_import_fn)(void *);
-typedef void (*array_element_release_fn)(void *);
-typedef void (*value_release_fn)(void *);
+typedef void* (*array_elementwise_import_fn)(void*);
+typedef void (*array_element_release_fn)(void*);
+typedef void (*value_release_fn)(void*);
 
 typedef struct {
     /* what is the element size when put inside an array? */
@@ -61,45 +55,45 @@ typedef struct {
 } data_meta_type_t;
 
 static data_meta_type_t dmt[DATA_COUNT] = {
-        //  DATA_DATA
-        {.array_element_size              = sizeof(data_t *),
-                .array_is_boxed           = true,
-                .array_elementwise_import = NULL,
-                .array_element_release    = (array_element_release_fn)data_free,
-                .value_release            = (value_release_fn)data_free},
+    //  DATA_DATA
+    { .array_element_size       = sizeof(data_t*),
+      .array_is_boxed           = true,
+      .array_elementwise_import = NULL,
+      .array_element_release    = (array_element_release_fn) data_free,
+      .value_release            = (value_release_fn) data_free },
 
-        //  DATA_INT
-        {.array_element_size              = sizeof(int),
-                .array_is_boxed           = false,
-                .array_elementwise_import = NULL,
-                .array_element_release    = NULL,
-                .value_release            = NULL},
+    //  DATA_INT
+    { .array_element_size       = sizeof(int),
+      .array_is_boxed           = false,
+      .array_elementwise_import = NULL,
+      .array_element_release    = NULL,
+      .value_release            = NULL },
 
-        //  DATA_DOUBLE
-        {.array_element_size              = sizeof(double),
-                .array_is_boxed           = false,
-                .array_elementwise_import = NULL,
-                .array_element_release    = NULL,
-                .value_release            = NULL},
+    //  DATA_DOUBLE
+    { .array_element_size       = sizeof(double),
+      .array_is_boxed           = false,
+      .array_elementwise_import = NULL,
+      .array_element_release    = NULL,
+      .value_release            = NULL },
 
-        //  DATA_STRING
-        {.array_element_size              = sizeof(char *),
-                .array_is_boxed           = true,
-                .array_elementwise_import = (array_elementwise_import_fn)strdup,
-                .array_element_release    = (array_element_release_fn)free,
-                .value_release            = (value_release_fn)free},
+    //  DATA_STRING
+    { .array_element_size       = sizeof(char*),
+      .array_is_boxed           = true,
+      .array_elementwise_import = (array_elementwise_import_fn) strdup,
+      .array_element_release    = (array_element_release_fn) free,
+      .value_release            = (value_release_fn) free },
 
-        //  DATA_ARRAY
-        {.array_element_size              = sizeof(data_array_t *),
-                .array_is_boxed           = true,
-                .array_elementwise_import = NULL,
-                .array_element_release    = (array_element_release_fn)data_array_free,
-                .value_release            = (value_release_fn)data_array_free},
+    //  DATA_ARRAY
+    { .array_element_size       = sizeof(data_array_t*),
+      .array_is_boxed           = true,
+      .array_elementwise_import = NULL,
+      .array_element_release    = (array_element_release_fn) data_array_free ,
+      .value_release            = (value_release_fn) data_array_free },
 };
 
 static bool import_values(void *dst, void *src, int num_values, data_type_t type)
 {
-    int element_size                   = dmt[type].array_element_size;
+    int element_size = dmt[type].array_element_size;
     array_elementwise_import_fn import = dmt[type].array_elementwise_import;
     if (import) {
         for (int i = 0; i < num_values; ++i) {
@@ -111,13 +105,11 @@ static bool import_values(void *dst, void *src, int num_values, data_type_t type
                     --i;
                 }
                 return false;
-            }
-            else {
+            } else {
                 *((char **)dst + i) = copy;
             }
         }
-    }
-    else {
+    } else {
         memcpy(dst, src, (size_t)element_size * num_values);
     }
     return true; // error is returned early
@@ -125,10 +117,10 @@ static bool import_values(void *dst, void *src, int num_values, data_type_t type
 
 /* data */
 
-data_array_t *data_array(int num_values, data_type_t type, void *values)
+R_API data_array_t *data_array(int num_values, data_type_t type, void *values)
 {
     if (num_values < 0) {
-        return NULL;
+      return NULL;
     }
     data_array_t *array = calloc(1, sizeof(data_array_t));
     if (!array) {
@@ -166,8 +158,8 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
     while (prev && prev->next)
         prev = prev->next;
     char *format = NULL;
-    int skip     = 0; // skip the data item if this is set
-    type         = va_arg(ap, data_type_t);
+    int skip = 0; // skip the data item if this is set
+    type = va_arg(ap, data_type_t);
     do {
         data_t *current;
         data_value_t value = {0};
@@ -196,7 +188,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             break;
         case DATA_DATA:
             value_release = (value_release_fn)data_free; // appease CSA checker
-            value.v_ptr   = va_arg(ap, data_t *);
+            value.v_ptr = va_arg(ap, data_t *);
             break;
         case DATA_INT:
             value.v_int = va_arg(ap, int);
@@ -206,13 +198,13 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             break;
         case DATA_STRING:
             value_release = (value_release_fn)free; // appease CSA checker
-            value.v_ptr   = strdup(va_arg(ap, char *));
+            value.v_ptr = strdup(va_arg(ap, char *));
             if (!value.v_ptr)
                 WARN_STRDUP("vdata_make()");
             break;
         case DATA_ARRAY:
             value_release = (value_release_fn)data_array_free; // appease CSA checker
-            value.v_ptr   = va_arg(ap, data_array_t *);
+            value.v_ptr = va_arg(ap, data_array_t *);
             break;
         default:
             fprintf(stderr, "vdata_make() bad data type (%d)\n", type);
@@ -224,7 +216,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
                 value_release(value.v_ptr);
             free(format);
             format = NULL;
-            skip   = 0;
+            skip = 0;
         }
         else {
             current = calloc(1, sizeof(*current));
@@ -262,7 +254,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
         key = va_arg(ap, const char *);
         if (key) {
             pretty_key = va_arg(ap, const char *);
-            type       = va_arg(ap, data_type_t);
+            type = va_arg(ap, data_type_t);
         }
     } while (key);
     va_end(ap);
@@ -279,7 +271,7 @@ alloc_error:
     return NULL;
 }
 
-data_t *data_make(const char *key, const char *pretty_key, ...)
+R_API data_t *data_make(const char *key, const char *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -288,7 +280,7 @@ data_t *data_make(const char *key, const char *pretty_key, ...)
     return result;
 }
 
-data_t *data_append(data_t *first, const char *key, const char *pretty_key, ...)
+R_API data_t *data_append(data_t *first, const char *key, const char *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -297,7 +289,7 @@ data_t *data_append(data_t *first, const char *key, const char *pretty_key, ...)
     return result;
 }
 
-data_t *data_prepend(data_t *first, const char *key, const char *pretty_key, ...)
+R_API data_t *data_prepend(data_t *first, const char *key, const char *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -315,7 +307,7 @@ data_t *data_prepend(data_t *first, const char *key, const char *pretty_key, ...
     return result;
 }
 
-void data_array_free(data_array_t *array)
+R_API void data_array_free(data_array_t *array)
 {
     array_element_release_fn release = dmt[array->type].array_element_release;
     if (release) {
@@ -327,14 +319,14 @@ void data_array_free(data_array_t *array)
     free(array);
 }
 
-data_t *data_retain(data_t *data)
+R_API data_t *data_retain(data_t *data)
 {
     if (data)
         ++data->retain;
     return data;
 }
 
-void data_free(data_t *data)
+R_API void data_free(data_t *data)
 {
     if (data && data->retain) {
         --data->retain;
@@ -354,25 +346,26 @@ void data_free(data_t *data)
 
 /* data output */
 
-void data_output_print(data_output_t *output, data_t *data)
+R_API void data_output_print(data_output_t *output, data_t *data)
 {
     if (!output)
         return;
-    output->print_data(output, data, NULL);
-#ifndef DLL_RTL_433  //empty line to console 
-    if (output->output_flush)
-        output->output_flush(output);
-#endif
+    if (output->output_print) {
+        output->output_print(output, data);
+    }
+    else {
+        output->print_data(output, data, NULL);
+    }
 }
 
-void data_output_start(struct data_output *output, char const *const *fields, int num_fields)
+R_API void data_output_start(struct data_output *output, char const *const *fields, int num_fields)
 {
     if (!output || !output->output_start)
         return;
     output->output_start(output, fields, num_fields);
 }
 
-void data_output_free(data_output_t *output)
+R_API void data_output_free(data_output_t *output)
 {
     if (!output)
         return;
@@ -381,7 +374,7 @@ void data_output_free(data_output_t *output)
 
 /* output helpers */
 
-void print_value(data_output_t *output, data_type_t type, data_value_t value, char const *format)
+R_API void print_value(data_output_t *output, data_type_t type, data_value_t value, char const *format)
 {
     switch (type) {
     case DATA_FORMAT:
@@ -407,17 +400,16 @@ void print_value(data_output_t *output, data_type_t type, data_value_t value, ch
     }
 }
 
-void print_array_value(data_output_t *output, data_array_t *array, char const *format, int idx)
+R_API void print_array_value(data_output_t *output, data_array_t *array, char const *format, int idx)
 {
-    int element_size   = dmt[array->type].array_element_size;
+    int element_size = dmt[array->type].array_element_size;
     data_value_t value = {0};
 
     if (!dmt[array->type].array_is_boxed) {
         memcpy(&value, (char *)array->values + element_size * idx, element_size);
         print_value(output, array->type, value, format);
-    }
-    else {
-        print_value(output, array->type, *(data_value_t *)((char *)array->values + element_size * idx), format);
+    } else {
+        print_value(output, array->type, *(data_value_t*)((char *)array->values + element_size * idx), format);
     }
 }
 
@@ -428,7 +420,7 @@ typedef struct {
     abuf_t msg;
 } data_print_jsons_t;
 
-static void format_jsons_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV format_jsons_array(data_output_t *output, data_array_t *array, char const *format)
 {
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
 
@@ -441,7 +433,7 @@ static void format_jsons_array(data_output_t *output, data_array_t *array, char 
     abuf_cat(&jsons->msg, "]");
 }
 
-static void format_jsons_object(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV format_jsons_object(data_output_t *output, data_t *data, char const *format)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
@@ -460,7 +452,7 @@ static void format_jsons_object(data_output_t *output, data_t *data, char const 
     abuf_cat(&jsons->msg, "}");
 }
 
-static void format_jsons_string(data_output_t *output, const char *str, char const *format)
+static void R_API_CALLCONV format_jsons_string(data_output_t *output, const char *str, char const *format)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
@@ -520,7 +512,7 @@ static void format_jsons_string(data_output_t *output, const char *str, char con
     jsons->msg.left = size;
 }
 
-static void format_jsons_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV format_jsons_double(data_output_t *output, double data, char const *format)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
@@ -539,14 +531,14 @@ static void format_jsons_double(data_output_t *output, double data, char const *
     }
 }
 
-static void format_jsons_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV format_jsons_int(data_output_t *output, int data, char const *format)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
     abuf_printf(&jsons->msg, "%d", data);
 }
 
-size_t data_print_jsons(data_t *data, char *dst, size_t len)
+R_API size_t data_print_jsons(data_t *data, char *dst, size_t len)
 {
     data_print_jsons_t jsons = {
             .output = {

@@ -52,9 +52,7 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
     if (packet_bits.bits_per_row[row] < 64) {
         return DECODE_ABORT_LENGTH; // too short to be a whole packet
     }
-    if (decoder->verbose) {
-        bitbuffer_print(&packet_bits);
-    }
+    decoder_log_bitbuffer(decoder, 1, __func__, &packet_bits, "");
 
     b = packet_bits.bb[row];
 
@@ -72,20 +70,20 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
 
     switch (mode) {
     case 0:
-        ratio = 2.352f;
+        ratio  = 2.352f;
         offset = 47.0f;
         break;
     case 1:
     default:
-        ratio = 2.352f;
+        ratio  = 2.352f;
         offset = 0.0f;
         break;
     case 2:
-        ratio = 5.491f;
+        ratio  = 5.491f;
         offset = 18.2f;
         break;
     case 3:
-        ratio = 5.491f;
+        ratio  = 5.491f;
         offset = 0.0f;
         break;
     }
@@ -123,8 +121,8 @@ static int tpms_ave_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     int row;
     unsigned bitpos;
-    int ret         = 0;
-    int events      = 0;
+    int ret    = 0;
+    int events = 0;
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
         bitpos = 0;
@@ -164,6 +162,5 @@ r_device tpms_ave = {
         .reset_limit = 400,
         .tolerance   = 15,
         .decode_fn   = &tpms_ave_callback,
-        .disabled    = 0,
         .fields      = output_fields,
 };

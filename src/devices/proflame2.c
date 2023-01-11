@@ -47,7 +47,7 @@ static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, ui
 {
     uint8_t *b   = bitbuffer->bb[row];
     unsigned pos = start;
-    for (int f = 0; ; ++f) {
+    for (int f = 0;; ++f) {
         if (bitbuffer->bits_per_row[row] - pos < 26)
             return f;
         // expect sync and start bit of "1110"
@@ -154,7 +154,7 @@ static char *output_fields[] = {
 
 r_device proflame2 = {
         .name        = "SmartFire Proflame 2 remote control",
-        .modulation  = OOK_PULSE_PCM_RZ,
+        .modulation  = OOK_PULSE_PCM,
         .short_width = 417, // 2400 baud
         .long_width  = 417,
         .gap_limit   = 1000, // 12 low amplitudes are 5000 us

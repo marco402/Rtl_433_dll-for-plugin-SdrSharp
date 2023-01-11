@@ -506,7 +506,7 @@ _getopt_initialize (argc, argv, optstring)
    If LONG_ONLY is nonzero, '-' as well as '--' can introduce
    long-named options.  */
 
-int 
+int
 _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
      int argc;
      char *const *argv;

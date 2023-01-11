@@ -68,7 +68,7 @@ Once the above has been run twice the two are merged
 
 */
 
-static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_p, int verbose)
+static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_p)
 {
     uint8_t invert = 0;
     uint8_t order  = 0;
@@ -76,14 +76,9 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
     unsigned int start_pos = 2; //
     uint8_t buffy[10];
 
-
     uint8_t part_id = (bits->bb[0][0] >> 6);
 
-    if (verbose) {
-        fprintf(stderr, "%s: bits_per_row = %d\n", __func__, bits->bits_per_row[0]);
-
-        bitrow_debugf(bits->bb[0], bits->bits_per_row[0], "%s : ", __func__);
-    }
+    decoder_log_bitrow(decoder, 1, __func__, bits->bb[0], bits->bits_per_row[0], "");
 
     bitbuffer_extract_bytes(bits, 0, start_pos, buffy, 2);
     start_pos += 2;
@@ -149,8 +144,7 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
     case 0x09: // 0b1001 (False, False, False),
         break;
     default:
-        if (verbose)
-            fprintf(stderr, "Invert FAIL\n");
+        decoder_log(decoder, 1, __func__, "Invert FAIL");
         return 1;
     }
 
@@ -198,8 +192,7 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
         break;
 
     default:
-        if (verbose)
-            fprintf(stderr, "Order FAIL");
+        decoder_log(decoder, 1, __func__, "Order FAIL");
         return 2;
     }
 
@@ -210,7 +203,7 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
         roll_array[k++] = (x >> i) & 0x03;
     }
 
-    // bitrow_printf(buffy, 8, "%s ; buffy bits ", __func__);
+    // decoder_log_bitrow(decoder, 3, __func__, buffy, 8, "")
 
     // assemble binary bits into trinary
     x = p2;
@@ -218,16 +211,14 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
         roll_array[k++] = (x >> i) & 0x03;
     }
 
-    if (verbose) {
-        fprintf(stderr, "%s : roll_array : (%d) %d %d %d %d %d %d %d %d %d\n", __func__, part_id,
+    decoder_logf(decoder, 1, __func__, "roll_array : (%d) %d %d %d %d %d %d %d %d %d", part_id,
                 roll_array[0], roll_array[1], roll_array[2], roll_array[3],
                 roll_array[4], roll_array[5], roll_array[6], roll_array[7], roll_array[8]);
-    }
 
     // SANITY check trinary values, 00/01/10 are valid,  11 is not
     for (int i = 0; i < 9; i++) {
         if (roll_array[i] == 3) {
-            fprintf(stderr, "roll_array val  FAIL\n");
+            decoder_log(decoder, 0, __func__, "roll_array val FAIL");
             return 1; // DECODE_FAIL_SANITY;
         }
     }
@@ -246,6 +237,10 @@ static int _decode_v2_half(bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t 
 static const uint8_t _preamble[] = {0xaa, 0xaa, 0x95, 0x60};
 unsigned _preamble_len           = 28;
 
+/**
+Security+ 2.0 rolling code.
+@sa secplus_v2_decode_v2_half()
+*/
 static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     unsigned search_index = 0;
@@ -278,11 +273,7 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             continue; // DECODE_ABORT_LENGTH;
         }
 
-        if (decoder->verbose) {
-            (void)fprintf(stderr, "%s: manchester_decode %d len = %u\n", __func__,
-                    0, bits.bits_per_row[0]);
-            bitrow_debugf(bits.bb[0], bits.bits_per_row[0], "%s: manchester_decoded %d", __func__, 0);
-        }
+        decoder_log_bitrow(decoder, 1, __func__, bits.bb[0], bits.bits_per_row[0], "manchester decoded");
 
         // valid = 0X00XXXX
         // 1st 3rs and 4th bits should always be 0
@@ -292,21 +283,18 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
         // 2nd bit indicates with half of the data
         if (bits.bb[0][0] & 0xC0) {
-            if (decoder->verbose)
-                (void)fprintf(stderr, "%s: Set 2\n", __func__);
-            _decode_v2_half(&bits, rolling_2, &fixed_2, decoder->verbose);
+            decoder_log(decoder, 1, __func__, "Set 2");
+            secplus_v2_decode_v2_half(decoder, &bits, rolling_2, &fixed_2);
         }
         else {
-            if (decoder->verbose)
-                (void)fprintf(stderr, "%s: Set 1\n", __func__);
-            _decode_v2_half(&bits, rolling_1, &fixed_1, decoder->verbose);
+            decoder_log(decoder, 1, __func__, "Set 1");
+            secplus_v2_decode_v2_half(decoder, &bits, rolling_1, &fixed_1);
         }
 
         // break if we've received both halves
         if (fixed_1.bits_per_row[0] > 1 && fixed_2.bits_per_row[0] > 1) {
             break;
         }
-
     }
 
     // Do we have what we need ??
@@ -344,14 +332,13 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Max value = 2^28 (268435456)
-    if ( rolling_temp >= 0x10000000 ) {
+    if (rolling_temp >= 0x10000000) {
         return DECODE_FAIL_SANITY;
     }
 
     // value is 28 bits thus need to shift over 4 bit
     rolling_total = reverse32(rolling_temp);
     rolling_total = rolling_total >> 4;
-
 
     // Assemble "fixed" data part
     uint64_t fixed_total = 0;
@@ -409,13 +396,12 @@ static char *output_fields[] = {
 
 r_device secplus_v2 = {
         .name        = "Security+ 2.0 (Keyfob)",
-        .modulation  = OOK_PULSE_PCM_RZ,
+        .modulation  = OOK_PULSE_PCM,
         .short_width = 250,
         .long_width  = 250,
         .tolerance   = 50,
         .gap_limit   = 1500,
         .reset_limit = 9000,
-        .decode_fn = &secplus_v2_callback,
-        .disabled  = 0,
-        .fields    = output_fields,
+        .decode_fn   = &secplus_v2_callback,
+        .fields      = output_fields,
 };

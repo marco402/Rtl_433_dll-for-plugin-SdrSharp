@@ -81,8 +81,10 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
         return DECODE_FAIL_MIC; // wrong checksum
 
   /* IIIICCII B???TTTT TTTTTSSS HHHHHHH1 XXXX */
-    int negative_sign = (b[2] & 7);   //010=>2 température positive donne -
+    int negative_sign = (b[2] & 7);   //if (rb[1] & 0x0F)==0) & (rb[2]==0)
     int temp          = ((rb[2]&0x1F) << 4) | (rb[1]>> 4);
+    //if (((rb[1] & 0x0F) == 0) & (rb[2] == 0))
+        //temp = 9999;
     int humidity      = (rb[3] & 0x7F) - 28;
     int sensor_id     = (rb[0] & 0x0F) | ((rb[0] & 0xC0)>>2);
     int battery_low   = b[1] >> 7;
@@ -90,6 +92,7 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
 
     float tempC = (negative_sign ? -( (1<<9) - temp ) : temp ) * 0.1F;
 
+    /* clang-format off */
     data = data_make(
             "model",         "",            DATA_STRING, "TFA-TwinPlus",
             "id",            "Id",          DATA_INT,    sensor_id,
@@ -99,30 +102,30 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
             "humidity",      "Humidity",    DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "mic",           "Integrity",   DATA_STRING, "CHECKSUM",
             NULL);
-    decoder_output_data(decoder, data);
+    /* clang-format on */
 
+    decoder_output_data(decoder, data);
     return 1;
 }
 
 static char *output_fields[] = {
-    "model",
-    "id",
-    "channel",
-    "battery_ok",
-    "temperature_C",
-    "humidity",
-    "mic",
-    NULL
+        "model",
+        "id",
+        "channel",
+        "battery_ok",
+        "temperature_C",
+        "humidity",
+        "mic",
+        NULL,
 };
 
 r_device tfa_twin_plus_303049 = {
-    .name          = "TFA-Twin-Plus-30.3049, Conrad KW9010, Ea2 BL999",
-    .modulation    = OOK_PULSE_PPM,
-    .short_width   = 2000,
-    .long_width    = 4000,
-    .gap_limit     = 6000,
-    .reset_limit   = 10000,
-    .decode_fn     = &tfa_twin_plus_303049_callback,
-    .disabled      = 0,
-    .fields         = output_fields
+        .name        = "TFA-Twin-Plus-30.3049, Conrad KW9010, Ea2 BL999",
+        .modulation  = OOK_PULSE_PPM,
+        .short_width = 2000,
+        .long_width  = 4000,
+        .gap_limit   = 6000,
+        .reset_limit = 10000,
+        .decode_fn   = &tfa_twin_plus_303049_callback,
+        .fields      = output_fields,
 };

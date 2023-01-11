@@ -62,9 +62,6 @@
     <ClInclude Include="..\include\list.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\mongoose.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\optparse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -74,16 +71,10 @@
     <ClInclude Include="..\include\output_mqtt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\pulse_demod.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\pulse_detect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\pulse_detect_fsk.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\r_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\r_device.h">
@@ -128,9 +119,6 @@
     <ClInclude Include="..\include\dll_rtl_433.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\data_tag.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\compat_alarm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -138,6 +126,39 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\output_udp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\compat_pthread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\logger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\output_log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\output_rtltcp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\output_trigger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\pulse_data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\pulse_slicer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\raw_output.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\r_api.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\data_tag.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\mongoose.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -181,31 +202,16 @@
     <ClCompile Include="..\src\list.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\mongoose.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\optparse.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\output_influx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\output_mqtt.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\pulse_analyzer.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\pulse_demod.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\pulse_detect.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\pulse_detect_fsk.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\r_api.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\r_util.c">
@@ -688,9 +694,6 @@
     <ClCompile Include="..\src\devices\burnhardbbq.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\data_tag.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\devices\atech_ws308.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
@@ -790,9 +793,105 @@
     <ClCompile Include="..\src\compat_alarm.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\devices\altronics_x7064.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\ant_antplus.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\badger_water.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\emos_e6016.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\emos_e6016_rain.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\fineoffset_wh45.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\fineoffset_wn34.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\fineoffset_ws80.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\maverick_xr30.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\regency_fan.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\rubicson_pool_48942.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\simplisafe_gen3.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\tpms_renault_0435r.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\yale_hsa.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\logger.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\output_log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\output_rtltcp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\output_trigger.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\pulse_data.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\pulse_slicer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\raw_output.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\r_api.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\data_tag.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mongoose.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\output_influx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\output_mqtt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="rtl_433.def">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_bool.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_ipv6.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_lenchk.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_msvcdbg.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_pedantic.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_warn.patch">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
