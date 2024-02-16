@@ -141,10 +141,10 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int xor = xor_bytes(b + 1, (bitbuffer->bits_per_row[0] - 15) / 8);
-    if (xor != 0xff) { // before invert 0 is ff
+    int xor_byte = xor_bytes(b + 1, (bitbuffer->bits_per_row[0] - 15) / 8);
+    if (xor_byte != 0xff) { // before invert 0 is ff
         decoder_logf_bitrow(decoder, 1, __func__, b, bitbuffer->bits_per_row[0], "XOR fail (%02x)",
-                    xor);
+                    xor_byte);
         return DECODE_FAIL_MIC;
     }
 
@@ -208,7 +208,7 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 }
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         "id",
         "channel",
@@ -219,7 +219,7 @@ static char *output_fields[] = {
         NULL,
 };
 
-r_device norgo = {
+r_device const norgo = {
         .name        = "Norgo NGE101",
         .modulation  = OOK_PULSE_DMC,
         .short_width = 486,

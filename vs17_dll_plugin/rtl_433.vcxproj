@@ -268,7 +268,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
@@ -297,7 +297,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
@@ -406,7 +406,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <GenerateMapFile>true</GenerateMapFile>
@@ -439,7 +439,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <GenerateMapFile>true</GenerateMapFile>
@@ -472,7 +472,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <GenerateMapFile>true</GenerateMapFile>
@@ -487,7 +487,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <Link>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
@@ -567,50 +567,75 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\decoder_util.c" />
     <ClCompile Include="..\src\devices\abmt.c" />
     <ClCompile Include="..\src\devices\acurite_01185m.c" />
-    <ClCompile Include="..\src\devices\altronics_x7064.c" />
     <ClCompile Include="..\src\devices\ant_antplus.c" />
     <ClCompile Include="..\src\devices\atech_ws308.c" />
     <ClCompile Include="..\src\devices\auriol_4ld5661.c" />
     <ClCompile Include="..\src\devices\auriol_aft77b2.c" />
     <ClCompile Include="..\src\devices\auriol_ahfl.c" />
     <ClCompile Include="..\src\devices\badger_water.c" />
+    <ClCompile Include="..\src\devices\baldr_rain.c" />
+    <ClCompile Include="..\src\devices\bresser_leakage.c" />
+    <ClCompile Include="..\src\devices\bresser_lightning.c" />
     <ClCompile Include="..\src\devices\burnhardbbq.c" />
     <ClCompile Include="..\src\devices\cavius.c" />
+    <ClCompile Include="..\src\devices\ced7000.c" />
+    <ClCompile Include="..\src\devices\celsia_czc1.c" />
     <ClCompile Include="..\src\devices\cmr113.c" />
+    <ClCompile Include="..\src\devices\emax.c" />
     <ClCompile Include="..\src\devices\emos_e6016.c" />
     <ClCompile Include="..\src\devices\emos_e6016_rain.c" />
     <ClCompile Include="..\src\devices\enocean_erp1.c" />
     <ClCompile Include="..\src\devices\fineoffset_wh31l.c" />
     <ClCompile Include="..\src\devices\fineoffset_wh45.c" />
+    <ClCompile Include="..\src\devices\fineoffset_wh55.c" />
     <ClCompile Include="..\src\devices\fineoffset_wn34.c" />
     <ClCompile Include="..\src\devices\fineoffset_ws80.c" />
+    <ClCompile Include="..\src\devices\fineoffset_ws90.c" />
+    <ClCompile Include="..\src\devices\flowis.c" />
     <ClCompile Include="..\src\devices\funkbus.c" />
+    <ClCompile Include="..\src\devices\gasmate_ba1008.c" />
+    <ClCompile Include="..\src\devices\geo_minim.c" />
     <ClCompile Include="..\src\devices\govee.c" />
     <ClCompile Include="..\src\devices\honeywell_cm921.c" />
     <ClCompile Include="..\src\devices\inkbird_ith20r.c" />
     <ClCompile Include="..\src\devices\jasco.c" />
+    <ClCompile Include="..\src\devices\lacrosse_tx31u.c" />
     <ClCompile Include="..\src\devices\lacrosse_tx34.c" />
     <ClCompile Include="..\src\devices\markisol.c" />
     <ClCompile Include="..\src\devices\marlec_solar.c" />
     <ClCompile Include="..\src\devices\maverick_xr30.c" />
     <ClCompile Include="..\src\devices\megacode.c" />
+    <ClCompile Include="..\src\devices\neptune_r900.c" />
+    <ClCompile Include="..\src\devices\oil_smart.c" />
+    <ClCompile Include="..\src\devices\oil_watchman_advanced.c" />
     <ClCompile Include="..\src\devices\proflame2.c" />
     <ClCompile Include="..\src\devices\rainpoint.c" />
     <ClCompile Include="..\src\devices\regency_fan.c" />
+    <ClCompile Include="..\src\devices\revolt_nc5462.c" />
     <ClCompile Include="..\src\devices\rojaflex.c" />
     <ClCompile Include="..\src\devices\rubicson_pool_48942.c" />
+    <ClCompile Include="..\src\devices\schou_72543_rain.c" />
     <ClCompile Include="..\src\devices\secplus_v1.c" />
     <ClCompile Include="..\src\devices\simplisafe_gen3.c" />
     <ClCompile Include="..\src\devices\somfy_iohc.c" />
     <ClCompile Include="..\src\devices\somfy_rts.c" />
+    <ClCompile Include="..\src\devices\srsmith_pool_srs_2c_tx.c" />
     <ClCompile Include="..\src\devices\telldus_ft0385r.c" />
+    <ClCompile Include="..\src\devices\tfa_14_1504_v2.c" />
     <ClCompile Include="..\src\devices\tfa_marbella.c" />
+    <ClCompile Include="..\src\devices\thermopro_tx2c.c" />
     <ClCompile Include="..\src\devices\tpms_ave.c" />
+    <ClCompile Include="..\src\devices\tpms_eezrv.c" />
     <ClCompile Include="..\src\devices\tpms_hyundai_vdo.c" />
     <ClCompile Include="..\src\devices\tpms_jansite_solar.c" />
+    <ClCompile Include="..\src\devices\tpms_kia.c" />
+    <ClCompile Include="..\src\devices\tpms_nissan.c" />
     <ClCompile Include="..\src\devices\tpms_porsche.c" />
     <ClCompile Include="..\src\devices\tpms_renault_0435r.c" />
     <ClCompile Include="..\src\devices\tpms_truck.c" />
+    <ClCompile Include="..\src\devices\tpms_tyreguard400.c" />
+    <ClCompile Include="..\src\devices\vauno_en8822c.c" />
+    <ClCompile Include="..\src\devices\wec2103.c" />
     <ClCompile Include="..\src\devices\yale_hsa.c" />
     <ClCompile Include="..\src\fileformat.c" />
     <ClCompile Include="..\src\http_server.c" />

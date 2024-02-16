@@ -91,7 +91,7 @@ static data_meta_type_t dmt[DATA_COUNT] = {
       .value_release            = (value_release_fn) data_array_free },
 };
 
-static bool import_values(void *dst, void *src, int num_values, data_type_t type)
+static bool import_values(void *dst, void const *src, int num_values, data_type_t type)
 {
     int element_size = dmt[type].array_element_size;
     array_elementwise_import_fn import = dmt[type].array_elementwise_import;
@@ -117,7 +117,7 @@ static bool import_values(void *dst, void *src, int num_values, data_type_t type
 
 /* data */
 
-R_API data_array_t *data_array(int num_values, data_type_t type, void *values)
+R_API data_array_t *data_array(int num_values, data_type_t type, void const *values)
 {
     if (num_values < 0) {
       return NULL;
@@ -150,6 +150,10 @@ alloc_error:
     free(array);
     return NULL;
 }
+
+// the static analyzer can't prove the allocs to be correct
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
 
 static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key, va_list ap)
 {
@@ -257,7 +261,6 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             type = va_arg(ap, data_type_t);
         }
     } while (key);
-    va_end(ap);
     if (format) {
         fprintf(stderr, "vdata_make() format type without data\n");
         goto alloc_error;
@@ -326,6 +329,10 @@ R_API data_t *data_retain(data_t *data)
     return data;
 }
 
+#if defined(__clang__)
+    // ignore "call to function _free through pointer to incorrect function type"
+    __attribute__((no_sanitize("undefined")))
+#endif
 R_API void data_free(data_t *data)
 {
     if (data && data->retain) {
@@ -343,6 +350,8 @@ R_API void data_free(data_t *data)
         free(prev_data);
     }
 }
+
+#pragma GCC diagnostic pop
 
 /* data output */
 
@@ -409,7 +418,9 @@ R_API void print_array_value(data_output_t *output, data_array_t *array, char co
         memcpy(&value, (char *)array->values + element_size * idx, element_size);
         print_value(output, array->type, value, format);
     } else {
-        print_value(output, array->type, *(data_value_t*)((char *)array->values + element_size * idx), format);
+        // Note: on 32-bit data_value_t has different size/alignment than a pointer!
+        value.v_ptr = *(void **)((char *)array->values + element_size * idx);
+        print_value(output, array->type, value, format);
     }
 }
 

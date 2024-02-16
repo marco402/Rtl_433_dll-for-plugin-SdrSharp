@@ -28,7 +28,7 @@ Each byte (X) is encoded as 28 bits:
 
 All values are written in LSB format (Least Significant Bit first)
 
-The first byte is always transmitted with a index of 32 ( 11111 )
+The first byte is always transmitted with a index of 32 (11111)
 all following bytes are transmitted with a decrementing index count with the final byte with index 0
 
     Dat   index dat         LSB index dat     manchester                     '11' + manchester
@@ -54,7 +54,7 @@ all following bytes are transmitted with a decrementing index count with the fin
 */
 
 #include "decoder.h"
-#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
+
 // 1100111010101010
 static const uint8_t insteon_preamble[] = {0xCE, 0xAA};
 
@@ -148,9 +148,9 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
             "bcast"    = (flag & 0b10000000)
             "mtype"    = (flag & 0b11100000)
 
-        ( we can discard the 5 bit digit )
+        (we can discard the 5 bit digit)
 
-        after this we can index forward 28 bits ( 2 + 10 + 16 )
+        after this we can index forward 28 bits (2 + 10 + 16)
 
     */
 
@@ -161,7 +161,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
     pkt_d                  = reverse8(d_bits.bb[0][0]);
     results[results_len++] = pkt_d;
 
-    if (pkt_i != 31) { // should always be 31 ( 0b11111) in first block of packet
+    if (pkt_i != 31) { // should always be 31 (0b11111) in first block of packet
         return DECODE_ABORT_EARLY;
     }
 
@@ -181,7 +181,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         max_pkt_len = INSTEON_PACKET_MAX_EXT;
         min_pkt_len = INSTEON_PACKET_MIN_EXT;
     }
-#ifndef DLL_RTL_433 //window zombi if -vvv
+
     if (decoder->verbose) {
         decoder_logf(decoder, 1, __func__, "start_pos %u row_length %hu =  %u",
                 start_pos, bits->bits_per_row[row], (bits->bits_per_row[row] - start_pos));
@@ -193,7 +193,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%2d %02X %03u %u %2d",
                 pkt_i, pkt_d, next_pos, (next_pos - start_pos), 0);
     }
-#endif
+
     /*   Is this overkill ??
     unsigned int l;
     if (extended) {
@@ -235,7 +235,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         pkt_d = reverse8(d_bits.bb[0][0]);
 
         results[results_len++] = pkt_d;
-#ifndef DLL_RTL_433 //window zombi if -vvv
+
         if (decoder->verbose) {
             uint8_t buffy[4];
             bitbuffer_extract_bytes(bits, row, start_pos - 2, buffy, 30);
@@ -244,7 +244,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
                     pkt_i, pkt_d, next_pos, (next_pos - start_pos), j);
             // parse_insteon_pkt: curr packet (3f) { 1} d6 : 1
         }
-#endif
+
         // packet index should decrement
         if (pkt_i < prev_i) {
             prev_i = pkt_i;
@@ -321,7 +321,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
     //         (results[0] >> 2) & 0x03);
 
     int pkt_type = (results[0] >> 5) & 0x07;
-    char *messsage_text[8] = {
+    char const *messsage_text[8] = {
             "Direct Message",                         // 000
             "ACK of Direct Message",                  // 001
             "Group Cleanup Direct Message",           // 010
@@ -331,7 +331,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
             "Group Broadcast Message",                // 110
             "NAK of Group Cleanup Direct Message"};   // 111
 
-    char *pkt_type_str = messsage_text[pkt_type];
+    char const *pkt_type_str = messsage_text[pkt_type];
     // decoder_log_bitrow(decoder, 0, __func__, results, 8, "Flag");
     //decoder_logf(decoder, 0, __func__, "pkt_type: %02X", pkt_type);
 
@@ -458,7 +458,7 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
  *
  */
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         // "id",
         // "data",
@@ -484,7 +484,7 @@ static char *output_fields[] = {
 
 //     -X 'n=Insteon_F16,m=FSK_PCM,s=110,l=110,t=15,g=20000,r=20000,invert,match={16}0x6666'
 
-r_device insteon = {
+r_device const insteon = {
         .name        = "Insteon",
         .modulation  = FSK_PULSE_PCM,
         .short_width = 110, // short gap is 132 us

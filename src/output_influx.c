@@ -91,8 +91,7 @@ static void influx_client_event(struct mg_connection *nc, int ev, void *ev_data)
 
 static influx_client_t *influx_client_init(influx_client_t *ctx, char const *url, char const *token)
 {
-    strncpy(ctx->url, url, sizeof(ctx->url));
-    ctx->url[sizeof(ctx->url) - 1] = '\0';
+    snprintf(ctx->url, sizeof(ctx->url), "%s", url);
     snprintf(ctx->extra_headers, sizeof (ctx->extra_headers), "Authorization: Token %s\r\n", token);
 
     return ctx;
@@ -112,6 +111,22 @@ static void influx_client_send(influx_client_t *ctx)
     char const *error_string = NULL;
     struct mg_connect_opts opts = {.user_data = ctx, .error_string = &error_string};
     if (ctx->tls_opts.tls_ca_cert) {
+        print_logf(LOG_INFO, "InfluxDB", "influxs (TLS) parameters are: "
+                                       "tls_cert=%s "
+                                       "tls_key=%s "
+                                       "tls_ca_cert=%s "
+                                       "tls_cipher_suites=%s "
+                                       "tls_server_name=%s "
+                                       "tls_psk_identity=%s "
+                                       "tls_psk_key=%s ",
+                ctx->tls_opts.tls_cert,
+                ctx->tls_opts.tls_key,
+                ctx->tls_opts.tls_ca_cert,
+                ctx->tls_opts.tls_cipher_suites,
+                ctx->tls_opts.tls_server_name,
+                ctx->tls_opts.tls_psk_identity,
+                ctx->tls_opts.tls_psk_key);
+
 #if MG_ENABLE_SSL
         opts.ssl_cert          = ctx->tls_opts.tls_cert;
         opts.ssl_key           = ctx->tls_opts.tls_key;
@@ -121,7 +136,7 @@ static void influx_client_send(influx_client_t *ctx)
         opts.ssl_psk_identity  = ctx->tls_opts.tls_psk_identity;
         opts.ssl_psk_key       = ctx->tls_opts.tls_psk_key;
 #else
-        print_logf(LOG_FATAL, __func__, "influxs (TLS) not available");
+        print_log(LOG_FATAL, __func__, "influxs (TLS) not available");
         exit(1);
 #endif
     }
@@ -443,6 +458,9 @@ struct data_output *data_output_influx_create(struct mg_mgr *mgr, char *opts)
     char *token = NULL;
 
     // param/opts starts with URL
+    if (!opts) {
+        opts = "";
+    }
     char *url = opts;
     opts = strchr(opts, ',');
     if (opts) {
@@ -500,5 +518,5 @@ struct data_output *data_output_influx_create(struct mg_mgr *mgr, char *opts)
     influx->mgr = mgr;
     influx_client_init(influx, url, token);
 
-    return &influx->output;
+    return (struct data_output *)influx;
 }

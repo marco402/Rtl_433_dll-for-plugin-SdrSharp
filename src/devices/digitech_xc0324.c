@@ -8,10 +8,13 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
+
+#include "decoder.h"
+#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
 /**
 Decoder for Digitech XC-0324 temperature sensor.
 
-Also AmbientWeather FT005RH.
+Also AmbientWeather FT005TH.
 
 The encoding is pulse position modulation
 (i.e. gap width contains the modulation information)
@@ -63,8 +66,6 @@ running this decoder with debug level :
         regression test purposes.
 */
 
-#include "decoder.h"
-#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
 //#define XC0324_DEVICE_BITLEN      148
 #define XC0324_MESSAGE_BITLEN     48
 #define XC0324_MESSAGE_BYTELEN    (XC0324_MESSAGE_BITLEN + 7)/ 8
@@ -74,7 +75,7 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
         unsigned row, uint16_t bitpos, const int latest_event, data_t **data)
 {
     uint8_t b[XC0324_MESSAGE_BYTELEN];
-    char id[4] = {0};
+    char id[3] = {0};
     double temperature;
     int humidity;
     uint8_t chksum; // == 0x00 for a good message
@@ -94,7 +95,7 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
         if (decoder->verbose > 1) {
             // Output the "bad" message (only for message level deciphering!)
             decoder_logf_bitrow(decoder, 2, __func__, b, XC0324_MESSAGE_BITLEN,
-                    "chksum = 0x%02X not 0x00 <- XC0324:vv row %d bit %d",
+                    "chksum = 0x%02X not 0x00, row %d bit %d",
                     chksum, row, bitpos);
         }
 #endif
@@ -102,7 +103,7 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
     }
 
     // Extract the id as hex string
-    snprintf(id, 3, "%02X", b[1]);
+    snprintf(id, sizeof(id), "%02X", b[1]);
 
     // Decode temperature (b[2]), plus 1st 4 bits b[3], LSB first order!
     // Tenths of degrees C, offset from the minimum possible (-40.0 degrees)
@@ -132,19 +133,17 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
 #ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         decoder_logf_bitrow(decoder, 2, __func__, b, XC0324_MESSAGE_BITLEN,
-                "Temp was %4.1f <- XC0324:vv row %03d bit %03d",
+                "Temp was %4.1f, row %03d bit %03d",
                 temperature, row, bitpos);
     }
 #endif
     // Output "finished deciphering" reference values for future regression tests.
-#ifndef DLL_RTL_433 //window zombi if -vvv
     if ((decoder->verbose == 3) & (latest_event == 0)) {
         //info from this first successful message is enough
         decoder_logf(decoder, 3, __func__,
-                "XC0324:vvvv Reference -> Temperature %4.1f C; sensor id %s",
+                "Temperature %4.1f C; sensor id %s",
                 temperature, id);
     }
-#endif
     return 1; // Message successfully decoded
 }
 
@@ -166,11 +165,11 @@ static int digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 #ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         // Verbosely output the bitbuffer
-        decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "XC0324:vvv hex(/binary) version of bitbuffer");
+        decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "hex(/binary) version of bitbuffer");
         // And then output each row to csv, json or whatever was specified.
         for (r = 0; r < bitbuffer->num_rows; ++r) {
             decoder_logf_bitrow(decoder, 2, __func__, bitbuffer->bb[r], bitbuffer->bits_per_row[r],
-                    "XC0324:vvv row %03d", r);
+                    "row %03d", r);
         }
     }
 #endif
@@ -180,14 +179,12 @@ static int digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     for (r = 0; r < bitbuffer->num_rows; ++r) {
         if (bitbuffer->bits_per_row[r] < XC0324_MESSAGE_BITLEN) {
             // bail out of this "too short" row early
-#ifndef DLL_RTL_433 //window zombi if -vvv
             if (decoder->verbose) {
                 // Output the bad row, only for message level debug / deciphering.
                 decoder_logf_bitrow(decoder, 1, __func__, bitbuffer->bb[r], bitbuffer->bits_per_row[r],
-                        "Bad message need %d bits got %d <- XC0324:vv row %d bit %d",
+                        "Bad message need %d bits got %d, row %d bit %d",
                         XC0324_MESSAGE_BITLEN, bitbuffer->bits_per_row[r], r, 0);
             }
-#endif
             continue; // DECODE_ABORT_LENGTH
         }
         // We have enough bits so search for a message preamble followed by
@@ -211,15 +208,13 @@ static int digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         }
     }
     // (Only) for future regression tests.
-#ifndef DLL_RTL_433 //window zombi if -vvv
     if ((decoder->verbose == 3) & (events == 0)) {
-        decoder_log(decoder, 3, __func__, "XC0324:vvvv Reference -> Bad transmission");
+        decoder_log(decoder, 3, __func__, "Bad transmission");
     }
-#endif
     return events > 0 ? events : ret;
 }
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",
@@ -229,8 +224,8 @@ static char *output_fields[] = {
         NULL,
 };
 
-r_device digitech_xc0324 = {
-        .name        = "Digitech XC-0324 / AmbientWeather FT005RH temp/hum sensor",
+r_device const digitech_xc0324 = {
+        .name        = "Digitech XC-0324 / AmbientWeather FT005TH temp/hum sensor",
         .modulation  = OOK_PULSE_PPM,
         .short_width = 520,  // = 130 * 4
         .long_width  = 1000, // = 250 * 4

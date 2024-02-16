@@ -165,7 +165,7 @@ static void *_term_init(FILE *fp)
     console->redirected = (console->hnd == INVALID_HANDLE_VALUE) ||
                          (!GetConsoleScreenBufferInfo(console->hnd, &console->info)) ||
                          (GetFileType(console->hnd) != FILE_TYPE_CHAR);
-#ifdef TESTW10    //RTL_433.dll
+
     // Test for Windows 10 to enable ANSI output, needs netapi32.dll
     LPWKSTA_INFO_100 pBuf = NULL;
     NET_API_STATUS nStatus;
@@ -186,8 +186,13 @@ static void *_term_init(FILE *fp)
         GetConsoleMode(console->hnd, &dwMode);
         dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         SetConsoleMode(console->hnd, dwMode);
+        // Check if it worked, it will fail for Legacy console-mode
+        GetConsoleMode (console->hnd, &dwMode);
+        if (!(dwMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+            console->ansi = 0;
+        }
     }
-#endif
+
     _term_set_color(console, FALSE, TERM_COLOR_RESET); /* Set 'console->fg' and 'console->bg' */
 
     return console;
@@ -398,14 +403,17 @@ int term_printf(void *ctx, _Printf_format_string_ char const *format, ...)
     return len;
 }
 
-int term_help_puts(void *ctx, char const *buf)
+int term_help_fputs(void *ctx, char const *buf, FILE *fp)
 {
     char const *p = buf;
     int i, len, buf_len, color, state = 0, set_color = -1, next_color = -1;
-    FILE *fp;
+    if (!fp) {
+        fp = stderr;
+    }
 
-    if (!ctx)
-        return fprintf(stderr, "%s", buf);
+    if (!ctx) {
+        return fprintf(fp, "%s", buf);
+    }
 
 #ifdef _WIN32
     console_t *console = (console_t *)ctx;
@@ -413,9 +421,6 @@ int term_help_puts(void *ctx, char const *buf)
 #else
     fp = (FILE *)ctx;
 #endif
-
-    if (!fp)
-        fp = stderr;
 
     buf_len = (int)strlen(buf);
     for (i = len = 0; *p && i < buf_len; i++, p++) {
@@ -431,7 +436,7 @@ int term_help_puts(void *ctx, char const *buf)
             state = 1;
             next_color = 5;
         }
-        else if ((state == 1 || state == 2) && *p == ']' && ((p[1] == ' ' && p[2] != '|') || p[1] == '\n' || p[1] == '\0')) {
+        else if ((state == 1 || state == 2) && *p == ']' && (p[1] == ',' || (p[1] == ' ' && p[2] != '|') || p[1] == '\n' || p[1] == '\0')) {
             state = 0;
             set_color = 0;
         }
@@ -485,7 +490,7 @@ int term_help_puts(void *ctx, char const *buf)
     return len;
 }
 
-int term_help_printf(_Printf_format_string_ char const *format, ...)
+int term_help_fprintf(FILE *fp, _Printf_format_string_ char const *format, ...)
 {
     int len;
     va_list args;
@@ -493,7 +498,7 @@ int term_help_printf(_Printf_format_string_ char const *format, ...)
 
     va_start(args, format);
 
-    void *term = term_init(stderr);
+    void *term = term_init(fp);
     if (!term_has_color(term)) {
         term_free(term);
         term = NULL;
@@ -502,7 +507,7 @@ int term_help_printf(_Printf_format_string_ char const *format, ...)
     // Terminate first in case a buggy '_MSC_VER < 1900' is used.
     buf[sizeof(buf) - 1] = '\0';
     vsnprintf(buf, sizeof(buf) - 1, format, args);
-    len = term_help_puts(term, buf);
+    len = term_help_fputs(term, buf, fp);
 
     term_free(term);
 

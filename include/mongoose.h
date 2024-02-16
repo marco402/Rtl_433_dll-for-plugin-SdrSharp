@@ -2310,17 +2310,11 @@ struct mg_str mg_mk_str_n(const char *s, size_t len);
 
 /* Macro for initializing mg_str. */
 #define MG_MK_STR(str_literal) \
-    { \
-        str_literal, sizeof(str_literal) - 1 \
-    }
+  { str_literal, sizeof(str_literal) - 1 }
 #define MG_MK_STR_N(str_literal, len) \
-    { \
-        str_literal, len \
-    }
+  { str_literal, len }
 #define MG_NULL_STR \
-    { \
-        NULL, 0 \
-    }
+  { NULL, 0 }
 
 /*
  * Cross-platform version of `strcmp()` where where first string is
@@ -4663,7 +4657,9 @@ size_t mg_fwrite(const void *ptr, size_t size, size_t count, FILE *f);
 #endif /* MG_ENABLE_FILESYSTEM */
 
 #if MG_ENABLE_THREADS
+#if CS_PLATFORM == CS_P_UNIX
 #include <pthread.h>
+#endif
 /*
  * Starts a new detached thread.
  * Arguments and semantics are the same as pthead's `pthread_create()`.

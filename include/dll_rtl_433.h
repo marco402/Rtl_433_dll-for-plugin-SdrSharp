@@ -29,13 +29,38 @@
 
 /******************************************update rtl_433*************************************************
 
+01/2024 version rtl_433 23.11 28/11/2023
+
+
+2 solutions
+	-1-add all modifications-->until january 2023
+	-2-add only new devices--->january 2024
+
 1-replaces folders src and include, keep file dll_rtl_433.h
+	process all DLL_RTL_433
 
-process all DLL_RTL_433
+2-1 
+-copy new devices in folder devices
+-copy new rtl_433_devices.h to include
 
+-add 
+	#ifndef DLL_RTL_433 //window zombi if -vvv
+		in new device if you have :  if (decoder->verbose > 1) {
+		see example in digitech_xc0324.c
+	and #include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
+
+2-2 to try:
+
+-replace all include
+-compiles
+-correcting errors
+
+-Warning in all case verified (modification) in all struct in RTL_433_Plugin->NativeMethods
+
+_________________________________________________________________________________________
 nombre de devices 12/2021: 177/208  202/208
 nombre de devices 01/2023: 192/223  217/223
-
+nombre de devices 01/2024: 214/248  242/248  +25
 **************************************************************************************************************/
 
 //add code dll_rtl_433 

@@ -10,20 +10,20 @@
 #include <time.h>
 #include <signal.h>
 #include "dll_rtl_433.h"
-#define DEFAULT_SAMPLE_RATE     250000
-#define DEFAULT_FREQUENCY       433920000
+#define DEFAULT_SAMPLE_RATE 250000
+#define DEFAULT_FREQUENCY 433920000
 #ifdef DLL_RTL_433
 #define DEFAULT_DISABLED 0
 #endif
-#define DEFAULT_HOP_TIME        (60*10)
-#define DEFAULT_ASYNC_BUF_NUMBER    0 // Force use of default value (librtlsdr default: 15)
-#define DEFAULT_BUF_LENGTH      (16 * 32 * 512) // librtlsdr default
+#define DEFAULT_HOP_TIME (60 * 10)
+#define DEFAULT_ASYNC_BUF_NUMBER 0         // Force use of default value (librtlsdr default: 15)
+#define DEFAULT_BUF_LENGTH (16 * 32 * 512) // librtlsdr default
 #define FSK_PULSE_DETECTOR_LIMIT 800000000
 
-#define MINIMAL_BUF_LENGTH      512
-#define MAXIMAL_BUF_LENGTH      (256 * 16384)
-#define SIGNAL_GRABBER_BUFFER   (12 * DEFAULT_BUF_LENGTH)
-#define MAX_FREQS               32
+#define MINIMAL_BUF_LENGTH 512
+#define MAXIMAL_BUF_LENGTH (256 * 16384)
+#define SIGNAL_GRABBER_BUFFER (12 * DEFAULT_BUF_LENGTH)
+#define MAX_FREQS 32
 
 #define INPUT_LINE_MAX 8192 /**< enough for a complete textual bitbuffer (25*256) */
 
@@ -34,7 +34,7 @@ struct mg_mgr;
 typedef enum {
     CONVERT_NATIVE,
     CONVERT_SI,
-    CONVERT_CUSTOMARY
+    CONVERT_CUSTOMARY,
 } conversion_mode_t;
 
 typedef enum {
@@ -46,7 +46,25 @@ typedef enum {
     REPORT_TIME_OFF,
 } time_mode_t;
 
+typedef enum {
+    DEVICE_MODE_QUIT,
+    DEVICE_MODE_RESTART,
+    DEVICE_MODE_PAUSE,
+    DEVICE_MODE_MANUAL,
+} device_mode_t;
+
+typedef enum {
+    DEVICE_STATE_STOPPED,
+    DEVICE_STATE_STARTING,
+    DEVICE_STATE_GRACE,
+    DEVICE_STATE_STARTED,
+} device_state_t;
+
 typedef struct r_cfg {
+#ifndef DLL_RTL_433
+    device_mode_t dev_mode;   ///< Input device run mode
+    device_state_t dev_state; ///< Input device run state
+#endif
     char *dev_query;
     char const *dev_info;
     char *gain_str;
@@ -76,7 +94,7 @@ typedef struct r_cfg {
     uint32_t bytes_to_read;
     struct sdr_dev *dev;
     int grab_mode; ///< Signal grabber mode: 0=off, 1=all, 2=unknown, 3=known
-    int raw_mode; ///< Raw pulses printing mode: 0=off, 1=all, 2=unknown, 3=known
+    int raw_mode;  ///< Raw pulses printing mode: 0=off, 1=all, 2=unknown, 3=known
     int verbosity; ///< 0=normal, 1=verbose, 2=verbose decoders, 3=debug decoders, 4=trace decoding.
     int verbose_bits;
     conversion_mode_t conversion_mode;
@@ -102,10 +120,13 @@ typedef struct r_cfg {
     struct dm_state *demod;
     char const *sr_filename;
     int sr_execopen;
+#ifndef DLL_RTL_433
+    int watchdog; ///< SDR acquire stall watchdog
+#endif
     /* stats*/
-    time_t frames_since; ///< stats start time
-    unsigned frames_count; ///< stats counter for interval
-    unsigned frames_fsk; ///< stats counter for interval
+    time_t frames_since;    ///< stats start time
+    unsigned frames_count;  ///< stats counter for interval
+    unsigned frames_fsk;    ///< stats counter for interval
     unsigned frames_events; ///< stats counter for interval
     struct mg_mgr *mgr;
 } r_cfg_t;

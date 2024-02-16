@@ -67,7 +67,7 @@ Data Seen:
     52315c6a 7700 565a 007b00
     52315c6a 7700 565a 007a00
 
-Removing the first 1 or 2 bits gives a prefix of 55a8aaaaaa2dd4, the leading bits are likely warmup or garbage.
+Removing the first 1 or 2 bits gives a prefix of 55a8aaaaaa2dd4, the leading bits are likely warm-up or garbage.
 
 The next bytes of 5231 5c6a 7700 are likely a serial number (id).
 
@@ -171,7 +171,7 @@ static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return 1;
 }
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         "id",
         "message_type",
@@ -182,7 +182,7 @@ static char *output_fields[] = {
         NULL,
 };
 
-r_device ecodhome = {
+r_device const ecodhome = {
         .name        = "EcoDHOME Smart Socket and MCEE Solar monitor",
         .modulation  = FSK_PULSE_PCM,
         .short_width = 250,

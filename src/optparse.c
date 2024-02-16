@@ -99,7 +99,7 @@ double arg_float(char const *str, char const *error_hint)
     return val;
 }
 
-char *hostport_param(char *param, char **host, char **port)
+char *hostport_param(char *param, char const **host, char const **port)
 {
     if (param && *param) {
         if (param[0] == '/' && param[1] == '/') {
@@ -330,6 +330,9 @@ char *asepcb(char **stringp, char delim, char stop)
 
 int kwargs_match(char const *s, char const *key, char const **val)
 {
+    if (!key || !*key) {
+        return 0; // no match
+    }
     size_t len = strlen(key);
     // check prefix match
     if (strncmp(s, key, len)) {

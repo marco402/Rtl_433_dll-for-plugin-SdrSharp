@@ -13,7 +13,7 @@
 #include "optparse.h"
 #include "fatal.h"
 #include <stdlib.h>
-#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
+
 static inline int bit(const uint8_t *bytes, unsigned bit)
 {
     return bytes[bit >> 3] >> (7 - (bit & 7)) & 1;
@@ -266,11 +266,11 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             bitbuffer->bits_per_row[i] = len;
         }
     }
-#ifndef DLL_RTL_433 //window zombi if -vvv
+
     if (decoder->verbose) {
         decoder_log_bitbuffer(decoder, 1, params->name, bitbuffer, "");
     }
-#endif
+
     // discard duplicates
     if (params->unique) {
         print_row_bytes(row_bytes, bitbuffer->bb[r], bitbuffer->bits_per_row[r]);
@@ -317,6 +317,11 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // add a data line for each getter
         render_getters(row_data[i], bitbuffer->bb[i], params);
 
+        // print at least one '0'
+        if (row_bytes[0] == '\0') {
+            snprintf(row_bytes, sizeof(row_bytes), "0");
+        }
+
         // a simpler representation for csv output
         row_codes[i] = malloc(8 + bitbuffer->bits_per_row[i] / 4 + 1); // "{nnnn}..\0"
         if (!row_codes[i])
@@ -342,7 +347,7 @@ static int flex_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return 1;
 }
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         "count",
         "num_rows",
@@ -614,10 +619,11 @@ r_device *flex_create_device(char *spec)
             if (!params->name)
                 FATAL_STRDUP("flex_create_device()");
             int name_size = strlen(val) + 27;
-            dev->name = malloc(name_size);
-            if (!dev->name)
+            char* flex_name = malloc(name_size);
+            if (!flex_name)
                 FATAL_MALLOC("flex_create_device()");
-            snprintf(dev->name, name_size, "General purpose decoder '%s'", val);
+            snprintf(flex_name, name_size, "General purpose decoder '%s'", val);
+            dev->name = flex_name;
         }
 
         else if (!strcasecmp(key, "m") || !strcasecmp(key, "modulation"))
@@ -718,7 +724,7 @@ r_device *flex_create_device(char *spec)
         for (int g = 0; g < GETTER_SLOTS && params->getter[g].name; ++g) {
             params->fields[i++] = params->getter[g].name;
         }
-        dev->fields = (char **)params->fields;
+        dev->fields = params->fields;
     }
 
     // sanity checks

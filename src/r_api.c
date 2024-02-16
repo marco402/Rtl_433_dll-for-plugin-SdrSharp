@@ -68,33 +68,33 @@ History : V1.00 2021-04-01 - First release
 
 char const *version_string(void)
 {
-    return "rtl_433"
 #ifdef GIT_VERSION
 #define STR_VALUE(arg) #arg
 #define STR_EXPAND(s) STR_VALUE(s)
-            " version " STR_EXPAND(GIT_VERSION)
+    " version " STR_EXPAND(GIT_VERSION)
 #ifdef GIT_BRANCH
             " branch " STR_EXPAND(GIT_BRANCH)
 #endif
 #ifdef GIT_TIMESTAMP
-            " at " STR_EXPAND(GIT_TIMESTAMP)
+                    " at " STR_EXPAND(GIT_TIMESTAMP)
 #endif
 #undef STR_VALUE
 #undef STR_EXPAND
 #else
-            " version unknown"
+    " version unknown"
 #endif
-            " inputs file rtl_tcp"
+                            " inputs file rtl_tcp"
 #ifdef RTLSDR
-            " RTL-SDR"
+                            " RTL-SDR"
 #endif
 #ifdef SOAPYSDR
-            " SoapySDR"
+                            " SoapySDR"
 #endif
 #ifdef OPENSSL
-            " with TLS"
+                            " with TLS"
 #endif
             ;
+
 }
 
 /* helper */
@@ -118,7 +118,7 @@ void set_center_freq(r_cfg_t *cfg, uint32_t center_freq)
     cfg->frequency[0] = center_freq;
     // cfg->center_frequency = center_freq; // actually applied in the sdr event
 #ifndef DLL_RTL_433
-    sdr_set_center_freq(cfg->dev, center_freq, 0);
+    sdr_set_center_freq(cfg->dev, center_freq, 1);
 #endif
 }
 #ifndef DLL_RTL_433
@@ -152,8 +152,8 @@ void set_gain_str(struct r_cfg *cfg, char const *gain_str)
 
 void r_init_cfg(r_cfg_t *cfg)
 {
-    cfg->out_block_size  = DEFAULT_BUF_LENGTH;
-    cfg->samp_rate       = DEFAULT_SAMPLE_RATE;
+    cfg->out_block_size = DEFAULT_BUF_LENGTH;
+    cfg->samp_rate = DEFAULT_SAMPLE_RATE;
     cfg->conversion_mode = CONVERT_NATIVE;
     cfg->fsk_pulse_detect_mode = FSK_PULSE_DETECT_AUTO;
     // Default log level is to show all LOG_FATAL, LOG_ERROR, LOG_WARNING
@@ -236,17 +236,19 @@ void r_free_cfg(r_cfg_t *cfg)
 
     pulse_detect_free(cfg->demod->pulse_detect);
 
-    free(cfg->demod);
-
-    free(cfg->devices);
-
     list_free_elems(&cfg->raw_handler, (list_elem_free_fn)raw_output_free);
+
+    r_logger_set_log_handler(NULL, NULL);
 
     list_free_elems(&cfg->output_handler, (list_elem_free_fn)data_output_free);
 
     list_free_elems(&cfg->data_tags, (list_elem_free_fn)data_tag_free);
 
     list_free_elems(&cfg->in_files, NULL);
+
+    free(cfg->demod);
+
+    free(cfg->devices);
 
     mg_mgr_free(cfg->mgr);
     free(cfg->mgr);
@@ -278,17 +280,17 @@ void register_protocol(r_cfg_t *cfg, r_device *r_dev, char *arg)
         if (arg && *arg) {
             fprintf(stderr, "Protocol [%u] \"%s\" does not take arguments \"%s\"!\n", r_dev->protocol_num, r_dev->name, arg);
         }
-        p  = malloc(sizeof(*p));
+        p = malloc(sizeof(*p));
         if (!p)
             FATAL_CALLOC("register_protocol()");
         *p = *r_dev; // copy
     }
 
-    p->verbose      = dev_verbose ? dev_verbose : (cfg->verbosity > 4 ? cfg->verbosity - 5 : 0);
+    p->verbose = dev_verbose ? dev_verbose : (cfg->verbosity > 4 ? cfg->verbosity - 5 : 0);
     p->verbose_bits = cfg->verbose_bits;
-    p->log_fn       = log_device_handler;
+    p->log_fn = log_device_handler;
 
-    p->output_fn  = data_acquired_handler;
+    p->output_fn = data_acquired_handler;
     p->output_ctx = cfg;
 
     list_push(&cfg->demod->r_devs, p);
@@ -297,7 +299,7 @@ void register_protocol(r_cfg_t *cfg, r_device *r_dev, char *arg)
 #else
     if (cfg->verbosity >= LOG_INFO)
 #endif
-	{
+    {
         fprintf(stderr, "Registering protocol [%u] \"%s\"\n", r_dev->protocol_num, r_dev->name);
     }
 }
@@ -336,28 +338,28 @@ void calc_rssi_snr(r_cfg_t *cfg, pulse_data_t *pulse_data)
 {
     float ook_high_estimate = pulse_data->ook_high_estimate > 0 ? pulse_data->ook_high_estimate : 1;
     float ook_low_estimate = pulse_data->ook_low_estimate > 0 ? pulse_data->ook_low_estimate : 1;
-    float asnr   = ook_high_estimate / ook_low_estimate;
+    float asnr = ook_high_estimate / ook_low_estimate;
     float foffs1 = (float)pulse_data->fsk_f1_est / INT16_MAX * cfg->samp_rate / 2.0;
     float foffs2 = (float)pulse_data->fsk_f2_est / INT16_MAX * cfg->samp_rate / 2.0;
     pulse_data->freq1_hz = (foffs1 + cfg->center_frequency);
     pulse_data->freq2_hz = (foffs2 + cfg->center_frequency);
     pulse_data->centerfreq_hz = cfg->center_frequency;
-    pulse_data->depth_bits    = cfg->demod->sample_size * 4;
+    pulse_data->depth_bits = cfg->demod->sample_size * 4;
     // NOTE: for (CU8) amplitude is 10x (because it's squares)
-    if (cfg->demod->sample_size == 2 && !cfg->demod->use_mag_est) { // amplitude (CU8)
-        pulse_data->range_db = 42.1442f; // 10*log10f(16384.0f) == 20*log10f(128.0f)
-        pulse_data->rssi_db  = 10.0f * log10f(ook_high_estimate) - 42.1442f; // 10*log10f(16384.0f)
+    if (cfg->demod->sample_size == 2 && !cfg->demod->use_mag_est) {         // amplitude (CU8)
+        pulse_data->range_db = 42.1442f;                                    // 10*log10f(16384.0f) == 20*log10f(128.0f)
+        pulse_data->rssi_db = 10.0f * log10f(ook_high_estimate) - 42.1442f; // 10*log10f(16384.0f)
         pulse_data->noise_db = 10.0f * log10f(ook_low_estimate) - 42.1442f; // 10*log10f(16384.0f)
-        pulse_data->snr_db   = 10.0f * log10f(asnr);
+        pulse_data->snr_db = 10.0f * log10f(asnr);
     }
-    else { // magnitude (CU8, CS16)
+    else {                               // magnitude (CU8, CS16)
         pulse_data->range_db = 84.2884f; // 20*log10f(16384.0f)
         // lowest (scaled x128) reading at  8 bit is -20*log10(128) = -42.1442 (eff. -36 dB)
         // lowest (scaled div2) reading at 12 bit is -20*log10(1024) = -60.2060 (eff. -54 dB)
         // lowest (scaled div2) reading at 16 bit is -20*log10(16384) = -84.2884 (eff. -78 dB)
-        pulse_data->rssi_db  = 20.0f * log10f(ook_high_estimate) - 84.2884f; // 20*log10f(16384.0f)
+        pulse_data->rssi_db = 20.0f * log10f(ook_high_estimate) - 84.2884f; // 20*log10f(16384.0f)
         pulse_data->noise_db = 20.0f * log10f(ook_low_estimate) - 84.2884f; // 20*log10f(16384.0f)
-        pulse_data->snr_db   = 20.0f * log10f(asnr);
+        pulse_data->snr_db = 20.0f * log10f(asnr);
     }
 }
 
@@ -370,7 +372,7 @@ char *time_pos_str(r_cfg_t *cfg, unsigned samples_ago, char *buf)
     else {
         struct timeval ago = cfg->demod->now;
         double us_per_sample = 1e6 / cfg->samp_rate;
-        unsigned usecs_ago   = samples_ago * us_per_sample;
+        unsigned usecs_ago = samples_ago * us_per_sample;
         while (ago.tv_usec < (int)usecs_ago) {
             ago.tv_sec -= 1;
             ago.tv_usec += 1000000;
@@ -440,27 +442,43 @@ static char const **convert_csv_fields(r_cfg_t *cfg, char const **fields)
 {
     if (cfg->conversion_mode == CONVERT_SI) {
         for (char const **p = fields; *p; ++p) {
-            if (!strcmp(*p, "temperature_F")) *p = "temperature_C";
-            else if (!strcmp(*p, "pressure_PSI")) *p = "pressure_kPa";
-            else if (!strcmp(*p, "rain_in")) *p = "rain_mm";
-            else if (!strcmp(*p, "rain_rate_in_h")) *p = "rain_rate_mm_h";
-            else if (!strcmp(*p, "wind_avg_mi_h")) *p = "wind_avg_km_h";
-            else if (!strcmp(*p, "wind_max_mi_h")) *p = "wind_max_km_h";
+            if (!strcmp(*p, "temperature_F"))
+                *p = "temperature_C";
+            else if (!strcmp(*p, "pressure_PSI"))
+                *p = "pressure_kPa";
+            else if (!strcmp(*p, "rain_in"))
+                *p = "rain_mm";
+            else if (!strcmp(*p, "rain_rate_in_h"))
+                *p = "rain_rate_mm_h";
+            else if (!strcmp(*p, "wind_avg_mi_h"))
+                *p = "wind_avg_km_h";
+            else if (!strcmp(*p, "wind_max_mi_h"))
+                *p = "wind_max_km_h";
         }
     }
 
     if (cfg->conversion_mode == CONVERT_CUSTOMARY) {
         for (char const **p = fields; *p; ++p) {
-            if (!strcmp(*p, "temperature_C")) *p = "temperature_F";
-            else if (!strcmp(*p, "temperature_1_C")) *p = "temperature_1_F";
-            else if (!strcmp(*p, "temperature_2_C")) *p = "temperature_2_F";
-            else if (!strcmp(*p, "setpoint_C")) *p = "setpoint_F";
-            else if (!strcmp(*p, "pressure_hPa")) *p = "pressure_inHg";
-            else if (!strcmp(*p, "pressure_kPa")) *p = "pressure_PSI";
-            else if (!strcmp(*p, "rain_mm")) *p = "rain_in";
-            else if (!strcmp(*p, "rain_rate_mm_h")) *p = "rain_rate_in_h";
-            else if (!strcmp(*p, "wind_avg_km_h")) *p = "wind_avg_mi_h";
-            else if (!strcmp(*p, "wind_max_km_h")) *p = "wind_max_mi_h";
+            if (!strcmp(*p, "temperature_C"))
+                *p = "temperature_F";
+            else if (!strcmp(*p, "temperature_1_C"))
+                *p = "temperature_1_F";
+            else if (!strcmp(*p, "temperature_2_C"))
+                *p = "temperature_2_F";
+            else if (!strcmp(*p, "setpoint_C"))
+                *p = "setpoint_F";
+            else if (!strcmp(*p, "pressure_hPa"))
+                *p = "pressure_inHg";
+            else if (!strcmp(*p, "pressure_kPa"))
+                *p = "pressure_PSI";
+            else if (!strcmp(*p, "rain_mm"))
+                *p = "rain_in";
+            else if (!strcmp(*p, "rain_rate_mm_h"))
+                *p = "rain_rate_in_h";
+            else if (!strcmp(*p, "wind_avg_km_h"))
+                *p = "wind_avg_mi_h";
+            else if (!strcmp(*p, "wind_max_km_h"))
+                *p = "wind_max_mi_h";
         }
     }
     return fields;
@@ -511,7 +529,7 @@ int run_ook_demods(list_t *r_devs, pulse_data_t *pulse_data)
 
             switch (r_dev->modulation) {
             case OOK_PULSE_PCM:
-            // case OOK_PULSE_RZ:
+                // case OOK_PULSE_RZ:
                 p_events += pulse_slicer_pcm(pulse_data, r_dev);
                 break;
             case OOK_PULSE_PPM:
@@ -692,7 +710,7 @@ void data_acquired_handler(r_device *r_dev, data_t *data)
     // check for undeclared csv fields
     for (data_t *d = data; d; d = d->next) {
         int found = 0;
-        for (char **p = r_dev->fields; *p; ++p) {
+        for (char const *const *p = r_dev->fields; *p; ++p) {
             if (!strcmp(d->key, *p)) {
                 found = 1;
                 break;
@@ -738,10 +756,9 @@ void data_acquired_handler(r_device *r_dev, data_t *data)
                 d->format = new_format_label;
             }
             // Convert double type fields ending in _in to _mm
-            else if ((d->type == DATA_DOUBLE) &&
-                     (str_endswith(d->key, "_in") || str_endswith(d->key, "_inch"))) {
+            else if ((d->type == DATA_DOUBLE) && str_endswith(d->key, "_in")) {
                 d->value.v_dbl = inch2mm(d->value.v_dbl);
-                char *new_label = str_replace(str_replace(d->key, "_inch", "_in"), "_in", "_mm");
+                char *new_label = str_replace(d->key, "_in", "_mm");
                 free(d->key);
                 d->key = new_label;
                 char *new_format_label = str_replace(d->format, "in", "mm");
@@ -872,21 +889,21 @@ void data_acquired_handler(r_device *r_dev, data_t *data)
 
     if (cfg->report_meta && cfg->demod->fsk_pulse_data.fsk_f2_est) {
         data_append(data,
-                "mod",   "Modulation",  DATA_STRING, "FSK",
-                "freq1", "Freq1",       DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->fsk_pulse_data.freq1_hz / 1000000.0,
-                "freq2", "Freq2",       DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->fsk_pulse_data.freq2_hz / 1000000.0,
-                "rssi",  "RSSI",        DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.rssi_db,
-                "snr",   "SNR",         DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.snr_db,
-                "noise", "Noise",       DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.noise_db,
+                "mod", "Modulation", DATA_STRING, "FSK",
+                "freq1", "Freq1", DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->fsk_pulse_data.freq1_hz / 1000000.0,
+                "freq2", "Freq2", DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->fsk_pulse_data.freq2_hz / 1000000.0,
+                "rssi", "RSSI", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.rssi_db,
+                "snr", "SNR", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.snr_db,
+                "noise", "Noise", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->fsk_pulse_data.noise_db,
                 NULL);
     }
     else if (cfg->report_meta) {
         data_append(data,
-                "mod",   "Modulation",  DATA_STRING, "ASK",
-                "freq",  "Freq",        DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->pulse_data.freq1_hz / 1000000.0,
-                "rssi",  "RSSI",        DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.rssi_db,
-                "snr",   "SNR",         DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.snr_db,
-                "noise", "Noise",       DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.noise_db,
+                "mod", "Modulation", DATA_STRING, "ASK",
+                "freq", "Freq", DATA_FORMAT, "%.1f MHz", DATA_DOUBLE, cfg->demod->pulse_data.freq1_hz / 1000000.0,
+                "rssi", "RSSI", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.rssi_db,
+                "snr", "SNR", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.snr_db,
+                "noise", "Noise", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, cfg->demod->pulse_data.noise_db,
                 NULL);
     }
 
@@ -902,7 +919,7 @@ void data_acquired_handler(r_device *r_dev, data_t *data)
     // apply all tags
     for (void **iter = cfg->data_tags.elems; iter && *iter; ++iter) {
         data_tag_t *tag = *iter;
-        data            = data_tag_apply(tag, data, cfg->in_filename);
+        data = data_tag_apply(tag, data, cfg->in_filename);
     }
 
     for (size_t i = 0; i < cfg->output_handler.len; ++i) { // list might contain NULLs
@@ -930,16 +947,16 @@ data_t *create_report_data(r_cfg_t *cfg, int level)
             continue;
 
         data = data_make(
-                "device",       "", DATA_INT, r_dev->protocol_num,
-                "name",         "", DATA_STRING, r_dev->name,
-                "events",       "", DATA_INT, r_dev->decode_events,
-                "ok",           "", DATA_INT, r_dev->decode_ok,
-                "messages",     "", DATA_INT, r_dev->decode_messages,
+                "device", "", DATA_INT, r_dev->protocol_num,
+                "name", "", DATA_STRING, r_dev->name,
+                "events", "", DATA_INT, r_dev->decode_events,
+                "ok", "", DATA_INT, r_dev->decode_ok,
+                "messages", "", DATA_INT, r_dev->decode_messages,
                 NULL);
 
         if (r_dev->decode_fails[-DECODE_FAIL_OTHER])
             data_append(data,
-                    "fail_other",   "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_OTHER],
+                    "fail_other", "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_OTHER],
                     NULL);
         if (r_dev->decode_fails[-DECODE_ABORT_LENGTH])
             data_append(data,
@@ -947,34 +964,34 @@ data_t *create_report_data(r_cfg_t *cfg, int level)
                     NULL);
         if (r_dev->decode_fails[-DECODE_ABORT_EARLY])
             data_append(data,
-                    "abort_early",  "", DATA_INT, r_dev->decode_fails[-DECODE_ABORT_EARLY],
+                    "abort_early", "", DATA_INT, r_dev->decode_fails[-DECODE_ABORT_EARLY],
                     NULL);
         if (r_dev->decode_fails[-DECODE_FAIL_MIC])
             data_append(data,
-                    "fail_mic",     "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_MIC],
+                    "fail_mic", "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_MIC],
                     NULL);
         if (r_dev->decode_fails[-DECODE_FAIL_SANITY])
             data_append(data,
-                    "fail_sanity",  "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_SANITY],
+                    "fail_sanity", "", DATA_INT, r_dev->decode_fails[-DECODE_FAIL_SANITY],
                     NULL);
 
         list_push(&dev_data_list, data);
     }
 
     data = data_make(
-            "count",            "", DATA_INT, cfg->frames_count,
-            "fsk",              "", DATA_INT, cfg->frames_fsk,
-            "events",           "", DATA_INT, cfg->frames_events,
+            "count", "", DATA_INT, cfg->frames_count,
+            "fsk", "", DATA_INT, cfg->frames_fsk,
+            "events", "", DATA_INT, cfg->frames_events,
             NULL);
 
     char since_str[LOCAL_TIME_BUFLEN];
     format_time_str(since_str, "%Y-%m-%dT%H:%M:%S", cfg->report_time_tz, cfg->frames_since);
 
     data = data_make(
-            "enabled",          "", DATA_INT, r_devs->len,
-            "since",            "", DATA_STRING, since_str,
-            "frames",           "", DATA_DATA, data,
-            "stats",            "", DATA_ARRAY, data_array(dev_data_list.len, DATA_DATA, dev_data_list.elems),
+            "enabled", "", DATA_INT, r_devs->len,
+            "since", "", DATA_STRING, since_str,
+            "frames", "", DATA_DATA, data,
+            "stats", "", DATA_ARRAY, data_array(dev_data_list.len, DATA_DATA, dev_data_list.elems),
             NULL);
 
     list_free_elems(&dev_data_list, NULL);
@@ -1043,13 +1060,22 @@ static int lvlarg_param(char **param, int default_verb)
     return val;
 }
 
-static FILE *fopen_output(char *param)
+/// Opens the path @p param (or STDOUT if empty or `-`) for append writing, removes leading `,` and `:` from path name.
+static FILE *fopen_output(char const *param)
 {
-    FILE *file;
-    if (!param || !*param || (*param == '-' && param[1] == '\0')) {
-        return stdout;
+    if (!param || !*param) {
+        return stdout; // No path given
     }
-    file = fopen(param, "a");
+    while (*param == ',') {
+        param++; // Skip all leading `,`
+    }
+    if (*param == ':') {
+        param++; // Skip one leading `:`
+    }
+    if (*param == '-' && param[1] == '\0') {
+        return stdout; // STDOUT requested
+    }
+    FILE *file = fopen(param, "a");
     if (!file) {
         fprintf(stderr, "rtl_433: failed to open output file\n");
         exit(1);
@@ -1107,9 +1133,12 @@ void add_influx_output(r_cfg_t *cfg, char *param)
 void add_syslog_output(r_cfg_t *cfg, char *param)
 {
     int log_level = lvlarg_param(&param, LOG_WARNING);
-    char *host = "localhost";
-    char *port = "514";
-    hostport_param(param, &host, &port);
+    char const *host = "localhost";
+    char const *port = "514";
+    char const *extra = hostport_param(param, &host, &port);
+    if (extra && *extra) {
+        print_logf(LOG_FATAL, "Syslog UDP", "Unknown parameters \"%s\"", extra);
+    }
     print_logf(LOG_CRITICAL, "Syslog UDP", "Sending datagrams to %s port %s", host, port);
 
     list_push(&cfg->output_handler, data_output_syslog_create(log_level, host, port));
@@ -1118,9 +1147,12 @@ void add_syslog_output(r_cfg_t *cfg, char *param)
 void add_http_output(r_cfg_t *cfg, char *param)
 {
     // Note: no log_level, the HTTP-API consumes all log levels.
-    char *host = "0.0.0.0";
-    char *port = "8433";
-    hostport_param(param, &host, &port);
+    char const *host = "0.0.0.0";
+    char const *port = "8433";
+    char const *extra = hostport_param(param, &host, &port);
+    if (extra && *extra) {
+        print_logf(LOG_FATAL, "HTTP server", "Unknown parameters \"%s\"", extra);
+    }
     print_logf(LOG_CRITICAL, "HTTP server", "Starting HTTP server at %s port %s", host, port);
 
     list_push(&cfg->output_handler, data_output_http_create(get_mgr(cfg), host, port, cfg));
@@ -1140,12 +1172,15 @@ void add_null_output(r_cfg_t *cfg, char *param)
 
 void add_rtltcp_output(r_cfg_t *cfg, char *param)
 {
-    char *host = "localhost";
-    char *port = "1234";
-    hostport_param(param, &host, &port);
+    char const *host = "localhost";
+    char const *port = "1234";
+    char const *extra = hostport_param(param, &host, &port);
+    if (extra && *extra) {
+        print_logf(LOG_FATAL, "rtl_tcp server", "Unknown parameters \"%s\"", extra);
+    }
     print_logf(LOG_CRITICAL, "rtl_tcp server", "Starting rtl_tcp server at %s port %s", host, port);
 
-    list_push(&cfg->raw_handler, raw_output_rtltcp_create(host, port, cfg));
+    list_push(&cfg->raw_handler, raw_output_rtltcp_create(host, port, extra, cfg));
 }
 
 void add_sr_dumper(r_cfg_t *cfg, char const *spec, int overwrite)
@@ -1172,12 +1207,12 @@ void close_dumpers(struct r_cfg *cfg)
 
     char const *labels[] = {
             "FRAME", // probe1
-            "ASK", // probe2
-            "FSK", // probe3
-            "I", // analog4
-            "Q", // analog5
-            "AM", // analog6
-            "FM", // analog7
+            "ASK",   // probe2
+            "FSK",   // probe3
+            "I",     // analog4
+            "Q",     // analog5
+            "AM",    // analog6
+            "FM",    // analog7
     };
     if (cfg->sr_filename) {
         write_sigrok(cfg->sr_filename, cfg->samp_rate, 3, 4, labels);

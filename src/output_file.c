@@ -155,7 +155,7 @@ struct data_output *data_output_json_create(int log_level, FILE *file)
     json->output.output_free  = data_output_json_free;
     json->file                = file;
 
-    return &json->output;
+    return (struct data_output *)json;
 }
 
 /* Pretty Key-Value printer */
@@ -442,7 +442,7 @@ struct data_output *data_output_kv_create(int log_level, FILE *file)
 
     kv->ring_bell = 0; // TODO: enable if requested...
 
-    return &kv->output;
+    return (struct data_output *)kv;
 }
 
 /* CSV printer */
@@ -487,7 +487,7 @@ static void R_API_CALLCONV print_csv_string(data_output_t *output, const char *s
     UNUSED(format);
     data_output_csv_t *csv = (data_output_csv_t *)output;
 
-    while (*str) {
+    while (str && *str) {
         if (strncmp(str, csv->separator, strlen(csv->separator)) == 0)
             fputc('\\', csv->file);
         fputc(*str, csv->file);
@@ -656,5 +656,5 @@ struct data_output *data_output_csv_create(int log_level, FILE *file)
     csv->output.output_free  = data_output_csv_free;
     csv->file                = file;
 
-    return &csv->output;
+    return (struct data_output *)csv;
 }

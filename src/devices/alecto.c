@@ -99,7 +99,7 @@ static uint8_t bcd_decode8(uint8_t x)
 static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     bitrow_t *bb = bitbuffer->bb;
-    uint8_t *b   = bitbuffer->bb[1];
+    uint8_t *b = bitbuffer->bb[1];
     int temp_raw, humidity;
     float temp_c;
     data_t *data;
@@ -108,7 +108,9 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bits != 36)
         return DECODE_ABORT_LENGTH;
 
-    if (bb[1][0] != bb[5][0] || bb[2][0] != bb[6][0] || (bb[1][4] & 0xf) != 0 || (bb[5][4] & 0xf) != 0 || bb[5][0] == 0 || bb[5][1] == 0)
+    if (bb[1][0] != bb[5][0] || bb[2][0] != bb[6][0]
+            || (bb[1][4] & 0xf) != 0 || (bb[5][4] & 0xf) != 0
+            || bb[5][0] == 0 || bb[5][1] == 0)
         return DECODE_ABORT_EARLY;
 
     if (!alecto_checksum(bb[1]) || !alecto_checksum(bb[5])) {
@@ -119,11 +121,11 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     int battery_low = (b[1] & 0x80) >> 7;
     int msg_type    = (b[1] & 0x60) >> 5;
     //int button      = (b[1] & 0x10) >> 4;
-    int msg_rain = (b[1] & 0x0f) == 0x0c;
+    int msg_rain    = (b[1] & 0x0f) == 0x0c;
     //int msg_wind    = (b[1] & 0x0f) == 0x08 && b[2] == 0;
     //int msg_gust    = (b[1] & 0x0e) == 0x0e;
-    int channel   = (b[0] & 0xc) >> 2;
-    int sensor_id = reverse8(b[0]);
+    int channel     = (b[0] & 0xc) >> 2;
+    int sensor_id   = reverse8(b[0]);
 
     //decoder_logf(decoder, 0, __func__, "AlectoV1 type : %d rain : %d wind : %d gust : %d", msg_type, msg_rain, msg_wind, msg_gust);
 
@@ -177,15 +179,13 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return 1;
     }
 
-    else if (msg_type != 0x3 && bb[2][0] == bb[3][0] && bb[3][0] == bb[4][0] && bb[4][0] == bb[5][0] && bb[5][0] == bb[6][0] && (bb[3][4] & 0xf) == 0 && (bb[5][4] & 0xf) == 0) {
+    else if (msg_type != 0x3
+            && bb[2][0] == bb[3][0] && bb[3][0] == bb[4][0]
+            && bb[4][0] == bb[5][0] && bb[5][0] == bb[6][0]
+            && (bb[3][4] & 0xf) == 0 && (bb[5][4] & 0xf) == 0) {
         //static char * temp_states[4] = {"stable", "increasing", "decreasing", "invalid"};
-        //if (((b[1] & 0x0F) == 0) & (b[2] == 0))
-        //    temp_c = 9999;
-        //else
-        //{
-            temp_raw = (int16_t)((reverse8(b[1]) & 0xf0) | (reverse8(b[2]) << 8)); // sign-extend
-			temp_c   = (temp_raw >> 4) * 0.1f;
-		//}
+        temp_raw = (int16_t)((reverse8(b[1]) & 0xf0) | (reverse8(b[2]) << 8)); // sign-extend
+        temp_c   = (temp_raw >> 4) * 0.1f;
         humidity = bcd_decode8(reverse8(b[3]));
         if (humidity > 100)
             return DECODE_FAIL_SANITY; // detect false positive, prologue is also 36bits and sometimes detected as alecto
@@ -208,7 +208,7 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return DECODE_FAIL_SANITY;
 }
 
-static char *output_fields[] = {
+static char const *const output_fields[] = {
         "model",
         "id",
         "channel",
@@ -223,7 +223,7 @@ static char *output_fields[] = {
         NULL,
 };
 
-r_device alectov1 = {
+r_device const alectov1 = {
         .name        = "AlectoV1 Weather Sensor (Alecto WS3500 WS4500 Ventus W155/W044 Oregon)",
         .modulation  = OOK_PULSE_PPM,
         .short_width = 2000,
