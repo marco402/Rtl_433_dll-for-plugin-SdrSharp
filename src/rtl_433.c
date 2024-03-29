@@ -172,16 +172,20 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 //{
 //    int ret = AttachConsole(ATTACH_PARENT_PROCESS);
 //}
+#if WITHCONSOLE
 bool consoleIsOpen = false; //for error after freeconsole
+#endif
 export void __stdcall free_console(void)
 {
+#if WITHCONSOLE
     consoleIsOpen = false;
     CloseHandle(hConOut);
     fclose(stdout);
     fclose(stderr);
     bool ret = FreeConsole();
+#endif
 }
-
+#if WITHCONSOLE
 void init_console()
 {
     FILE *fDummy;
@@ -194,10 +198,13 @@ void init_console()
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
     consoleIsOpen = true;
 }
+#endif
 export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
 {
+#if WITHCONSOLE
     if (param_samp_rate > 0 && !consoleIsOpen)
         init_console();
+#endif
     PTRCallBackMessage     = ptr_message;
     PTRCallBackRecordOrder = ptr_RecordOrder;
     /*intptr_t cfg = (int)&g_cfg;*/
@@ -1494,8 +1501,10 @@ console_handler(int signum)
 #ifdef DLL_RTL_433
 static void sighandler(int signum)
 {
+#if WITHCONSOLE
     if (consoleIsOpen)
         console_handler(signum);
+#endif
 }
 #endif
 #else

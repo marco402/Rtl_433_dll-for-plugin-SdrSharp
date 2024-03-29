@@ -65,6 +65,7 @@ nombre de devices 01/2024: 214/248  242/248  +25
 
 //add code dll_rtl_433 
 #define DLL_RTL_433
+#define xxWITHCONSOLE
 //no open sdr
 //#define DLL_RTL_433
 
