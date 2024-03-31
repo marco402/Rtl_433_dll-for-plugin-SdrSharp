@@ -23,7 +23,7 @@
 
 History : V1.00 2021-04-01 - First release
          V1.5.0.1 2023-01 
-
+         V1.5.0.3 2024-03    open or not open console . parameter withConsole
  All text above must be included in any redistribution.
 */
 #include <stdio.h>
@@ -136,7 +136,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.5.0.2"; //(rtl_433->17/02/2021-01/2023)
+    return "1.5.0.3";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -172,20 +172,15 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 //{
 //    int ret = AttachConsole(ATTACH_PARENT_PROCESS);
 //}
-#if WITHCONSOLE
 bool consoleIsOpen = false; //for error after freeconsole
-#endif
 export void __stdcall free_console(void)
 {
-#if WITHCONSOLE
     consoleIsOpen = false;
     CloseHandle(hConOut);
     fclose(stdout);
     fclose(stderr);
     bool ret = FreeConsole();
-#endif
 }
-#if WITHCONSOLE
 void init_console()
 {
     FILE *fDummy;
@@ -198,13 +193,13 @@ void init_console()
     SetStdHandle(STD_ERROR_HANDLE, hConOut);
     consoleIsOpen = true;
 }
-#endif
-export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
+export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[], boolean withConsole)
 {
-#if WITHCONSOLE
+    if (withConsole)
+	{
     if (param_samp_rate > 0 && !consoleIsOpen)
         init_console();
-#endif
+	}
     PTRCallBackMessage     = ptr_message;
     PTRCallBackRecordOrder = ptr_RecordOrder;
     /*intptr_t cfg = (int)&g_cfg;*/
@@ -1501,10 +1496,8 @@ console_handler(int signum)
 #ifdef DLL_RTL_433
 static void sighandler(int signum)
 {
-#if WITHCONSOLE
     if (consoleIsOpen)
         console_handler(signum);
-#endif
 }
 #endif
 #else
