@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include "rtl_433.h"
 uint8_t reverse8(uint8_t x)
 {
     x = (x & 0xF0) >> 4 | (x & 0x0F) << 4;

@@ -25,7 +25,7 @@
 
 #include "fatal.h"
 #include "write_sigrok.h"
-
+#include "rtl_433.h"
 void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, unsigned analogs, char const *labels[])
 {
     // e.g. uses channels

@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include "pulse_data.h"
 #include "data.h"
-
+#include "rtl_433.h"
 /// Package types.
 enum package_types {
     PULSE_DATA_OOK = 1,

@@ -13,7 +13,7 @@
 #define INCLUDE_OPTPARSE_H_
 
 #include <stdint.h>
-
+#include "rtl_433.h"
 // makes strcasecmp() and strncasecmp() available when including optparse.h
 #ifdef _MSC_VER
     #include <string.h>

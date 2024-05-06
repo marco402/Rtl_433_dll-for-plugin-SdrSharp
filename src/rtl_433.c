@@ -26,6 +26,7 @@ History : V1.00 2021-04-01 - First release
          V1.5.0.3 2024-03    open or not open console . parameter withConsole
  All text above must be included in any redistribution.
 */
+//05/2024    doublon entre solight(85) et rubicson(2)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -136,7 +137,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 }
 export char *__stdcall test_dll_get_version()
 {
-    return "1.5.0.3";
+    return "1.5.0.4\n";
 }
 export void __stdcall setFrequency(uint32_t frequency)
 {
@@ -172,34 +173,34 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 //{
 //    int ret = AttachConsole(ATTACH_PARENT_PROCESS);
 //}
-bool consoleIsOpen = false; //for error after freeconsole
-export void __stdcall free_console(void)
+//bool consoleIsOpen = false; //for error after freeconsole
+//export void __stdcall free_console(void)
+//{
+//    consoleIsOpen = false;
+//    CloseHandle(hConOut);
+//    fclose(stdout);
+//    fclose(stderr);
+//    bool ret = FreeConsole();
+//}
+//void init_console()
+//{
+//    FILE *fDummy;
+//    freopen_s(&fDummy, "CONOUT$", "w", stdout);
+//    freopen_s(&fDummy, "CONOUT$", "w", stderr);
+//    //  freopen_s(&fDummy, "CONIN$", "r", stdin);
+//    hConOut = CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); //HANDLE
+//    //   HANDLE hConIn  = CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+//    SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
+//    SetStdHandle(STD_ERROR_HANDLE, hConOut);
+//    consoleIsOpen = true;
+//}
+export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[])
 {
-    consoleIsOpen = false;
-    CloseHandle(hConOut);
-    fclose(stdout);
-    fclose(stderr);
-    bool ret = FreeConsole();
-}
-void init_console()
-{
-    FILE *fDummy;
-    freopen_s(&fDummy, "CONOUT$", "w", stdout);
-    freopen_s(&fDummy, "CONOUT$", "w", stderr);
-    //  freopen_s(&fDummy, "CONIN$", "r", stdin);
-    hConOut = CreateFile(_T("CONOUT$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); //HANDLE
-    //   HANDLE hConIn  = CreateFile(_T("CONIN$"), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
-    SetStdHandle(STD_ERROR_HANDLE, hConOut);
-    consoleIsOpen = true;
-}
-export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_RecordOrder ptr_RecordOrder, uint32_t param_samp_rate, int param_sample_size, uint32_t disabled, int argc, char *argv[], boolean withConsole)
-{
-    if (withConsole)
-	{
-    if (param_samp_rate > 0 && !consoleIsOpen)
-        init_console();
-	}
+ //   if (withConsole)
+	//{
+ //   if (param_samp_rate > 0 && !consoleIsOpen)
+ //       init_console();
+	//}
     PTRCallBackMessage     = ptr_message;
     PTRCallBackRecordOrder = ptr_RecordOrder;
     /*intptr_t cfg = (int)&g_cfg;*/
@@ -225,7 +226,7 @@ int my_fprintf(_Inout_ FILE *const _Stream, _In_z_ _Printf_format_string_ char c
 }
 static void print_version(void)
 {
-    fprintf(stderr, "rtl_433: %s\n", test_dll_get_version());
+    fprintf(stderr, "rtl_433: %s\r", test_dll_get_version());
 }
 #else
 static void print_version(void)
@@ -1494,11 +1495,11 @@ console_handler(int signum)
 /* Only called for SIGALRM
  */
 #ifdef DLL_RTL_433
-static void sighandler(int signum)
-{
-    if (consoleIsOpen)
-        console_handler(signum);
-}
+//static void sighandler(int signum)
+//{
+//    if (consoleIsOpen)
+//        console_handler(signum);
+//}
 #endif
 #else
 static void sighandler(int signum)
@@ -2110,7 +2111,7 @@ int main(int argc, char **argv)
     cfg->demod         = demod;
     r                  = sdr_start_dll(cfg->dev, sdr_handler, (void *)cfg,
             DEFAULT_ASYNC_BUF_NUMBER, cfg->out_block_size);
-    signal(SIGALRM, sighandler);
+    //signal(SIGALRM, sighandler);
 //#endif
 #ifndef DLL_RTL_433
     alarm(3); // require callback to run every 3 second, abort otherwise
@@ -2136,7 +2137,7 @@ int main(int argc, char **argv)
     if (cfg->exit_code >= 0)
         r = cfg->exit_code;
     r_free_cfg(cfg);
-#else //DLL_RTL_433
+//#else //DLL_RTL_433
     alarm(0); //3->10 stop ib -vvv with source SDRSharp =file. require callback to run every 3 second, abort otherwise
     demod->sample_size = _param_sample_size;
     cfg->dev = init_sdr_dev();

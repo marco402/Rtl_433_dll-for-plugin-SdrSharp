@@ -33,7 +33,7 @@
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
-
+#include "rtl_433.h"
 static off_t fsize(const char *path)
 {
     struct stat st;

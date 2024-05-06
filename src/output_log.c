@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
+#include "rtl_433.h"
 /* LOG printer */
 
 typedef struct {

@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include "samp_grab.h"
-
+#include "rtl_433.h"
 #define PULSE_DATA_SIZE 4000 /* maximum number of pulses */
 
 typedef struct am_analyze {

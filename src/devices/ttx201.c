@@ -88,7 +88,7 @@ Data decoded:
  */
 
 #include "decoder.h"
-#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
+//#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
 #define MSG_PREAMBLE_BITS    17
 #define MSG_PACKET_MIN_BITS  50
 #define MSG_PACKET_BITS      54
@@ -129,7 +129,7 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
     data_t *data;
 
     if (bits != MSG_PACKET_MIN_BITS && bits != MSG_PACKET_BITS) {
-#ifndef DLL_RTL_433 //window zombi if -vvv
+//#ifndef DLL_RTL_433 //window zombi if -vvv
         if (decoder->verbose > 1) {
             if (row == 0) {
                 if (bits < MSG_PREAMBLE_BITS) {
@@ -141,7 +141,7 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
                         row, bits, MSG_PACKET_BITS);
             }
         }
-#endif
+//#endif
         return DECODE_ABORT_LENGTH;
     }
 
@@ -152,7 +152,7 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
     checksum_calculated = checksum_calculate(b);
     data_type = (b[2] & 0x70) >> 4;
     postmark = b[5];
-#ifndef DLL_RTL_433 //window zombi if -vvv
+//#ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         decoder_log(decoder, 0, __func__, "TTX201 received raw data");
         decoder_log_bitbuffer(decoder, 0, __func__, bitbuffer, "");
@@ -174,7 +174,7 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
         }
         decoder_log(decoder, 0, __func__, "");
     }
-#endif
+//#endif
     if (checksum != checksum_calculated) {
         decoder_logf(decoder, 2, __func__, "Packet #%u checksum error.", row);
         return DECODE_FAIL_MIC;

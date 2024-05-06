@@ -12,5 +12,5 @@
 #include "data.h"
 #include "util.h"
 #include "decoder_util.h"
-
+#include "dll_rtl_433.h"
 #endif /* INCLUDE_DECODER_H_ */

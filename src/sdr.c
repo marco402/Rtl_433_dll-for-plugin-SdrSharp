@@ -120,7 +120,6 @@ struct sdr_dev {  //sdr.c
  //   int freq_correction;
     uint32_t center_frequency;
     //char *gain_str;
-	
  #ifdef THREADS
     pthread_t thread;
     pthread_mutex_t lock; ///< lock for exit_acquire
@@ -411,7 +410,7 @@ static int sdr_open_rtl(sdr_dev_t **out_dev, char const *dev_query, int verbose)
     }
 
     char vendor[256] = "n/a", product[256] = "n/a", serial[256] = "n/a";
-    int r = -1;
+    int r          = -1;
     sdr_dev_t *dev = calloc(1, sizeof(sdr_dev_t));
     if (!dev) {
         WARN_CALLOC("sdr_open_rtl()");
@@ -440,11 +439,11 @@ static int sdr_open_rtl(sdr_dev_t **out_dev, char const *dev_query, int verbose)
             if (verbose)
                 print_logf(LOG_CRITICAL, "SDR", "Using device %u: %s, %s, SN: %s, \"%s\"",
                         i, vendor, product, serial, rtlsdr_get_device_name(i));
-            dev->sample_size = sizeof(uint8_t) * 2; // CU8
+            dev->sample_size   = sizeof(uint8_t) * 2; // CU8
             dev->sample_signed = 0;
 
             size_t info_len = 41 + strlen(vendor) + strlen(product) + strlen(serial);
-            dev->dev_info = malloc(info_len);
+            dev->dev_info   = malloc(info_len);
             if (!dev->dev_info)
                 FATAL_MALLOC("sdr_open_rtl");
             snprintf(dev->dev_info, info_len, "{\"vendor\":\"%s\", \"product\":\"%s\", \"serial\":\"%s\"}",
@@ -535,11 +534,11 @@ static void rtlsdr_read_cb(unsigned char *iq_buf, uint32_t len, void *ctx)
     pthread_mutex_unlock(&dev->lock);
 #endif
     sdr_event_t ev = {
-            .ev  = SDR_EV_DATA,
+            .ev               = SDR_EV_DATA,
             .sample_rate      = sample_rate,
             .center_frequency = center_frequency,
-            .buf = buffer,
-            .len = len,
+            .buf              = buffer,
+            .len              = len,
     };
     //fprintf(stderr, "rtlsdr_read_cb cb...\n");
     if (len > 0) // prevent a crash in callback
@@ -692,13 +691,17 @@ static int soapysdr_direct_sampling(SoapySDRDevice *dev, int on)
     }
     int set_num = atoi(set_value);
     if (set_num == 0) {
-        print_log(LOG_CRITICAL, "SDR", "Direct sampling mode disabled.");}
+        print_log(LOG_CRITICAL, "SDR", "Direct sampling mode disabled.");
+    }
     else if (set_num == 1) {
-        print_log(LOG_CRITICAL, "SDR", "Enabled direct sampling mode, input 1/I.");}
+        print_log(LOG_CRITICAL, "SDR", "Enabled direct sampling mode, input 1/I.");
+    }
     else if (set_num == 2) {
-        print_log(LOG_CRITICAL, "SDR", "Enabled direct sampling mode, input 2/Q.");}
+        print_log(LOG_CRITICAL, "SDR", "Enabled direct sampling mode, input 2/Q.");
+    }
     else if (set_num == 3) {
-        print_log(LOG_CRITICAL, "SDR", "Enabled no-mod direct sampling mode.");}
+        print_log(LOG_CRITICAL, "SDR", "Enabled no-mod direct sampling mode.");
+    }
     SoapySDR_free(set_value);
     return r;
 }
@@ -1447,8 +1450,7 @@ int sdr_set_tuner_gain(sdr_dev_t *dev, char const *gain_str, int verbose)
     }
 
     if (dev->rtl_tcp) {
-        return rtltcp_command(dev, RTLTCP_SET_GAIN_MODE, 1)
-                || rtltcp_command(dev, RTLTCP_SET_GAIN, gain);
+        return rtltcp_command(dev, RTLTCP_SET_GAIN_MODE, 1) || rtltcp_command(dev, RTLTCP_SET_GAIN, gain);
     }
 
 #ifdef RTLSDR
@@ -1937,4 +1939,3 @@ int sdr_start_dll(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num
     return -1;
 }
 #endif
-

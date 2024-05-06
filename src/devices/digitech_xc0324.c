@@ -10,7 +10,7 @@
 */
 
 #include "decoder.h"
-#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
+//#include "dll_rtl_433.h" //for fprintf  else window zombi if -vvv
 /**
 Decoder for Digitech XC-0324 temperature sensor.
 
@@ -91,14 +91,14 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
     // NB : b[0] ^ b[1] ^ b[2] ^ b[3] ^ b[4] ^ b[5] == 0x00 for a clean message
     chksum = xor_bytes(b, 6);
     if (chksum != 0x00) {
-#ifndef DLL_RTL_433 //window zombi if -vvv
+//#ifndef DLL_RTL_433 //window zombi if -vvv
         if (decoder->verbose > 1) {
             // Output the "bad" message (only for message level deciphering!)
             decoder_logf_bitrow(decoder, 2, __func__, b, XC0324_MESSAGE_BITLEN,
                     "chksum = 0x%02X not 0x00, row %d bit %d",
                     chksum, row, bitpos);
         }
-#endif
+//#endif
         return DECODE_FAIL_MIC; // No message was able to be decoded
     }
 
@@ -130,13 +130,13 @@ static int decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
     }
 
     // Output (simulated) message level deciphering information..
-#ifndef DLL_RTL_433 //window zombi if -vvv
+//#ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         decoder_logf_bitrow(decoder, 2, __func__, b, XC0324_MESSAGE_BITLEN,
                 "Temp was %4.1f, row %03d bit %03d",
                 temperature, row, bitpos);
     }
-#endif
+//#endif
     // Output "finished deciphering" reference values for future regression tests.
     if ((decoder->verbose == 3) & (latest_event == 0)) {
         //info from this first successful message is enough
@@ -162,7 +162,7 @@ static int digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data = NULL;
 
     // Only for simulating initial package level deciphering / debug.
-#ifndef DLL_RTL_433 //window zombi if -vvv
+//#ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         // Verbosely output the bitbuffer
         decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "hex(/binary) version of bitbuffer");
@@ -172,7 +172,7 @@ static int digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "row %03d", r);
         }
     }
-#endif
+//#endif
     //A clean XC0324 transmission contains 3 repeats of a message in a single row.
     //But in case of transmission or demodulation glitches,
     //loop over all rows and check for salvageable messages.

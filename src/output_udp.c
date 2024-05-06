@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 #include <limits.h>
+#include "rtl_433.h"
 // _POSIX_HOST_NAME_MAX is broken in gcc-13 at least on MacOS
 #ifndef _POSIX_HOST_NAME_MAX
 //#warning The limits.h include is missing the _POSIX_HOST_NAME_MAX define.

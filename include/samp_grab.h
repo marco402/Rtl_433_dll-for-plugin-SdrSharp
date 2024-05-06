@@ -13,7 +13,7 @@
 #define INCLUDE_SAMP_GRAB_H_
 
 #include <stdint.h>
-
+#include "rtl_433.h"
 typedef struct samp_grab {
     uint32_t *frequency;
     uint32_t *samp_rate;

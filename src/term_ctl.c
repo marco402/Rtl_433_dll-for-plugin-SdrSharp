@@ -25,7 +25,7 @@
 #include <limits.h>
 #include <windows.h>
 #include <lm.h>
-
+#include "rtl_433.h"
 #ifndef STDOUT_FILENO
 #define STDOUT_FILENO   1
 #endif

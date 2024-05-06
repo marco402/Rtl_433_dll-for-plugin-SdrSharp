@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
+#include "rtl_433.h"
 // Macro to prevent unused variables (passed into a function)
 // from generating a warning.
 #define UNUSED(x) (void)(x)

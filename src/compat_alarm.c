@@ -6,7 +6,7 @@
  */
 #include <stdio.h>
 #include "compat_alarm.h"
-
+#include "rtl_433.h"
 #ifdef HAVE_win_alarm /* rest of file */
 
 static HANDLE alarm_hnd = INVALID_HANDLE_VALUE;

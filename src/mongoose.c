@@ -1,4 +1,5 @@
 #include "mongoose.h"
+#include "rtl_433.h"
 /* MSG_NOSIGNAL is Linux and most BSDs only, not macOS or Windows */
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0

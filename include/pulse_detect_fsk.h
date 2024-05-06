@@ -16,7 +16,7 @@
 
 #include "pulse_data.h"
 #include <stdint.h>
-
+#include "rtl_433.h"
 /// State data for pulse_detect_fsk_ functions.
 ///
 /// This should be private/opaque but the OOK pulse_detect uses this.

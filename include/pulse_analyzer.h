@@ -13,7 +13,7 @@
 #define INCLUDE_PULSE_ANALYZER_H_
 
 #include "pulse_detect.h"
-
+#include "rtl_433.h"
 struct r_device;
 
 /// Analyze and print result.
