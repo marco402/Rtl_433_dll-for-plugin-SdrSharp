@@ -99,7 +99,7 @@ static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
     if ((b[5] & 0x80) == 0x80) {
         temperature_valid = 0;
         /* Avoid uninitialized warning due to DATA_COND. */
-        temperature_c = -1000.0;
+        temperature_c = -1000;
     }
     else {
         temperature_valid = 1;

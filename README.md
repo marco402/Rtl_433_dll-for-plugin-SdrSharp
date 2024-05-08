@@ -5,7 +5,9 @@ You can display dump windows
 Vous pouvez visualiser des captures fenêtres  
     sur https://marco40github.wixsite.com/website/plugin-sdrsharp-pour-rtl-433.  
 
-For informations on plugin see to :https://github.com/marco402/plugin-Rtl433-for-SdrSharp.  
+For informations on plugin see to :https://github.com/marco402/plugin-Rtl433-for-SdrSharp. 
+
+Version 1.5.0.4 May 2024 Removing the Console. 
 Version 1.5.0.2 February 16, 2024 Tested with SDRSharp 1919.  
     -Update RTL_433 (25 more devices).  
 Version 1.5.0.1 January 2023

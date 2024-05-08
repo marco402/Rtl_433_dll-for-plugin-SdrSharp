@@ -10,7 +10,7 @@
 */
 
 #include "decoder.h"
-/*#include "dll_rtl_433.h"*/ //for fprintf  else window zombi if -vvv
+
 /*
 Freq 912600155
 
@@ -227,14 +227,13 @@ static int ert_idm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         DifferentialConsumptionIntervals[j] = ((uint16_t)buffy[0] << 1) | (buffy[1] >> 7);
         pos += 9;
     }
-//#ifndef DLL_RTL_433 //window zombi if -vvv
     if (decoder->verbose > 1) {
         decoder_log(decoder, 2, __func__, "DifferentialConsumptionIntervals");
         for (int j = 0; j < 47; j++) {
             decoder_logf(decoder, 2, __func__, "%d", DifferentialConsumptionIntervals[j]);
         }
     }
-//#endif
+
     TransmitTimeOffset = (b[84] << 8 | b[85]);
 
     MeterIdCRC = (b[86] << 8 | b[87]);
