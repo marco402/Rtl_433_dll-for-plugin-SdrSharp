@@ -14,14 +14,15 @@
 /**
 EezTire E618 TPMS and Carchet TPMS (same protocol).
 
-Eez RV supported TPMS sensor model E618 : https://eezrvproducts.com/shop/ols/products/tpms-system-e518-anti-theft-replacement-sensor-1-ea
-Carchet TPMS: http://carchet.easyofficial.com/carchet-rv-trailer-car-solar-tpms-tire-pressure-monitoring-system-6-sensor-lcd-display-p6.html
+- Eez RV supported TPMS sensor model E618 : https://eezrvproducts.com/shop/ols/products/tpms-system-e518-anti-theft-replacement-sensor-1-ea
+- Carchet TPMS: http://carchet.easyofficial.com/carchet-rv-trailer-car-solar-tpms-tire-pressure-monitoring-system-6-sensor-lcd-display-p6.html
+- TST (Truck Systems Technologies) 507 Series TPMS : https://github.com/cterwilliger/tst_tpms
 
 The device uses OOK (ASK) encoding.
 The device sends a transmission every 1 second when quick deflation is detected, every 13 - 23 sec when quick inflation is detected, and every 4 min 40 s under steady state pressure.
 A transmission starts with a preamble of 0x0000 and the packet is sent twice.
 
-S.a issue #2384, #2657, #2063, #2677
+S.a issue #2384, #2657, #2063, #2677, #2819
 
 Data collection parameters on URH software were as follows:
     Sensor frequency: 433.92 MHz
@@ -69,7 +70,7 @@ Decode example:
 
 */
 
-static int tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // preamble is ffff
     uint8_t const preamble_pattern[] = {0xff, 0xff};
@@ -77,7 +78,7 @@ static int tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
-    int pos = 0;
+    int32_t pos = 0;
     bitbuffer_invert(bitbuffer);
     pos = bitbuffer_search(bitbuffer, 0, pos, preamble_pattern, sizeof(preamble_pattern) * 8);
     if (pos >= bitbuffer->bits_per_row[0]) {
@@ -96,7 +97,7 @@ static int tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // Verify checksum
     // If the checksum is greater than 0xFF then the MSB is set.
     // It occurs whether the bit is already set or not and was observed when checksum was in the 0x1FF and the 0x2FF range.
-    int computed_checksum = add_bytes(b, sizeof(b));
+    int32_t computed_checksum = add_bytes(b, sizeof(b));
     if (computed_checksum > 0xff) {
         computed_checksum |= 0x80;
     }
@@ -106,23 +107,23 @@ static int tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int temperature_C      = b[4] - 50;
-    int flags1             = b[5];
-    int flags2             = b[6];
-    int fast_leak_detected = (flags1 & 0x10);      // fast leak - reports every second
-    int infl_detected      = (flags1 & 0x20) >> 5; // inflating - reports every 15 - 20 sec
+    int32_t temperature_C      = b[4] - 50;
+    int32_t flags1             = b[5];
+    int32_t flags2             = b[6];
+    int32_t fast_leak_detected = (flags1 & 0x10);      // fast leak - reports every second
+    int32_t infl_detected      = (flags1 & 0x20) >> 5; // inflating - reports every 15 - 20 sec
 
-    int fast_leak      = fast_leak_detected && !infl_detected;
-    float pressure_kPa = (((flags2 & 0x01) << 8) + b[3]) * 2.5;
+    int32_t fast_leak      = fast_leak_detected && !infl_detected;
+    float pressure_kPa = (((flags2 & 0x01) << 8) + b[3]) * 2.5f;
 
     // Low batt = 0x8000;
-    int low_batt = flags1 >> 7; // Low batt flag is MSB (activated at V < 3.15 V)(Device fails at V < 3.10 V)
+    int32_t low_batt = flags1 >> 7; // Low batt flag is MSB (activated at V < 3.15 V)(Device fails at V < 3.10 V)
     // Mystery flag at (flags2 & 0x20) showed up during low batt testing
 
-    char id_str[7];
+    uint8_t id_str[7];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x", b[0], b[1], b[2]);
 
-    char flags_str[5];
+    uint8_t flags_str[5];
     snprintf(flags_str, sizeof(flags_str), "%02x%02x", flags1, flags2);
 
     /* clang-format off */
@@ -140,11 +141,11 @@ static int tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",
@@ -159,7 +160,7 @@ static char const *const output_fields[] = {
 };
 
 r_device const tpms_eezrv = {
-        .name        = "EezTire E618, Carchet TPMS",
+        .name        = "EezTire E618, Carchet TPMS, TST-507 TPMS",
         .modulation  = OOK_PULSE_MANCHESTER_ZEROBIT,
         .short_width = 50,
         .long_width  = 50,

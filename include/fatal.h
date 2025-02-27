@@ -29,7 +29,7 @@
 /*
     Use like this:
 
-    char *buf = malloc(size);
+    uint8_t *buf = malloc(size);
     if (!buf)
         FATAL_MALLOC("my_func()");
 

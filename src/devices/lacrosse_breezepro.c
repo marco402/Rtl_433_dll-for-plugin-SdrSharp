@@ -81,15 +81,14 @@ Between -17C and 0C, 'n' is 60.  Below -17C, 'n' is 360.
 
 #include "decoder.h"
 
-static int lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble_pattern[] = {0xd2, 0xaa, 0x2d, 0xd4};
 
-    data_t *data;
     uint8_t b[11];
     uint32_t id;
-    int flags, seq, offset, chk;
-    int raw_temp, humidity, raw_speed, direction;
+    int32_t flags, seq, offset, chk;
+    int32_t raw_temp, humidity, raw_speed, direction;
     float temp_c, speed_kmh;
 
     if (bitbuffer->bits_per_row[0] < 264) {
@@ -129,13 +128,14 @@ static int lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     speed_kmh = raw_speed * 0.1f;
 
     if (humidity < 0 || humidity > 100
-        || temp_c < -40 || temp_c > 70
-        || direction < 0 || direction > 360
-        || speed_kmh < 0 || speed_kmh > 200)
-      return DECODE_FAIL_SANITY;
+            || temp_c < -40 || temp_c > 70
+            || direction < 0 || direction > 360
+            || speed_kmh < 0 || speed_kmh > 200) {
+        return DECODE_FAIL_SANITY;
+    }
 
     /* clang-format off */
-    data = data_make(
+    data_t *data = data_make(
             "model",            "",                 DATA_STRING, "LaCrosse-BreezePro",
             "id",               "Sensor ID",        DATA_FORMAT, "%06x", DATA_INT, id,
             "seq",              "Sequence",         DATA_FORMAT, "%01x", DATA_INT, seq,
@@ -148,11 +148,11 @@ static int lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "seq",

@@ -95,21 +95,21 @@ circuit
 
 #define INTERLOGIX_MSG_BIT_LEN 46
 
-static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // preamble message
     // only searching for 0000 0001 (bottom 8 bits of the 13 bits preamble)
     uint8_t const preamble_pattern[1] = {0x01}; // 8 bits
 
     data_t *data;
-    unsigned int row = 0;
-    char const *device_type;
-    int low_battery;
-    char const *f1_latch_state;
-    char const *f2_latch_state;
-    char const *f3_latch_state;
-    char const *f4_latch_state;
-    char const *f5_latch_state;
+    int32_t row = 0;
+    uint8_t const *device_type;
+    int32_t low_battery;
+    uint8_t const *f1_latch_state;
+    uint8_t const *f2_latch_state;
+    uint8_t const *f3_latch_state;
+    uint8_t const *f4_latch_state;
+    uint8_t const *f5_latch_state;
 
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
@@ -117,13 +117,13 @@ static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Check if the message length is between the length seen in test files (57)
     // and the 64 bits discussed above.
-    if (bitbuffer->bits_per_row[0] < 57
-            || bitbuffer->bits_per_row[0] > 64) {
+    if (bitbuffer->bits_per_row[row] < 57
+            || bitbuffer->bits_per_row[row] > 64) {
         return DECODE_ABORT_LENGTH;
     }
 
     // search for preamble and exit if not found
-    unsigned int bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, (sizeof preamble_pattern) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, (sizeof preamble_pattern) * 8);
     if (bit_offset == bitbuffer->bits_per_row[row]) {
         decoder_logf(decoder, 2, __func__, "Preamble not found, bit_offset: %u", bit_offset);
         return DECODE_FAIL_SANITY;
@@ -148,18 +148,18 @@ static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // parity check: even data bits from message[0 .. 40] and odd data bits from message[1 .. 41]
     // i.e. 5 bytes and two (top-most) bits.
-    int parity = message[0] ^ message[1] ^ message[2] ^ message[3] ^ message[4]; // parity as byte
+    int32_t parity = message[0] ^ message[1] ^ message[2] ^ message[3] ^ message[4]; // parity as byte
     parity = (parity >> 4) ^ (parity & 0xF); // fold to nibble
     parity = (parity >> 2) ^ (parity & 0x3); // fold to 2 bits
     parity ^= message[5] >> 6; // add check bits
-    int parity_error = parity ^ 0x3; // both parities are odd, i.e. 1 on success
+    int32_t parity_error = parity ^ 0x3; // both parities are odd, i.e. 1 on success
 
     if (parity_error) {
         decoder_logf(decoder, 1, __func__, "Parity check failed (%d %d)", parity >> 1, parity & 1);
         return DECODE_FAIL_MIC;
     }
 
-    char device_type_id[2];
+    uint8_t device_type_id[2];
     snprintf(device_type_id, sizeof(device_type_id), "%01x", (reverse8(message[2]) >> 4));
 
     switch ((reverse8(message[2]) >> 4)) {
@@ -172,10 +172,10 @@ static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     default: device_type = "unknown"; break;
     }
 
-    char device_serial[7];
+    uint8_t device_serial[7];
     snprintf(device_serial, sizeof(device_serial), "%02x%02x%02x", reverse8(message[2]), reverse8(message[1]), reverse8(message[0]));
 
-    char raw_message[7];
+    uint8_t raw_message[7];
     snprintf(raw_message, sizeof(raw_message), "%02x%02x%02x", message[3], message[4], message[5]);
 
     // keyfob logic. see protocol description addendum for protocol exceptions
@@ -210,11 +210,12 @@ static int interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "subtype",
         "id",

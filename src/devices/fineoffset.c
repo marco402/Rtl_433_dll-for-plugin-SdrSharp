@@ -12,31 +12,26 @@
 */
 
 #include "decoder.h"
-#include "fatal.h"
-#include <stdlib.h>
 
-r_device const fineoffset_WH2;
+//r_device const fineoffset_WH2;
+r_device fineoffset_WH2;
 
-static r_device *fineoffset_WH2_create(char *arg)
+static r_device *fineoffset_WH2_create(uint8_t *arg,uint32_t protocol_num)
 {
-    r_device *r_dev = create_device(&fineoffset_WH2);
-    if (!r_dev) {
-        fprintf(stderr, "fineoffset_WH2_create() failed");
-        return NULL; // NOTE: returns NULL on alloc failure.
-    }
-
+	fineoffset_WH2.protocol_num = protocol_num;
     if (arg && !strcmp(arg, "no-wh5")) {
-        int *quirk = malloc(sizeof (*quirk));
-        if (!quirk) {
-            WARN_MALLOC("fineoffset_WH2_create()");
-            free(r_dev);
+        r_device *r_dev = decoder_create(&fineoffset_WH2, sizeof(int32_t));
+        if (!r_dev) {
             return NULL; // NOTE: returns NULL on alloc failure.
         }
-        *quirk = 1;
-        r_dev->decode_ctx = quirk;
-    }
 
-    return r_dev;
+        int32_t *quirk = decoder_user_data(r_dev);
+        *quirk = 1;
+        return r_dev;
+    }
+    else {
+        return decoder_create(&fineoffset_WH2, 0); // NOTE: returns NULL on alloc failure.
+    }
 }
 
 /**
@@ -67,14 +62,15 @@ http://lucsmall.com/2012/04/29/weather-station-hacking-part-2/
 #define MODEL_WH5 5
 #define MODEL_RB 6
 #define MODEL_TP 7
-static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    void *user_data = decoder_user_data(decoder);
     bitrow_t *bb = bitbuffer->bb;
     uint8_t b[6] = {0};
     data_t *data;
 
-    int model_num;
-    int type;
+    int32_t model_num;
+    int32_t type;
     uint8_t id;
     int16_t temp;
     float temperature;
@@ -94,7 +90,7 @@ static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             bb[0][0] == 0xFE) { // WH5
         bitbuffer_extract_bytes(bitbuffer, 0, 7, b, 40);
         model_num = MODEL_WH5;
-        if (decoder->decode_ctx) // don't care for the actual value
+        if (user_data) // don't care for the actual value
             model_num = MODEL_RB;
 
     } else if (bitbuffer->bits_per_row[0] == 49 &&
@@ -121,14 +117,14 @@ static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Nibble 5,6,7 contains 12 bits of temperature
     temp = ((b[1] & 0x0F) << 8) | b[2];
-    if (bitbuffer->bits_per_row[0] != 47 || decoder->decode_ctx) { // WH2, Telldus, WH2A
+    if (bitbuffer->bits_per_row[0] != 47 || user_data) { // WH2, Telldus, WH2A
         // The temperature is signed magnitude and scaled by 10
         if (temp & 0x800) {
             temp &= 0x7FF; // remove sign bit
             temp = -temp; // reverse magnitude
         }
     } else { // WH5
-        // The temperature is unsigned offset by 40 C and scaled by 10
+        // The temperature is uint32_t offset by 40 C and scaled by 10
         temp -= 400;
     }
     temperature = temp * 0.1f;
@@ -150,7 +146,7 @@ static int fineoffset_WH2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -195,13 +191,13 @@ The WH65B sends the same data with a slightly longer preamble and postamble
  */
 #define MODEL_WH24 24 /* internal identifier for model WH24, family code is always 0x24 */
 #define MODEL_WH65B 65 /* internal identifier for model WH65B, family code is always 0x24 */
-static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4}; // part of preamble and sync word
     uint8_t b[17]; // aligned packet data
-    unsigned bit_offset;
-    int type;
+    uint32_t bit_offset;
+    int32_t type;
 
     // Validate package, WH24 nominal size is 196 bit periods, WH65b is 209 bit periods
     if (bitbuffer->bits_per_row[0] < 190 || bitbuffer->bits_per_row[0] > 215) {
@@ -233,7 +229,7 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Verify checksum, same as other FO Stations: Reverse 1Wire CRC (poly 0x131)
     uint8_t crc = crc8(b, 15, 0x31, 0x00);
     uint8_t checksum = 0;
-    for (unsigned n = 0; n < 16; ++n) {
+    for (uint32_t n = 0; n < 16; ++n) {
         checksum += b[n];
     }
     if (crc != b[15] || checksum != b[16]) {
@@ -242,15 +238,15 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Decode data
-    int id              = b[1];                      // changes on battery change
-    int wind_dir        = b[2] | (b[3] & 0x80) << 1; // range 0-359 deg, 0x1ff if invalid
-    int low_battery     = (b[3] & 0x08) >> 3;
-    int temp_raw        = (b[3] & 0x07) << 8 | b[4]; // 0x7ff if invalid
+    int32_t id              = b[1];                      // changes on battery change
+    int32_t wind_dir        = b[2] | (b[3] & 0x80) << 1; // range 0-359 deg, 0x1ff if invalid
+    int32_t low_battery     = (b[3] & 0x08) >> 3;
+    int32_t temp_raw        = (b[3] & 0x07) << 8 | b[4]; // 0x7ff if invalid
     float temperature   = (temp_raw - 400) * 0.1f; // range -40.0-60.0 C
-    int humidity        = b[5];                      // 0xff if invalid
-    int wind_speed_raw  = b[6] | (b[3] & 0x10) << 4; // 0x1ff if invalid
+    int32_t humidity        = b[5];                      // 0xff if invalid
+    int32_t wind_speed_raw  = b[6] | (b[3] & 0x10) << 4; // 0x1ff if invalid
     float wind_speed_factor, rain_cup_count;
-    // Wind speed factor is 1.12 m/s (1.19 per specs?) for WH24, 0.51 m/s for WH65B
+    // Wind speed factor is 1.12 m/s (1.19 per specs?) for WH24, 0.51 m/s for WH65B
     // Rain cup each count is 0.3mm for WH24, 0.01inch (0.254mm) for WH65B
     if (type == MODEL_WH24) { // WH24
         wind_speed_factor = 1.12f;
@@ -259,15 +255,15 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         wind_speed_factor = 0.51f;
         rain_cup_count = 0.254f;
     }
-    // Wind speed is scaled by 8, wind speed = raw / 8 * 1.12 m/s (0.51 for WH65B)
+    // Wind speed is scaled by 8, wind speed = raw / 8 * 1.12 m/s (0.51 for WH65B)
     float wind_speed_ms = wind_speed_raw * 0.125f * wind_speed_factor;
-    int gust_speed_raw  = b[7];             // 0xff if invalid
+    int32_t gust_speed_raw  = b[7];             // 0xff if invalid
     // Wind gust is unscaled, multiply by wind speed factor 1.12 m/s
     float gust_speed_ms = gust_speed_raw * wind_speed_factor;
-    int rainfall_raw    = b[8] << 8 | b[9]; // rain tip counter
+    int32_t rainfall_raw    = b[8] << 8 | b[9]; // rain tip counter
     float rainfall_mm   = rainfall_raw * rain_cup_count; // each tip is 0.3mm / 0.254mm
-    int uv_raw          = b[10] << 8 | b[11];               // range 0-20000, 0xffff if invalid
-    int light_raw       = b[12] << 16 | b[13] << 8 | b[14]; // 0xffffff if invalid
+    int32_t uv_raw          = b[10] << 8 | b[11];               // range 0-20000, 0xffff if invalid
+    int32_t light_raw       = b[12] << 16 | b[13] << 8 | b[14]; // 0xffffff if invalid
     double light_lux     = light_raw * 0.1; // range 0.0-300000.0lux
     // Light = value/10 ; Watts/m Sqr. = Light/683 ;  Lux to W/m2 = Lux/126
 
@@ -286,8 +282,8 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // 4278-4650  11
     // 4651-5029  12
     // >=5230     13
-    int uvi_upper[] = {432, 851, 1210, 1570, 2017, 2450, 2761, 3100, 3512, 3918, 4277, 4650, 5029};
-    int uv_index   = 0;
+    int32_t uvi_upper[] = {432, 851, 1210, 1570, 2017, 2450, 2761, 3100, 3512, 3918, 4277, 4650, 5029};
+    int32_t uv_index   = 0;
     while (uv_index < 13 && uvi_upper[uv_index] < uv_raw) ++uv_index;
 
     /* clang-format off */
@@ -295,7 +291,7 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",                 DATA_STRING, type == MODEL_WH24 ? "Fineoffset-WH24" : "Fineoffset-WH65B",
             "id",               "ID",               DATA_INT,    id,
             "battery_ok",       "Battery",          DATA_INT,    !low_battery,
-            "temperature_C",    "Temperature",      DATA_COND, temp_raw != 0x7ff, DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
+            "temperature_C",    "Temperature",      DATA_COND, temp_raw != 0x7ff, DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
             "humidity",         "Humidity",         DATA_COND, humidity != 0xff, DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "wind_dir_deg",     "Wind direction",   DATA_COND, wind_dir != 0x1ff, DATA_INT, wind_dir,
             "wind_avg_m_s",     "Wind speed",       DATA_COND, wind_speed_raw != 0x1ff, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind_speed_ms,
@@ -308,7 +304,7 @@ static int fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -385,12 +381,12 @@ BitBench Examples
 Preamble: aa2dd4
 FAM:8d ID: 8h 1b Bat_MSB:1d PMTWO:14d Bat_LSB:2d PMTEN:14d CRC:8h BITSIM:8h bbbbb
 */
-static int fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4};
     uint8_t b[8];
-    unsigned bit_offset;
+    uint32_t bit_offset;
 
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
     if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
@@ -402,7 +398,7 @@ static int fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Verify checksum, same as other FO Stations: Reverse 1Wire CRC (poly 0x131)
     uint8_t crc = crc8(b, 6, 0x31, 0x00);
     uint8_t checksum = 0;
-    for (unsigned n = 0; n < 7; ++n) {
+    for (uint32_t n = 0; n < 7; ++n) {
         checksum += b[n];
     }
     if (crc != b[6] || checksum != b[7]) {
@@ -414,9 +410,9 @@ static int fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t family    = b[0];
     uint8_t id        = b[1];
     uint8_t unknown1  = (b[2] & 0x80) ? 1 : 0;
-    int pm25          = (b[2] & 0x3f) << 8 | b[3];
-    int pm100         = (b[4] & 0x3f) << 8 | b[5];
-    int battery_bars  = (b[2] & 0x40) >> 4 | (b[4] & 0xC0) >> 6; //out of 5
+    int32_t pm25          = (b[2] & 0x3f) << 8 | b[3];
+    int32_t pm100         = (b[4] & 0x3f) << 8 | b[5];
+    int32_t battery_bars  = (b[2] & 0x40) >> 4 | (b[4] & 0xC0) >> 6; //out of 5
     float battery_ok  = battery_bars * 0.2f; //convert out of 5 bars to 0 (0 bars) to 1 (5 bars)
 
     /* clang-format off */
@@ -424,15 +420,15 @@ static int fineoffset_WH0290_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_STRING, "Fineoffset-WH0290",
             "id",               "ID",           DATA_INT,    id,
             "battery_ok",       "Battery Level",  DATA_FORMAT, "%.1f", DATA_DOUBLE, battery_ok,
-            "pm2_5_ug_m3",      "2.5um Fine Particulate Matter",  DATA_FORMAT, "%i ug/m3", DATA_INT, pm25/10,
-            "estimated_pm10_0_ug_m3",     "Estimate of 10um Coarse Particulate Matter",  DATA_FORMAT, "%i ug/m3", DATA_INT, pm100/10,
+            "pm2_5_ug_m3",      "2.5um Fine Particulate Matter",  DATA_FORMAT, "%d ug/m3", DATA_INT, pm25/10,
+            "estimated_pm10_0_ug_m3",     "Estimate of 10um Coarse Particulate Matter",  DATA_FORMAT, "%d ug/m3", DATA_INT, pm100/10,
             "family",           "FAMILY",       DATA_INT,    family,
             "unknown1",         "UNKNOWN1",     DATA_INT,    unknown1,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -465,25 +461,25 @@ WH32B is the same as WH25 but two packets in one transmission of {971} and XOR s
     TYPE:4h ID:8d FLAGS:2b TEMP_C:10d HUM:8d HPA:16d CHK:8h
 
 */
-static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4};
     uint8_t b[8];
-    int type = 25;
-    unsigned bit_offset;
+    int32_t type = 25;
+    uint32_t bit_offset;
 
     // Validate package
     if (bitbuffer->bits_per_row[0] < 160) {
         // Nominal length of WH0290 is 129 bits
-        return fineoffset_WH0290_callback(decoder, bitbuffer); // abort and try WH0290
+        return fineoffset_WH0290_callback(decoder, bitbuffer, startPulses,package_type); // abort and try WH0290
     }
     else if (bitbuffer->bits_per_row[0] < 190) {
         // Nominal length of WN32B is 173 bits
         type = 32; // new WN32B
     }
     else if (bitbuffer->bits_per_row[0] < 440) {             // Nominal size is 488 bit periods
-        return fineoffset_WH24_callback(decoder, bitbuffer); // abort and try WH24, WH65B, HP1000
+        return fineoffset_WH24_callback(decoder, bitbuffer, startPulses,package_type); // abort and try WH24, WH65B, HP1000
     }
 
     if (bitbuffer->bits_per_row[0] > 510) { // WH32B has nominal size of 971 bit periods
@@ -501,28 +497,28 @@ static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_log_bitrow(decoder, 2, __func__, b, sizeof(b) * 8, "Packet");
 
     // Verify type code
-    int msg_type = b[0] & 0xf0;
+    int32_t msg_type = b[0] & 0xf0;
     if (type == 32 && msg_type == 0xd0) {
         // this is an older "WH32", does not have a barometric sensor
         type = 31;
     }
     else if (msg_type != 0xe0) {
-        decoder_logf(decoder, 1, __func__, "Msg type unknown: %2x", b[0]);
+        decoder_logf(decoder, 1, __func__, "Msg type unknown: %02x", b[0]);
         if (b[0] == 0x41) {
-            return fineoffset_WH0290_callback(decoder, bitbuffer); // abort and try WH0290
+            return fineoffset_WH0290_callback(decoder, bitbuffer, startPulses,package_type); // abort and try WH0290
         }
         return DECODE_ABORT_EARLY;
     }
 
     // Verify checksum
-    int sum = (add_bytes(b, 6) & 0xff) - b[6];
+    int32_t sum = (add_bytes(b, 6) & 0xff) - b[6];
     if (sum) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Checksum error");
         return DECODE_FAIL_MIC;
     }
 
     // Verify xor-sum
-    int bitsum = xor_bytes(b, 6);
+    int32_t bitsum = xor_bytes(b, 6);
     bitsum = ((bitsum & 0x0f) << 4) | (bitsum >> 4); // Swap nibbles
     if (type == 25 && bitsum != b[7]) { // only check for WH25
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Bitsum error");
@@ -531,12 +527,12 @@ static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Decode data
     uint8_t id        = ((b[0]&0x0f) << 4) | (b[1] >> 4);
-    int low_battery   = (b[1] & 0x08) >> 3;
-    //int invalid_flag  = (b[1] & 0x04) >> 2;
-    int temp_raw      = (b[1] & 0x03) << 8 | b[2]; // 0x7ff if invalid
+    int32_t low_battery   = (b[1] & 0x08) >> 3;
+    //int32_t invalid_flag  = (b[1] & 0x04) >> 2;
+    int32_t temp_raw      = (b[1] & 0x03) << 8 | b[2]; // 0x7ff if invalid
     float temperature = (temp_raw - 400) * 0.1f;    // range -40.0-60.0 C
     uint8_t humidity  = b[3];
-    int pressure_raw  = (b[4] << 8 | b[5]);
+    int32_t pressure_raw  = (b[4] << 8 | b[5]);
     float pressure    = pressure_raw * 0.1f;
 
     /* clang-format off */
@@ -546,14 +542,14 @@ static int fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_COND, type == 25, DATA_STRING, "Fineoffset-WH25",
             "id",               "ID",           DATA_INT,    id,
             "battery_ok",       "Battery",      DATA_INT,    !low_battery,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
             "humidity",         "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, humidity,
-            "pressure_hPa",     "Pressure",     DATA_COND,   pressure_raw != 0xffff, DATA_FORMAT, "%.01f hPa", DATA_DOUBLE, pressure,
+            "pressure_hPa",     "Pressure",     DATA_COND,   pressure_raw != 0xffff, DATA_FORMAT, "%.1f hPa", DATA_DOUBLE, pressure,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -590,18 +586,18 @@ Data format:
 See http://www.ecowitt.com/upfile/201904/WH51%20Manual.pdf for relationship between AD and moisture %
 
 Short explanation:
-- Soil Moisture Percentage = (Moisture AD – 0%AD) / (100%AD – 0%AD) * 100
+- Soil Moisture Percentage = (Moisture AD - 0%AD) / (100%AD - 0%AD) * 100
 - 0%AD = 70
 - 100%AD = 450 (manual states 500, but sensor internal computation are closer to 450)
 - If sensor-calculated moisture percentage are inaccurate at low/high values, use the AD value and the above formaula
   changing 0%AD and 100%AD to cover the full scale from dry to damp
 */
-static int fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4};
     uint8_t b[14];
-    unsigned bit_offset;
+    uint32_t bit_offset;
 
     // Validate package
     if (bitbuffer->bits_per_row[0] < 120) {
@@ -618,7 +614,7 @@ static int fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Verify family code
     if (b[0] != 0x51) {
-        decoder_logf(decoder, 1, __func__, "Msg family unknown: %2x", b[0]);
+        decoder_logf(decoder, 1, __func__, "Msg family unknown: %02x", b[0]);
         return DECODE_ABORT_EARLY;
     }
 
@@ -635,13 +631,13 @@ static int fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Decode data
-    char id[7];
+    uint8_t id[7];
     snprintf(id, sizeof(id), "%02x%02x%02x", b[1], b[2], b[3]);
-    int boost           = (b[4] & 0xe0) >> 5;
-    int battery_mv      = (b[4] & 0x1f) * 100;
+    int32_t boost           = (b[4] & 0xe0) >> 5;
+    int32_t battery_mv      = (b[4] & 0x1f) * 100;
     float battery_level = (battery_mv - 700) / 900.0f; // assume 1.6V (100%) to 0.7V (0%) range
-    int ad_raw          = (((int)b[7] & 0x01) << 8) | (int)b[8];
-    int moisture        = b[6];
+    int32_t ad_raw          = (((int32_t)b[7] & 0x01) << 8) | (int32_t)b[8];
+    int32_t moisture        = b[6];
 
     /* clang-format off */
     data = data_make(
@@ -656,7 +652,7 @@ static int fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -685,7 +681,7 @@ Format string:
 
     PRE:7b TYPE:4b ID:8b BATT:1b ?:1b T:10d R:<16d ?:8h CRC:8h
 */
-static int alecto_ws1200v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t alecto_ws1200v1_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitrow_t *bb = bitbuffer->bb;
@@ -700,17 +696,17 @@ static int alecto_ws1200v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, 0, 7, b, sizeof (b) * 8); // Skip first 7 bits
 
     // Verify checksum
-    int crc = crc8(b, 7, 0x31, 0);
+    int32_t crc = crc8(b, 7, 0x31, 0);
     if (crc) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Alecto WS-1200 v1.0: CRC error ");
         return DECODE_FAIL_MIC;
     }
 
-    int id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
-    int battery_low   = (b[1] >> 3) & 0x1;
-    int temp_raw      = (b[1] & 0x7) << 8 | b[2];
+    int32_t id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
+    int32_t battery_low   = (b[1] >> 3) & 0x1;
+    int32_t temp_raw      = (b[1] & 0x7) << 8 | b[2];
     float temperature = (temp_raw - 400) * 0.1f;
-    int rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
+    int32_t rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
     float rainfall    = rainfall_raw * 0.3f; // each tip is 0.3mm
 
     /* clang-format off */
@@ -718,13 +714,13 @@ static int alecto_ws1200v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_STRING, "Alecto-WS1200v1",
             "id",               "ID",           DATA_INT,    id,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
-            "rain_mm",          "Rain",         DATA_FORMAT, "%.01f mm", DATA_DOUBLE, rainfall,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
+            "rain_mm",          "Rain",         DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rainfall,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -756,7 +752,7 @@ Format string:
     PRE:7b TYPE:8b ID:8b BATT:1b ?:1b ?:8b YY:4d YY:4d MM:4d MM:4d DD:4d DD:4d HH:4d HH:4d MM:4d MM:4d SS:4d SS:4d ?:16b
 
 */
-static int alecto_ws1200v2_dcf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t alecto_ws1200v2_dcf_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitrow_t *bb = bitbuffer->bb;
@@ -771,29 +767,29 @@ static int alecto_ws1200v2_dcf_callback(r_device *decoder, bitbuffer_t *bitbuffe
     bitbuffer_extract_bytes(bitbuffer, 0, 7, b, sizeof (b) * 8); // Skip first 7 bits
 
     // Verify CRC
-    int crc = crc8(b, 10, 0x31, 0);
+    int32_t crc = crc8(b, 10, 0x31, 0);
     if (crc) {
         //decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Alecto WS-1200 v2.0 DCF77: CRC error ");
         return DECODE_FAIL_MIC;
     }
     // Verify checksum
-    int sum = add_bytes(b, 10) - b[10];
+    int32_t sum = add_bytes(b, 10) - b[10];
     if (sum & 0xff) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Alecto WS-1200 v2.0 DCF77: Checksum error ");
         return DECODE_FAIL_MIC;
     }
 
-    int id          = (b[1]);
-    int battery_low = (b[2] >> 7) & 0x1;
+    int32_t id          = (b[1]);
+    int32_t battery_low = (b[2] >> 7) & 0x1;
     // date/time fields are actually bcd, just print as hex.
     // TODO: the seconds fields sometimes has values like: 0xb8, 0x3c?
-    int date_y      = b[4] + 0x2000; // (b[4] >> 4) * 10 + (b[4] & 0x0f) + 2000;
-    int date_m      = b[5]; // (b[5] >> 4) * 10 + (b[5] & 0x0f);
-    int date_d      = b[6]; // (b[6] >> 4) * 10 + (b[6] & 0x0f);
-    int time_h      = b[7]; // (b[7] >> 4) * 10 + (b[7] & 0x0f);
-    int time_m      = b[8]; // (b[8] >> 4) * 10 + (b[8] & 0x0f);
-    int time_s      = b[9]; // (b[9] >> 4) * 10 + (b[9] & 0x0f);
-    char clock_str[32];
+    int32_t date_y      = b[4] + 0x2000; // (b[4] >> 4) * 10 + (b[4] & 0x0f) + 2000;
+    int32_t date_m      = b[5]; // (b[5] >> 4) * 10 + (b[5] & 0x0f);
+    int32_t date_d      = b[6]; // (b[6] >> 4) * 10 + (b[6] & 0x0f);
+    int32_t time_h      = b[7]; // (b[7] >> 4) * 10 + (b[7] & 0x0f);
+    int32_t time_m      = b[8]; // (b[8] >> 4) * 10 + (b[8] & 0x0f);
+    int32_t time_s      = b[9]; // (b[9] >> 4) * 10 + (b[9] & 0x0f);
+    uint8_t clock_str[32];
     snprintf(clock_str, sizeof(clock_str), "%04x-%02x-%02xT%02x:%02x:%02x",
             date_y, date_m, date_d, time_h, time_m, time_s);
 
@@ -807,7 +803,7 @@ static int alecto_ws1200v2_dcf_callback(r_device *decoder, bitbuffer_t *bitbuffe
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -837,7 +833,7 @@ Format string:
 
     PRE:7b TYPE:4b ID:8b BATT:1b ?:1b T:10d R:<16d ?:8h CRC:8h MAC:8h DATE:24b
 */
-static int alecto_ws1200v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t alecto_ws1200v2_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitrow_t *bb = bitbuffer->bb;
@@ -847,28 +843,28 @@ static int alecto_ws1200v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer->bits_per_row[0] != 95 // Match exact length to avoid false positives
             || (bb[0][0] >> 1) != 0x7F   // Check preamble (7 bits)
             || (bb[0][1] >> 5) != 0x3)   // Check message type (8 bits)
-        return alecto_ws1200v2_dcf_callback(decoder, bitbuffer);
+        return alecto_ws1200v2_dcf_callback(decoder, bitbuffer, startPulses,package_type);
 
     bitbuffer_extract_bytes(bitbuffer, 0, 7, b, sizeof (b) * 8); // Skip first 7 bits
 
     // Verify CRC
-    int crc = crc8(b, 7, 0x31, 0);
+    int32_t crc = crc8(b, 7, 0x31, 0);
     if (crc) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Alecto WS-1200 v2.0: CRC error ");
         return DECODE_FAIL_MIC;
     }
     // Verify checksum
-    int sum = add_bytes(b, 7) - b[7];
+    int32_t sum = add_bytes(b, 7) - b[7];
     if (sum & 0xff) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Alecto WS-1200 v2.0: Checksum error ");
         return DECODE_FAIL_MIC;
     }
 
-    int id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
-    int battery_low   = (b[1] >> 3) & 0x1;
-    int temp_raw      = (b[1] & 0x7) << 8 | b[2];
+    int32_t id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
+    int32_t battery_low   = (b[1] >> 3) & 0x1;
+    int32_t temp_raw      = (b[1] & 0x7) << 8 | b[2];
     float temperature = (temp_raw - 400) * 0.1f;
-    int rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
+    int32_t rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
     float rainfall    = rainfall_raw * 0.3f; // each tip is 0.3mm
 
     /* clang-format off */
@@ -876,13 +872,13 @@ static int alecto_ws1200v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_STRING, "Alecto-WS1200v2",
             "id",               "ID",           DATA_INT,    id,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
-            "rain_mm",          "Rain",         DATA_FORMAT, "%.01f mm", DATA_DOUBLE, rainfall,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
+            "rain_mm",          "Rain",         DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rainfall,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -906,7 +902,7 @@ Data layout:
 - C: 8 bit CRC-8 with poly 0x31 init 0x00
 - A: 8 bit Checksum of previous 7 bytes (addition truncated to 8 bit)
 */
-static int fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitrow_t *bb = bitbuffer->bb;
@@ -914,9 +910,9 @@ static int fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // try Alecto WS-1200 (v1, v2, DCF)
     if (bitbuffer->bits_per_row[0] == 63)
-        return alecto_ws1200v1_callback(decoder, bitbuffer);
+        return alecto_ws1200v1_callback(decoder, bitbuffer, startPulses,package_type);
     if (bitbuffer->bits_per_row[0] == 95)
-        return alecto_ws1200v2_callback(decoder, bitbuffer);
+        return alecto_ws1200v2_callback(decoder, bitbuffer, startPulses,package_type);
 
     // Validate package
     if (bitbuffer->bits_per_row[0] != 71) // Match exact length to avoid false positives
@@ -929,19 +925,19 @@ static int fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, 0, 7, b, sizeof(b) * 8); // Skip first 7 bits
 
     // Verify checksum
-    int crc = crc8(b, 7, 0x31, 0);
-    int sum = (add_bytes(b, 7) & 0xff) - b[7];
+    int32_t crc = crc8(b, 7, 0x31, 0);
+    int32_t sum = (add_bytes(b, 7) & 0xff) - b[7];
 
     if (crc || sum) {
         decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Fineoffset_WH0530: Checksum error");
         return DECODE_FAIL_MIC;
     }
 
-    int id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
-    int battery_low   = (b[1] >> 3) & 0x1;
-    int temp_raw      = (b[1] & 0x7) << 8 | b[2];
+    int32_t id            = ((b[0] & 0x0f) << 4) | (b[1] >> 4);
+    int32_t battery_low   = (b[1] >> 3) & 0x1;
+    int32_t temp_raw      = (b[1] & 0x7) << 8 | b[2];
     float temperature = (temp_raw - 400) * 0.1f;
-    int rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
+    int32_t rainfall_raw  = b[4] << 8 | b[3];   // rain tip counter
     float rainfall    = rainfall_raw * 0.3f; // each tip is 0.3mm
 
     /* clang-format off */
@@ -949,17 +945,17 @@ static int fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_STRING, "Fineoffset-WH0530",
             "id",               "ID",           DATA_INT,    id,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
-            "rain_mm",          "Rain",         DATA_FORMAT, "%.01f mm", DATA_DOUBLE, rainfall,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
+            "rain_mm",          "Rain",         DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rainfall,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",
@@ -968,7 +964,7 @@ static char const *const output_fields[] = {
         NULL,
 };
 
-static char const *const output_fields_WH25[] = {
+static uint8_t const *const output_fields_WH25[] = {
         "model",
         "id",
         "battery_ok",
@@ -990,7 +986,7 @@ static char const *const output_fields_WH25[] = {
         NULL,
 };
 
-static char const *const output_fields_WH51[] = {
+static uint8_t const *const output_fields_WH51[] = {
         "model",
         "id",
         "battery_ok",
@@ -1002,7 +998,7 @@ static char const *const output_fields_WH51[] = {
         NULL,
 };
 
-static char const *const output_fields_WH0530[] = {
+static uint8_t const *const output_fields_WH0530[] = {
         "model",
         "id",
         "battery_ok",
@@ -1013,7 +1009,8 @@ static char const *const output_fields_WH0530[] = {
         NULL,
 };
 
-r_device const fineoffset_WH2 = {
+r_device fineoffset_WH2 = {
+	    .protocol_num = 0,     // marc see with programer RTL_433
         .name        = "Fine Offset Electronics, WH2, WH5, Telldus Temperature/Humidity/Rain Sensor",
         .modulation  = OOK_PULSE_PWM,
         .short_width = 500,  // Short pulse 544µs, long pulse 1524µs, fixed gap 1036µs
@@ -1021,7 +1018,7 @@ r_device const fineoffset_WH2 = {
         .reset_limit = 1200, // We just want 1 package
         .tolerance   = 160,  // us
         .decode_fn   = &fineoffset_WH2_callback,
-        .create_fn   = &fineoffset_WH2_create,
+        .create_fn   = &fineoffset_WH2_create,   //marc return protocol=0
         .fields      = output_fields,
 };
 

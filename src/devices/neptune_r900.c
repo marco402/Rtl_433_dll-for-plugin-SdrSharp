@@ -11,7 +11,7 @@
 
 #include "decoder.h"
 
-/** @fn int neptune_r900_decode(r_device *decoder, bitbuffer_t * bitbuffer)
+/** @fn int32_t neptune_r900_decode(r_device *decoder, bitbuffer_t * bitbuffer)
 Neptune R900 flow meter decoder.
 
 The product site lists E-CODER R900 amd MACH10 R900. Not sure if this decodes both.
@@ -63,12 +63,12 @@ Data layout:
 - E: 24-bit extra data????
 */
 
-int const map16to6[16] = { -1, -1, -1, 0, -1, 1, 2, -1, -1, 5, 4, -1, 3, -1, -1, -1 };
+int32_t const map16to6[16] = { -1, -1, -1, 0, -1, 1, 2, -1, -1, 5, 4, -1, 3, -1, -1, -1 };
 
 static void decode_5to8(bitbuffer_t *bytes, uint8_t *base6_dec)
 {
     // is there a better way to convert groups of 5 bits to groups of 8 bits?
-    for (int i=0; i < 21; i++) {
+    for (int32_t i=0; i < 21; i++) {
         uint8_t data = base6_dec[i];
         bitbuffer_add_bit(bytes, data >> 4 & 0x01);
         bitbuffer_add_bit(bytes, data >> 3 & 0x01);
@@ -78,37 +78,38 @@ static void decode_5to8(bitbuffer_t *bytes, uint8_t *base6_dec)
     }
 }
 
-static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // partial preamble and sync word shifted by 1 bit
     uint8_t const preamble[] = {0x55, 0x55, 0x55, 0xa9, 0x66, 0x69, 0x65};
-    int const preamble_length = sizeof(preamble) * 8;
+    int32_t const preamble_length = sizeof(preamble) * 8;
 
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Search for preamble and sync-word
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble, preamble_length);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, preamble_length);
 
-    // check that (bitbuffer->bits_per_row[0]) greater than (start_pos+sizeof(preamble)*8+168)
-    if (start_pos + preamble_length + 168 > bitbuffer->bits_per_row[0])
+    // check that (bitbuffer->bits_per_row[row]) greater than (bit_offset+sizeof(preamble)*8+168)
+    if (bit_offset + preamble_length + 168 > bitbuffer->bits_per_row[row])
         return DECODE_ABORT_LENGTH;
 
     // No preamble detected
-    if (start_pos == bitbuffer->bits_per_row[0])
+    if (bit_offset == bitbuffer->bits_per_row[row])
         return DECODE_ABORT_EARLY;
 
-    decoder_logf(decoder, 1, __func__, "Neptune R900 detected, buffer is %d bits length", bitbuffer->bits_per_row[0]);
+    decoder_logf(decoder, 1, __func__, "Neptune R900 detected, buffer is %d bits length", bitbuffer->bits_per_row[row]);
 
     // Remove preamble and sync word, keep whole payload
     uint8_t bits[21]; // 168 bits
-    bitbuffer_extract_bytes(bitbuffer, 0, start_pos + preamble_length, bits, 21 * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset + preamble_length, bits, 21 * 8);
 
     uint8_t *bb = bitbuffer->bb[0];
     bitbuffer_t bytes = {0};
     uint8_t base6_dec[21] = {0};
-    int count = 0;
+    int32_t count = 0;
 
     /*
      * Each group of four of these chips must be interpreted as a digit in base 6
@@ -120,11 +121,11 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
      * 1010 -> 4
      * 1001 -> 5
     */
-    // create a pair of char bit array of '0' and '1' for each base6 byte
-    for (uint8_t k = start_pos+preamble_length; k < start_pos + preamble_length + 168; k=k+8) {
+    // create a pair of uint8_t bit array of '0' and '1' for each base6 byte
+    for (uint8_t k = bit_offset+preamble_length; k < bit_offset + preamble_length + 168; k=k+8) {
         uint8_t byte = bitrow_get_byte(bb, k);
-        int highNibble = map16to6[(byte >> 4 & 0xF)];
-        int lowNibble = map16to6[(byte & 0xF)];
+        int32_t highNibble = map16to6[(byte >> 4 & 0xF)];
+        int32_t lowNibble = map16to6[(byte & 0xF)];
 
         if (highNibble < 0 || lowNibble < 0)
             return DECODE_ABORT_EARLY;
@@ -138,16 +139,16 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // the first 80 bits are used in this decoder, the last 24 bits are decoded as extra
     decode_5to8(&bytes, base6_dec);
     uint8_t b[13]; // 104 bits
-    bitbuffer_extract_bytes(&bytes, 0, 0, b, sizeof(b)*8);
+    bitbuffer_extract_bytes(&bytes, row, 0, b, sizeof(b) * 8);
 
     // decode the data
 
     // meter_id 32 bits
     uint32_t meter_id = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     //Unkn1 8 bits
-    int unkn1 = b[4];
+    int32_t unkn1 = b[4];
     //Unkn2 3 bits
-    int unkn2 = b[5] >> 5;
+    int32_t unkn2 = b[5] >> 5;
     //NoUse 3 bits
     // 0 = 0 days
     // 1 = 1-2 days
@@ -156,17 +157,17 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // 4 = 15-21 days
     // 5 = 22-34 days
     // 6 = 35+ days
-    int nouse = ((b[5] >> 1)&0x0F) >> 1;
+    int32_t nouse = ((b[5] >> 1)&0x0F) >> 1;
     //BackFlow 2 bits
     // During the last 35 days
     // 0 = none
     // 1 = low
     // 2 = high
-    int backflow = b[5]&0x03;
+    int32_t backflow = b[5]&0x03;
     //Consumption 24 bits
-    int consumption = (b[6] << 16) | (b[7] << 8) | (b[8]);
+    int32_t consumption = (b[6] << 16) | (b[7] << 8) | (b[8]);
     //Unkn3 2 bits + 1 bit ???
-    int unkn3 = b[9] >> 5;
+    int32_t unkn3 = b[9] >> 5;
     //Leak 3 bits
     // 0 = 0 days
     // 1 = 1-2 days
@@ -175,15 +176,15 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // 4 = 15-21 days
     // 5 = 22-34 days
     // 6 = 35+ days
-    int leak = ((b[9] >> 1)&0x0F) >> 1;
+    int32_t leak = ((b[9] >> 1)&0x0F) >> 1;
     //LeakNow 2 bits
     // During the last 24 hours
     // 0 = none
     // 1 = low (intermittent leak) water used for at least 50 of the 96 15-minute intervals
     // 2 = high (continuous leak) water use in every 15-min interval for the last 24 hours
-    int leaknow = b[9]&0x03;
+    int32_t leaknow = b[9]&0x03;
     // extra 24 bits ???
-    char extra[7];
+    uint8_t extra[7];
     snprintf(extra, sizeof(extra),"%02x%02x%02x", b[10], b[11], b[12]);
 
     /* clang-format off */
@@ -201,7 +202,8 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "extra",       "",    DATA_STRING, extra,
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     // Return 1 if message successfully decoded
     return 1;
@@ -214,7 +216,7 @@ static int neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer)
  * order for this device when using -F csv.
  *
  */
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "unkn1",

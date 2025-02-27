@@ -12,7 +12,7 @@
 
 #include "decoder.h"
 
-/** @fn int atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Atech WS-308 "433 tech remote sensor" for Atech wireless weather station.
 
 S.a. #1605
@@ -45,11 +45,11 @@ Data layout:
 
 */
 
-static unsigned pwm_decode(uint8_t *bits, unsigned bit_len, uint8_t *out, unsigned out_len)
+static uint32_t pwm_decode(uint8_t *bits, uint32_t bit_len, uint8_t *out, uint32_t out_len)
 {
-    unsigned pos = 0;
-    unsigned cnt = 0;
-    for (unsigned i = 0; i < bit_len; ++i) {
+    uint32_t pos = 0;
+    uint32_t cnt = 0;
+    for (uint32_t i = 0; i < bit_len; ++i) {
         if (bits[i / 8] & (1 << (7 - (i % 8)))) {
             // count 1's
             cnt++;
@@ -79,15 +79,30 @@ static unsigned pwm_decode(uint8_t *bits, unsigned bit_len, uint8_t *out, unsign
     return pos;
 }
 
-static int atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    if (bitbuffer->num_rows != 2)
-        return DECODE_ABORT_EARLY;
-    if (bitbuffer->bits_per_row[1] < 58)
+    
+	//before 6/12/2024
+	//uint32_t nbRepeat = 3;
+ //   if (bitbuffer->num_rows != nbRepeat) //2 if  .reset_limit = 4000,   //9000,
+	////if (bitbuffer->num_rows < nbRepeat-1)
+ //                                 //#endif
+ //       return DECODE_ABORT_EARLY;
+	//end before
+	//replace
+    int32_t row = 1;
+	if (bitbuffer->num_rows < 2)
+		return DECODE_ABORT_EARLY;
+	row = bitbuffer_find_repeated_row(bitbuffer, 0, 59); // only 3 repeats will give false positives for Alecto/Auriol-v2
+	if (row < 0)
+		return DECODE_ABORT_EARLY;
+	//end replace
+	//////if (bitbuffer->num_rows != 3)   //2--->3
+	//////	return DECODE_ABORT_EARLY;
+    if (bitbuffer->bits_per_row[row] < 58)
         return DECODE_ABORT_LENGTH;
-
     uint8_t b[4]; // 28 bit
-    int len = pwm_decode(bitbuffer->bb[1], bitbuffer->bits_per_row[1], b, 32);
+    int32_t len = pwm_decode(bitbuffer->bb[row], bitbuffer->bits_per_row[row], b, 32);
     //decoder_log_bitrow(decoder, 0, __func__, b, len, "");
     if (len < 28)
         return DECODE_ABORT_LENGTH;
@@ -96,14 +111,21 @@ static int atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     //    return DECODE_FAIL_SANITY;
 
     // check even nibble parity
-    int chk = xor_bytes(b, 3);
-    chk = ((chk ^ b[3]) >> 4) ^ (chk & 0xf); // fold nibbles
+    int32_t chk = xor_bytes(b, 3);
+    chk     = ((chk ^ b[3]) >> 4) ^ (chk & 0xf); // fold nibbles
     if (chk != 0)
         return DECODE_FAIL_MIC;
 
-    int id       = b[0]; // actually fixed 0x0c
-    int temp_raw = ((b[1] & 0xf) * 100) + ((b[2] >> 4) * 10) + (b[2] & 0xf);
-    int sign     = (b[1] & 0x20) ? -1 : 1;
+	//if (cptMessage < 3)    OK with 4 message perhaps only one
+	//{
+	//	cptMessage++;
+	//	return 1;
+	//}
+	//cptMessage = 0;
+
+    int32_t id       = b[0]; // actually fixed 0x0c
+    int32_t temp_raw = ((b[1] & 0xf) * 100) + ((b[2] >> 4) * 10) + (b[2] & 0xf);
+    int32_t sign     = (b[1] & 0x20) ? -1 : 1;
     float temp_c = sign * temp_raw * 0.1f;
 
     /* clang-format off */
@@ -114,12 +136,13 @@ static int atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "PARITY",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
+	decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
-    decoder_output_data(decoder, data);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

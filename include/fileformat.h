@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-char const *file_basename(char const *path);
+uint8_t const *file_basename(uint8_t const *path);
 
 /// a single handy number to define the file type.
 /// bitmask: RRRR LLLL WWWWWWWW 00CC 00FS
@@ -77,8 +77,8 @@ typedef struct {
     uint32_t raw_format;
     uint32_t center_frequency;
     uint32_t sample_rate;
-    char const *spec;
-    char const *path;
+    uint8_t const *spec;
+    uint8_t const *path;
     FILE *file;
 } file_info_t;
 
@@ -115,7 +115,7 @@ void file_info_clear(file_info_t *info);
 /// @param[in,out] info the file info to parse into
 /// @param filename a file name with optional override prefix to parse
 /// @return the detected file format, 0 otherwise
-int file_info_parse_filename(file_info_t *info, const char *filename);
+int32_t file_info_parse_filename(file_info_t *info, const uint8_t *filename);
 
 /// Check if the format in this file info is supported for reading,
 /// print a warning and exit otherwise.
@@ -133,6 +133,6 @@ void file_info_check_write(file_info_t *info);
 ///
 /// @param info the file info to check
 /// @return a string describing the format
-char const *file_info_string(file_info_t *info);
+uint8_t const *file_info_string(file_info_t *info);
 
 #endif /* INCLUDE_FILEFORMAT_H_ */

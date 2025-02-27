@@ -1,10 +1,11 @@
 /** @file
     Prologue sensor protocol.
 */
-/** @fn int prologue_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t prologue_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Prologue sensor protocol,
 also FreeTec NC-7104 sensor for FreeTec Weatherstation NC-7102,
-and Pearl NC-7159-675.
+also Pearl NC-7159-675,
+also TFA pool thermometer 30.3240.10 #2651
 The sensor can be bought at Clas Ohlson.
 
 Note: this is a false positive for AlectoV1.
@@ -31,30 +32,32 @@ The data is grouped in 9 nibbles
 
 #include "decoder.h"
 
-static int prologue_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t prologue_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b;
     data_t *data;
 
-    int type;
-    int id;
-    int battery;
-    int button;
-    int channel;
-    int temp_raw;
-    int humidity;
+    int32_t type;
+    int32_t id;
+    int32_t battery;
+    int32_t button;
+    int32_t channel;
+    int32_t temp_raw;
+    int32_t humidity;
 
     if (bitbuffer->bits_per_row[0] <= 8 && bitbuffer->bits_per_row[0] != 0)
         return DECODE_ABORT_EARLY; // Alecto/Auriol-v2 has 8 sync bits, reduce false positive
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 4, 36); // only 3 repeats will give false positives for Alecto/Auriol-v2
-    if (r < 0)
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36); // only 3 repeats will give false positives for Alecto/Auriol-v2
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[r] > 37) // we expect 36 bits but there might be a trailing 0 bit
+    if (bitbuffer->bits_per_row[row] > 37) // we expect 36 bits but there might be a trailing 0 bit
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     if ((b[0] & 0xF0) != 0x90 && (b[0] & 0xF0) != 0x50)
         return DECODE_FAIL_SANITY;
@@ -76,17 +79,17 @@ static int prologue_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",            "",            DATA_INT,    id,
             "channel",       "Channel",     DATA_INT,    channel,
             "battery_ok",    "Battery",     DATA_INT,    !!battery,
-            "temperature_C", "Temperature", DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp_raw * 0.1,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_raw * 0.1,
             "humidity",      "Humidity",    DATA_COND,   humidity != 0xcc, DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "button",        "Button",      DATA_INT,    button,
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "subtype",
         "id",

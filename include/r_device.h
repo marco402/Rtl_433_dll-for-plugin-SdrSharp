@@ -4,7 +4,7 @@
 
 #ifndef INCLUDE_R_DEVICE_H_
 #define INCLUDE_R_DEVICE_H_
-
+#include <stdint.h>
 /**
     Supported Modulation and Coding types.
 
@@ -21,6 +21,8 @@
     This might be especially confusing with PCM, where there is no true Pulse-Code-Modulation,
     but rather NRZ (or RZ) pulse code with then OOK or FSK modulation.
 */
+#include <stdbool.h>
+#include <stdint.h>
 enum modulation_types {
     OOK_PULSE_MANCHESTER_ZEROBIT = 3,  ///< OOK Modulation, Manchester Coding. Hardcoded zerobit. Rising Edge = 0, Falling edge = 1.
     OOK_PULSE_PCM                = 4,  ///< OOK Modulation, Non-Return-to-Zero coding, Pulse = 1, No pulse = 0.
@@ -42,52 +44,65 @@ enum modulation_types {
     an ABORT code if the bitbuffer is no applicable,
     or a FAIL code if the message is malformed. */
 enum decode_return_codes {
-    DECODE_FAIL_OTHER   = 0, ///< legacy, do not use
+    DECODE_FAIL_OTHER = 0, ///< legacy, do not use
     /** Bitbuffer row count or row length is wrong for this sensor. */
     DECODE_ABORT_LENGTH = -1,
     DECODE_ABORT_EARLY  = -2,
     /** Message Integrity Check failed: e.g. checksum/CRC doesn't validate. */
-    DECODE_FAIL_MIC     = -3,
-    DECODE_FAIL_SANITY  = -4,
+    DECODE_FAIL_MIC    = -3,
+    DECODE_FAIL_SANITY = -4,
 };
-
+#define NBLINES  10
+#define LENLINES  30
 struct bitbuffer;
 struct data;
-
+typedef struct strDeviceToPlugin {
+	uint8_t **Key_Device;
+	uint8_t **Value_Device;
+	uint32_t lenForDisplay;
+	int32_t lenForRecord;
+	int32_t startForRecord;
+	int32_t startForDisplay;              //now free was for test use IQ for graph
+	uint16_t nbInfosDevice;
+	uint16_t package_type;
+} defDeviceToPlugin;
 /** Device protocol decoder struct. */
 typedef struct r_device {
-    unsigned protocol_num; ///< fixed sequence number, assigned in main().
+    uint32_t protocol_num; ///< fixed sequence number, assigned in main().
 
     /* information provided by each decoder */
-    char const *name;
-    unsigned modulation;
+    uint8_t const *name;
+    uint32_t modulation;
     float short_width;
     float long_width;
     float reset_limit;
     float gap_limit;
     float sync_width;
     float tolerance;
-    int (*decode_fn)(struct r_device *decoder, struct bitbuffer *bitbuffer);
-    struct r_device *(*create_fn)(char *args);
-    unsigned priority; ///< Run later and only if no previous events were produced
-    unsigned disabled; ///< 0: default enabled, 1: default disabled, 2: disabled, 3: disabled and hidden
-    char const *const *fields; ///< List of fields this decoder produces; required for CSV output. NULL-terminated.
+    int32_t (*decode_fn)(struct r_device *decoder, struct bitbuffer *bitbuffer, int32_t startPulses, uint16_t package_type);
+    struct r_device *(*create_fn)(uint8_t *args,uint32_t protocol_num);  //marc
+    uint32_t priority;         ///< Run later and only if no previous events were produced
+    uint32_t disabled;         ///< 0: default enabled, 1: default disabled, 2: disabled, 3: disabled and hidden
+    uint8_t const *const *fields; ///< List of fields this decoder produces; required for CSV output. NULL-terminated.
 
     /* public for each decoder */
-    int verbose;
-    int verbose_bits;
-    void (*log_fn)(struct r_device *decoder, int level, struct data *data);
-    void (*output_fn)(struct r_device *decoder, struct data *data);
+    int32_t verbose;
+    int32_t verbose_bits;
+    void (*log_fn)(struct r_device *decoder, int32_t level, struct data *data);
+
+    void (*output_fn)(struct r_device *decoder, struct data *data, defDeviceToPlugin *_ptrDeviceToPlugin); // il faut struct DeviceToPlugin
 
     /* Decoder results / statistics */
-    unsigned decode_events;
-    unsigned decode_ok;
-    unsigned decode_messages;
-    unsigned decode_fails[5];
+    uint32_t decode_events;
+    uint32_t decode_ok;
+    uint32_t decode_messages;
+    uint32_t decode_fails[5];
 
     /* private for flex decoder and output callback */
     void *decode_ctx;
     void *output_ctx;
 } r_device;
+
+//31
 
 #endif /* INCLUDE_R_DEVICE_H_ */

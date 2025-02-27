@@ -29,29 +29,29 @@ Data layout:
 
 #include "decoder.h"
 
-static int auriol_4ld5661_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t auriol_4ld5661_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int ret = 0;
-
-    for (int i = 0; i < bitbuffer->num_rows; i++) {
-        if (bitbuffer->bits_per_row[i] != 52) {
+    int32_t ret = 0;
+	int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; row++) {
+        if (bitbuffer->bits_per_row[row] != 52) {
             ret = DECODE_ABORT_LENGTH;
             continue;
         }
 
-        uint8_t *b  = bitbuffer->bb[i];
-        int id      = b[0];
-        int batt_ok = b[1] >> 7;
+        uint8_t *b  = bitbuffer->bb[row];
+        int32_t id      = b[0];
+        int32_t batt_ok = b[1] >> 7;
 
         if (b[3] != 0xf0 || (b[1] & 0x70) != 0) {
             ret = DECODE_FAIL_MIC;
             continue;
         }
 
-        int temp_raw = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
+        int32_t temp_raw = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
         float temp_c = (temp_raw >> 4) * 0.1F;
 
-        int rain_raw = (b[4] << 12) | (b[5] << 4) | b[6] >> 4;
+        int32_t rain_raw = (b[4] << 12) | (b[5] << 4) | b[6] >> 4;
 
         /* The display unit which comes with this devices, multiplies gauge tip counts by 0.3 mm, which seems
            to be very inaccurate. We did a lot of measurements, the gauge's capacity is about 7.5 ml, the
@@ -72,20 +72,20 @@ static int auriol_4ld5661_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "model",            "Model",        DATA_STRING, "Auriol-4LD5661",
                 "id",               "ID",           DATA_FORMAT, "%02x", DATA_INT, id,
                 "battery_ok",       "Battery OK",   DATA_INT, batt_ok,
-                "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
-                "rain_mm",          "Rain",         DATA_FORMAT, "%.01f mm", DATA_DOUBLE, rain,
+                "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
+                "rain_mm",          "Rain",         DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain,
                 "rain",             "Rain tips",    DATA_INT, rain_raw,
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
     return ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

@@ -8,8 +8,8 @@
 
 #ifndef INCLUDE_COMPAT_PATHS_H_
 #define INCLUDE_COMPAT_PATHS_H_
-
+#include <stdint.h>
 /// Get default search paths for rtl_433 config file.
-char **compat_get_default_conf_paths(void);
+uint8_t **compat_get_default_conf_paths(void);
 
 #endif  /* INCLUDE_COMPAT_PATHS_H_ */

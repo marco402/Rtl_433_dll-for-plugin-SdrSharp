@@ -46,21 +46,23 @@ Layout appears to be:
 
 #define BITS_IN_VALID_ROW 41
 
-static int thermopro_tp12_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t thermopro_tp12_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int temp1_raw, temp2_raw, row;
+    int32_t temp1_raw, temp2_raw, row;
     float temp1_c, temp2_c;
     uint8_t *bytes;
-    unsigned int device;
+    uint32_t device;
     data_t *data;
     uint8_t ic;
-
+	uint32_t nbRepeat = (bitbuffer->num_rows > 5) ? 5 : 2;
+	
+		
     // The device transmits 16 rows, let's check for 3 matching.
     // (Really 17 rows, but the last one doesn't match because it's missing a trailing 1.)
     // Update for TP08: same is true but only 2 rows.
     row = bitbuffer_find_repeated_prefix(
             bitbuffer,
-            (bitbuffer->num_rows > 5) ? 5 : 2,
+			nbRepeat,
             BITS_IN_VALID_ROW - 1); // allow 1 bit less to also match the last row
     if (row < 0) {
         return DECODE_ABORT_EARLY;
@@ -93,17 +95,17 @@ static int thermopro_tp12_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data = data_make(
             "model",            "",            DATA_STRING, "Thermopro-TP12",
             "id",               "Id",          DATA_INT,    device,
-            "temperature_1_C",  "Temperature 1 (Food)", DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp1_c,
-            "temperature_2_C",  "Temperature 2 (Barbecue)", DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp2_c,
+            "temperature_1_C",  "Temperature 1 (Food)", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp1_c,
+            "temperature_2_C",  "Temperature 2 (Barbecue)", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp2_c,
             "mic",              "Integrity",   DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_1_C",

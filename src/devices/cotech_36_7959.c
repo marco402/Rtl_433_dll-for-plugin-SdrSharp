@@ -47,13 +47,18 @@ Message layout
 - O : 16 bit: Sunlight intensity, 0 to 200,000 lumens
 - P : 8 bit: UV index (1-15)
 - X : 8 bit: CRC, poly 0x31, init 0xc0
+
+Data format:
+
+    TYPE:h ID:8h FLAGS:h WIND:8d GUST:8d DIR:8d ?:h RAIN:12d FLAGS:h TEMP:12d HUM:8d LIGHT:16d UV:8d CRC:8h
+
 */
 
-static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0x01, 0x40}; // 12 bits
 
-    int r = -1;
+    int32_t r = -1;
     uint8_t b[14]; // 112 bits are 14 bytes
     data_t *data;
 
@@ -63,16 +68,16 @@ static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer->bits_per_row[0] < 112 && bitbuffer->bits_per_row[1] < 112) {
         return DECODE_ABORT_EARLY;
     }
-
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        unsigned pos = bitbuffer_search(bitbuffer, i, 0, preamble, 12);
+	int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
+        uint32_t pos = bitbuffer_search(bitbuffer, row, 0, preamble, 12);
         pos += 12;
 
-        if (pos + 112 > bitbuffer->bits_per_row[i])
+        if (pos + 112 > bitbuffer->bits_per_row[row])
             continue; // too short or not found
 
-        r = i;
-        bitbuffer_extract_bytes(bitbuffer, i, pos, b, 112);
+        r = row;
+        bitbuffer_extract_bytes(bitbuffer, row, pos, b, 112);
         break;
     }
 
@@ -87,28 +92,28 @@ static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Extract data from buffer
-    //int subtype  = (b[0] >> 4);                                   // [0:4]
-    int id        = ((b[0] & 0x0f) << 4) | (b[1] >> 4);           // [4:8]
-    int batt_low  = (b[1] & 0x08) >> 3;                           // [12:1]
-    int deg_msb   = (b[1] & 0x04) >> 2;                           // [13:1]
-    int gust_msb  = (b[1] & 0x02) >> 1;                           // [14:1]
-    int wind_msb  = (b[1] & 0x01);                                // [15:1]
-    int wind      = (wind_msb << 8) | b[2];                       // [16:8]
-    int gust      = (gust_msb << 8) | b[3];                       // [24:8]
-    int wind_dir  = (deg_msb << 8) | b[4];                        // [32:8]
-    //int rain_msb  = (b[5] >> 4);                                  // [40:4]
-    int rain      = ((b[5] & 0x0f) << 8) | (b[6]);                // [44:12]
-    int flags     = (b[7] & 0xf0) >> 4;                           // [56:4]
-    int temp_raw  = ((b[7] & 0x0f) << 8) | (b[8]);                // [60:12]
-    int humidity  = (b[9]);                                       // [72:8]
-    int light_lux = (b[10] << 8) + b[11] + ((flags & 0x08) << 9); // [80:16]
-    int uv        = (b[12]);                                      // [96:8]
-    //int crc       = (b[13]);                                      // [104:8]
+    //int32_t subtype  = (b[0] >> 4);                                   // [0:4]
+    int32_t id        = ((b[0] & 0x0f) << 4) | (b[1] >> 4);           // [4:8]
+    int32_t batt_low  = (b[1] & 0x08) >> 3;                           // [12:1]
+    int32_t deg_msb   = (b[1] & 0x04) >> 2;                           // [13:1]
+    int32_t gust_msb  = (b[1] & 0x02) >> 1;                           // [14:1]
+    int32_t wind_msb  = (b[1] & 0x01);                                // [15:1]
+    int32_t wind      = (wind_msb << 8) | b[2];                       // [16:8]
+    int32_t gust      = (gust_msb << 8) | b[3];                       // [24:8]
+    int32_t wind_dir  = (deg_msb << 8) | b[4];                        // [32:8]
+    //int32_t rain_msb  = (b[5] >> 4);                                  // [40:4]
+    int32_t rain      = ((b[5] & 0x0f) << 8) | (b[6]);                // [44:12]
+    //int32_t flags     = (b[7] & 0xf0) >> 4;                           // [56:4]
+    int32_t temp_raw  = ((b[7] & 0x0f) << 8) | (b[8]);                // [60:12]
+    int32_t humidity  = (b[9]);                                       // [72:8]
+    int32_t light_lux = (b[10] << 8) | b[11] | ((b[7] & 0x80) << 9);  // [56:1][80:16]
+    int32_t uv        = (b[12]);                                      // [96:8]
+    //int32_t crc       = (b[13]);                                      // [104:8]
 
     float temp_c = (temp_raw - 400) * 0.1f;
 
     // On models without a light sensor, the value read for UV index is out of bounds with its top bits set
-    int light_is_valid = ((uv & 0xf0) == 0);
+    int32_t light_is_valid = (uv <= 150); // error value seems to be 0xfb, lux would be 0xfffb
 
     /* clang-format off */
     data = data_make(
@@ -123,16 +128,16 @@ static int cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "wind_avg_m_s",     "Wind",             DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind * 0.1f,
             "wind_max_m_s",     "Gust",             DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, gust * 0.1f,
             "light_lux",        "Light Intensity",  DATA_COND, light_is_valid, DATA_FORMAT, "%u lux", DATA_INT, light_lux,
-            "uv",               "UV Index",         DATA_COND, light_is_valid, DATA_FORMAT, "%u", DATA_INT, uv,
+            "uv",               "UV Index",         DATA_COND, light_is_valid, DATA_FORMAT, "%.1f", DATA_DOUBLE, uv * 0.1f,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const cotech_36_7959_output_fields[] = {
+static uint8_t const *const cotech_36_7959_output_fields[] = {
         "model",
         //"subtype",
         "id",

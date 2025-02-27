@@ -135,39 +135,45 @@ RevSum input for parity (first 5 bytes, and the parity extracted from the last b
 #define GOVEE_H5054_BYTELEN 6
 #define GOVEE_H5054_BITLEN  48
 
-static int govee_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t govee_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int model_num = GOVEE_WATER;
+    int32_t model_num = GOVEE_WATER;
 
     if (bitbuffer->num_rows < 3) {
         return DECODE_ABORT_EARLY; // truncated transmission
     }
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 6 * 8);
-    if (r < 0) {
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 6 * 8);
+    if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
-    if (bitbuffer->bits_per_row[r] > 6 * 8) {
+    if (bitbuffer->bits_per_row[row] > 6 * 8) {
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
 
     // dump raw input code
-    char code_str[13];
+    uint8_t code_str[13];
     snprintf(code_str, sizeof(code_str), "%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5]);
 
     bitbuffer_invert(bitbuffer);
 
-    int id = (b[0] << 8) | b[1];
+    int32_t id = (b[0] << 8) | b[1];
+	// reduce false positives
     if (id == 0xffff) {
+		return DECODE_ABORT_EARLY;
+	}
+	if (b[5] == 0)	{
         return DECODE_ABORT_EARLY;
     }
 
-    int event_type = b[2] & 0x0f;
+    int32_t event_type = b[2] & 0x0f;
 
-    int event = (b[2] << 8) | b[3];
+    int32_t event = (b[2] << 8) | b[3];
     if (event == 0xffff) {
         return DECODE_ABORT_EARLY;
     }
@@ -178,11 +184,11 @@ static int govee_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     decoder_logf(decoder, 1, __func__, "Parity: %02x", parity);
 
-    int chk = xor_bytes(b, 5);
+    int32_t chk = xor_bytes(b, 5);
     chk     = (chk >> 4) ^ (chk & 0xf);
 
     // Parity arguments were discovered using revdgst's RevSum and the data packets included at the top of this file.
-    // 	 https://github.com/triq-org/revdgst
+    // https://github.com/triq-org/revdgst
     if (chk != parity) {
         decoder_log(decoder, 1, __func__, "Parity did NOT match.");
         return DECODE_FAIL_MIC;
@@ -190,15 +196,15 @@ static int govee_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Only valid for event nibble 0xc
     // voltage fit value from 8 different sensor units, observed 2 to 3.1 volts
-    int battery         = event_type == 0xc ? b[3] : 0; // percentage gauge
+    int32_t battery         = event_type == 0xc ? b[3] : 0; // percentage gauge
     float battery_level = battery * 0.01f;
-    int battery_mv      = 1800 + 12 * battery;
+    int32_t battery_mv      = 1800 + 12 * battery;
 
     // Strip off the upper nibble
     event &= 0x0FFF;
 
-    char const *event_str;
-    int wet = -1;
+    uint8_t const *event_str;
+    int32_t wet = -1;
     // Figure out what event was triggered
     if (event == 0xafa) {
         event_str = "Button Press";
@@ -233,7 +239,7 @@ static int govee_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data_t *data = data_make(
             "model",        "",                 DATA_COND,   model_num == GOVEE_WATER,   DATA_STRING, "Govee-Water",
             "model",        "",                 DATA_COND,   model_num == GOVEE_CONTACT, DATA_STRING, "Govee-Contact",
-            "id"   ,        "",                 DATA_INT,    id,
+            "id",           "",                 DATA_INT,    id,
             "battery_ok",   "Battery level",    DATA_COND,   battery, DATA_DOUBLE, battery_level,
             "battery_mV",   "Battery",          DATA_COND,   battery, DATA_FORMAT, "%d mV", DATA_INT, battery_mv,
             "detect_wet",   "",                 DATA_COND,   wet >= 0, DATA_INT, wet,
@@ -243,12 +249,12 @@ static int govee_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",
@@ -319,26 +325,28 @@ device.
 
 */
 
-static int govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     if (bitbuffer->num_rows < 3) {
         return DECODE_ABORT_EARLY;
     }
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, GOVEE_H5054_BITLEN);
-    if (r < 0) {
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, GOVEE_H5054_BITLEN);
+    if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
-    if (bitbuffer->bits_per_row[r] > GOVEE_H5054_BITLEN) {
+    if (bitbuffer->bits_per_row[row] > GOVEE_H5054_BITLEN) {
         return DECODE_ABORT_LENGTH;
     }
 
     bitbuffer_invert(bitbuffer);
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
 
-    char code_str[13];
+    uint8_t code_str[13];
     snprintf(code_str, sizeof(code_str), "%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5]);
 
     uint16_t chk = crc16(b, 6, 0x1021, 0x1d0f);
@@ -359,10 +367,10 @@ static int govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_logf(decoder, 1, __func__, "event_data=%02x", event_data);
     decoder_logf(decoder, 1, __func__, "crc_sum=%04x", crc_sum);
 
-    char const *event_str;
-    int wet = -1;
-    int leak_num = -1;
-    int battery  = -1;
+    uint8_t const *event_str;
+    int32_t wet = -1;
+    int32_t leak_num = -1;
+    int32_t battery  = -1;
     switch (event) {
     case 0x0:
         event_str = "Button Press";
@@ -389,12 +397,12 @@ static int govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     float battery_level = battery * 0.01f;
-    int battery_mv      = 1800 + 12 * battery;
+    int32_t battery_mv      = 1800 + 12 * battery;
 
     /* clang-format off */
     data_t *data = data_make(
             "model",        "",                 DATA_STRING, "Govee-Water",
-            "id"   ,        "",                 DATA_INT,    id,
+            "id",           "",                 DATA_INT,    id,
             "battery_ok",   "Battery level",    DATA_COND,   battery >= 0, DATA_DOUBLE, battery_level,
             "battery_mV",   "Battery",          DATA_COND,   battery >= 0, DATA_FORMAT, "%d mV", DATA_INT, battery_mv,
             "event",        "",                 DATA_STRING, event_str,
@@ -405,7 +413,7 @@ static int govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
 
     return 1;
 }

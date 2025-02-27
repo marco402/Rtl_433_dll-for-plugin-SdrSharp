@@ -36,15 +36,9 @@ Data layout (nibbles):
 
 #include "decoder.h"
 
-static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    uint8_t *b;
-    int pressure;
-    int temperature;
-    int status;
-    int checksum;
-
     bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 72);
 
     // make sure we decoded the expected number of bits
@@ -53,22 +47,22 @@ static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsi
         return 0; // DECODE_FAIL_SANITY;
     }
 
-    b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[0];
 
     // check checksum (checksum8 xor)
-    checksum = xor_bytes(b, 9);
+    int32_t const checksum = xor_bytes(b, 9);
     if (checksum != 0) {
         return 0; // DECODE_FAIL_MIC;
     }
 
-    pressure    = b[5];
-    temperature = b[6];
-    status      = b[7];
-    checksum    = b[8];
+    int32_t const pressure    = b[5];
+    int32_t const temperature = b[6];
+    int32_t const status      = b[7];
+    // int32_t const checksum    = b[8];
 
-    char flags[1 * 2 + 1];
+    uint8_t flags[1 * 2 + 1];
     snprintf(flags, sizeof(flags), "%02x", b[4]);
-    char id_str[4 * 2 + 1];
+    uint8_t id_str[4 * 2 + 1];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x%02x", b[0], b[1], b[2], b[3]);
 
     /* clang-format off */
@@ -83,32 +77,31 @@ static int tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsi
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
 /** @sa tpms_abarth124_decode() */
-static int tpms_abarth124_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_abarth124_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // preamble
     uint8_t const preamble_pattern[3] = {0xaa, 0xaa, 0xa9}; // after invert
 
-    unsigned bitpos = 0;
-    int events      = 0;
+    uint32_t bitpos = 0;
+    int32_t events      = 0;
 
     bitbuffer_invert(bitbuffer);
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 80 <=
             bitbuffer->bits_per_row[0]) {
-        events += tpms_abarth124_decode(decoder, bitbuffer, 0, bitpos + 24);
+        events += tpms_abarth124_decode(decoder, bitbuffer, 0, bitpos + 24, startPulses,package_type);
         bitpos += 2;
     }
 
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

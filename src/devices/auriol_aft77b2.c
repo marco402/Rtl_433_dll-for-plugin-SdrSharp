@@ -8,7 +8,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Auriol AFT 77 B2 protocol. The sensor can be bought at Lidl.
 
 The sensor sends 68 bits at least 3 times, before the packets are 9 sync pulses
@@ -54,12 +54,12 @@ Bitbuffer example from rtl_433 -a:
 
 #define LEN 8
 
-static uint8_t lsrc(uint8_t frame[], int len)
+static uint8_t lsrc(uint8_t frame[], int32_t len)
 {
     uint8_t result = 0;
     uint8_t key    = KEY;
 
-    for (int i = 0; i < len; i++) {
+    for (int32_t i = 0; i < len; i++) {
         uint8_t byte = frame[i];
 
         for (uint8_t mask = 0x80; mask > 0; mask >>= 1) {
@@ -76,9 +76,9 @@ static uint8_t lsrc(uint8_t frame[], int len)
     return result;
 }
 
-static int search_row(bitbuffer_t *bitbuffer)
+static int32_t search_row(bitbuffer_t *bitbuffer)
 {
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] == 68)
             return row;
     }
@@ -86,12 +86,12 @@ static int search_row(bitbuffer_t *bitbuffer)
     return -1;
 }
 
-static int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
 
     // Search a suitable row in the bit buffer
-    int row = search_row(bitbuffer);
+    int32_t row = search_row(bitbuffer);
 
     // Check if found
     if (row == -1)
@@ -106,7 +106,7 @@ static int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t frame[LEN];
 
     // Drop the prefix and align the bytes
-    for (int i = 0; i < LEN; i++)
+    for (int32_t i = 0; i < LEN; i++)
         frame[i] = (ptr[i] << 4) | (ptr[i + 1] >> 4);
 
     // Check the sum
@@ -117,9 +117,9 @@ static int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (lsrc(frame, 6) != frame[7])
         return DECODE_FAIL_MIC;
 
-    int id = frame[1];
+    int32_t id = frame[1];
 
-    int temp_raw = (ptr[4] >> 4) * 100 + (ptr[4] & 0x0F) * 10 + (ptr[5] >> 4);
+    int32_t temp_raw = (ptr[4] >> 4) * 100 + (ptr[4] & 0x0F) * 10 + (ptr[5] >> 4);
 
     if ((ptr[3] & 0x08) != 0)
         temp_raw = -temp_raw;
@@ -128,16 +128,16 @@ static int auriol_aft77_b2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data = data_make(
             "model",         "",            DATA_STRING, "Auriol-AFT77B2",
             "id",            "",            DATA_INT, id,
-            "temperature_C", "Temperature", DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp_raw * 0.1,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_raw * 0.1,
             "mic",              "Integrity",         DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

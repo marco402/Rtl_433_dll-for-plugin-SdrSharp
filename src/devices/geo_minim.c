@@ -9,8 +9,10 @@
     (at your option) any later version.
 */
 
-/** @fn int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t minim_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 GEO mimim+ energy monitor.
+
+@warning This decoder depends on `mktime()` formatting.
 
 @sa geo_minim_ct_sensor_decode()
 @sa geo_minim_display_decode()
@@ -31,11 +33,11 @@ or as follows:
 
 1. On the display, hold down the <- and +> buttons together for 3 seconds.
 2. At the next screen, hold down the middle button for 3 seconds until the
-   display shows “Pair?”
+   display shows "Pair?"
 3. On the sensor, press and hold the pair button (next to the red light)
    until the red LED light illuminates.
 4. Release the pair button and the LED flashes as the transmitter pairs.
-5. The display should now read “Paired CT"
+5. The display should now read "Paired CT"
 
 When paired the display listens for sensor packets and then transmits a
 summary packet using the same protocol.
@@ -84,7 +86,7 @@ Data format string:
     VA: Big endian power x10VA, bit14 = 5VA
     UP: Big endian uptime x9 seconds
 */
-static int geo_minim_ct_sensor_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t const buf[], unsigned len)
+static int32_t geo_minim_ct_sensor_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t const buf[], uint32_t len, int32_t startPulses, uint16_t package_type,int32_t row)
 {
     (void)bitbuffer;
 
@@ -100,22 +102,22 @@ static int geo_minim_ct_sensor_decode(r_device *decoder, bitbuffer_t *bitbuffer,
         return DECODE_ABORT_LENGTH;
     }
 
-    char id[7];
+    uint8_t id[7];
     snprintf(id, sizeof(id), "%02X%02X%02X", buf[0], buf[1], buf[2]);
 
     // Uptime in ~8 second intervals
-    unsigned uptime_raw = (buf[6] << 16) + (buf[7] << 8) + buf[8];
-    unsigned uptime_s = 8 * uptime_raw;
+    uint32_t uptime_raw = (buf[6] << 16) + (buf[7] << 8) + buf[8];
+    uint32_t uptime_s = 8 * uptime_raw;
 
     // Bytes 4 & 5 appear to be the instantaneous VA x10.
     // When scaled by the 'Fine Tune' setting (power factor [0.88]) set on the
     // display unit it matches the Watts value in display messages.
-    unsigned va = 10 * (buf[5] + ((buf[4] & 0x0f) << 8));
+    uint32_t va = 10 * (buf[5] + ((buf[4] & 0x0f) << 8));
     if (buf[4] & 0x40)
         va += 5;
 
     // TODO: what are the flag bits in buf[4] (0x30)? Battery OK, Fault?
-    unsigned flags4 = buf[4] & ~0x4f;
+    uint32_t flags4 = buf[4] & ~0x4f;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -128,7 +130,7 @@ static int geo_minim_ct_sensor_decode(r_device *decoder, bitbuffer_t *bitbuffer,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1; // Message successfully decoded
 }
@@ -157,7 +159,7 @@ Data format string:
     WH: Watt-hours in last 15 minutes, little endian
     MIN,HRS,DAYs since 1/1/2007, little endian
 */
-static int geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t const buf[], unsigned len)
+static int32_t geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t const buf[], uint32_t len, int32_t startPulses, uint16_t package_type, int32_t row)
 {
     (void)bitbuffer;
 
@@ -208,18 +210,18 @@ static int geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
         //return DECODE_FAIL_SANITY;
     }
 
-    char id[7];
+    uint8_t id[7];
     snprintf(id, sizeof(id), "%02X%02X%02X", buf[0], buf[1], buf[2]);
 
     // Instantaneous power: 300W => 60: 1 = 5W
-    unsigned watts = 5 * (buf[4] + ((buf[5] & 0x7f) << 8));
+    uint32_t watts = 5 * (buf[4] + ((buf[5] & 0x7f) << 8));
     // TODO: what is bit7?
-    unsigned flags5 = buf[5] & ~0x7f;
+    uint32_t flags5 = buf[5] & ~0x7f;
 
     // Energy: 480W => 8/min: 1 = 0.06kWm = 0.001kWh
-    unsigned wh = buf[14] + ((buf[15] & 0x7) << 8);
+    uint32_t wh = buf[14] + ((buf[15] & 0x7) << 8);
     // TODO: what are bits 3..7 ? 0x40 normally, Battery OK, Fault?
-    unsigned flags15 = buf[15] & ~0x7;
+    uint32_t flags15 = buf[15] & ~0x7;
 
     struct tm t = {0};
     // Date/time @30..33
@@ -233,7 +235,7 @@ static int geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
     t.tm_isdst = -1;
     // Normalise the date
     mktime(&t);
-    char now[64];
+    uint8_t now[64];
     snprintf(now, sizeof(now), "%04d-%02d-%02d %02d:%02d",
             1900 + t.tm_year, 1 + t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min);
 
@@ -250,7 +252,7 @@ static int geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1; // Message successfully decoded
 }
@@ -259,34 +261,33 @@ static int geo_minim_display_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 #define MLEN_DISPLAY 0x2a
 #define MLEN_CT 0x05
 
-static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t minim_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // preamble and sync can be aaaa7bb9 or 55557bb9
     uint8_t const preamble1[] = { 0xaa, 0xaa, 0x7b, 0xb9 };
     uint8_t const preamble2[] = { 0x55, 0x55, 0x7b, 0xb9 };
-    const unsigned preamble_len = 8 * sizeof(preamble1);
+    const uint32_t preamble_len = 8 * sizeof(preamble1);
 
     if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_LENGTH;
 
-    unsigned row = 0; // we expect only one row
+    uint32_t row = 0; // we expect only one row
 
     // Search preamble+sync, try alternative
-    unsigned bitpos = bitbuffer_search(bitbuffer, row, 0, preamble1, preamble_len) + preamble_len;
+    uint32_t bitpos = bitbuffer_search(bitbuffer, row, 0, preamble1, preamble_len) + preamble_len;
     if (bitpos >= bitbuffer->bits_per_row[row]) {
         bitpos = bitbuffer_search(bitbuffer, row, 0, preamble2, preamble_len) + preamble_len;
     }
     if (bitpos >= bitbuffer->bits_per_row[row]) {
-        if (decoder->verbose >= 2)
-            decoder_logf_bitbuffer(decoder, 3, __func__, bitbuffer, "Sync not found");
+        decoder_logf_bitbuffer(decoder, 3, __func__, bitbuffer, "Sync not found");
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned bits = bitbuffer->bits_per_row[row];
+    uint32_t bits = bitbuffer->bits_per_row[row];
 
     // Extract frame header
-    unsigned const hdr_len = 4;
-    unsigned const hdr_bits = hdr_len * 8;
+    uint32_t const hdr_len = 4;
+    uint32_t const hdr_bits = hdr_len * 8;
     if (bitpos + hdr_bits >= bits)
         return DECODE_ABORT_LENGTH;
 
@@ -295,7 +296,7 @@ static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, row, bitpos, buf, hdr_bits);
 
     // Determine frame type based on packet length
-    int data_length = buf[3];
+    int32_t data_length = buf[3];
     if (data_length != MLEN_DISPLAY && data_length != MLEN_CT) {
         decoder_logf(decoder, 1, __func__,
                 "Unknown header %02x%02x%02x%02x",
@@ -303,8 +304,8 @@ static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned bytes = bits / 8;
-    unsigned maxlen = sizeof(buf);
+    uint32_t bytes = bits / 8;
+    uint32_t maxlen = sizeof(buf);
     if (bytes > maxlen) {
         decoder_logf(decoder, 1, __func__,
                 "Too big: %u > %u max bytes", bits / 8, maxlen);
@@ -313,7 +314,7 @@ static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Check offset to crc16 using data_len @ header[3]
-    unsigned crc_len = hdr_len + buf[3];
+    uint32_t crc_len = hdr_len + buf[3];
     if (crc_len + 2 > bytes) {
         decoder_logf(decoder, 1, __func__,
                 "Truncated - got %u of %u bytes", bytes, crc_len + 2);
@@ -324,8 +325,8 @@ static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(bitbuffer, row, bitpos + hdr_bits, buf + hdr_len, (bytes - hdr_len) * 8);
 
     // Message Integrity Check
-    unsigned crc = crc16(buf, crc_len, 0x8005, 0);
-    unsigned crc_rcvd = (buf[crc_len] << 8) | buf[crc_len + 1];
+    uint32_t crc = crc16(buf, crc_len, 0x8005, 0);
+    uint32_t crc_rcvd = (buf[crc_len] << 8) | buf[crc_len + 1];
     if (crc != crc_rcvd) {
         decoder_logf_bitrow(decoder, 1, __func__, buf, (crc_len + 2) * 8,
                 "Bad CRC. Expected %04X got %04X", crc, crc_rcvd);
@@ -333,17 +334,17 @@ static int minim_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     if (data_length == MLEN_DISPLAY) {
-        return geo_minim_display_decode(decoder, bitbuffer, buf, bytes);
+        return geo_minim_display_decode(decoder, bitbuffer, buf, bytes, startPulses, package_type, row);
     }
     if (data_length == MLEN_CT) {
-        return geo_minim_ct_sensor_decode(decoder, bitbuffer, buf, bytes);
+        return geo_minim_ct_sensor_decode(decoder, bitbuffer, buf, bytes, startPulses, package_type, row);
     }
 
     return DECODE_FAIL_SANITY;
 }
 
 // List of fields to appear in the `-F csv` output.
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "power_VA",

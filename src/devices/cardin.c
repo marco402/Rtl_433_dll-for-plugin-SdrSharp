@@ -23,7 +23,7 @@ May be useful for other Cardin product too
 
 #include "decoder.h"
 
-static int cardin_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t cardin_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b = bitbuffer->bb[0];
 
@@ -39,8 +39,8 @@ static int cardin_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned char dip[10] = {'-','-','-','-','-','-','-','-','-', '\0'};
-    char const *rbutton[4] = { "11R", "10R", "01R", "00L?" };
+    uint8_t dip[10] = {'-','-','-','-','-','-','-','-','-', '\0'};
+    uint8_t const *const rbutton[4] = { "11R", "10R", "01R", "00L?" };
 
     // Dip 1
     if (b[0] & 8) {
@@ -105,11 +105,11 @@ static int cardin_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "dipswitch",
         "rbutton",

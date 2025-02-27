@@ -26,8 +26,8 @@ index c9c40863..55bd01e1 100644
  #endif /* MG_ENABLE_BROADCAST */
 @@ -4116,9 +4119,12 @@ static void mg_mgr_handle_ctl_sock(struct mg_mgr *mgr) {
    struct ctl_msg ctl_msg;
-   int len =
-       (int) MG_RECV_FUNC(mgr->ctl[1], (char *) &ctl_msg, sizeof(ctl_msg), 0);
+   int32_t len =
+       (int32_t) MG_RECV_FUNC(mgr->ctl[1], (char *) &ctl_msg, sizeof(ctl_msg), 0);
 -  size_t dummy = MG_SEND_FUNC(mgr->ctl[1], ctl_msg.message, 1, 0);
 +  if (len < 0)
 +    perror("mg_mgr_handle_ctl_sock() recv failed, check firewall UDP loopback rules");
@@ -36,6 +36,6 @@ index c9c40863..55bd01e1 100644
 +    perror("mg_mgr_handle_ctl_sock() send failed, check UDP loopback device");
    DBG(("read %d from ctl socket", len));
 -  (void) dummy; /* https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25509 */
-   if (len >= (int) sizeof(ctl_msg.callback) && ctl_msg.callback != NULL) {
+   if (len >= (int32_t) sizeof(ctl_msg.callback) && ctl_msg.callback != NULL) {
      struct mg_connection *nc;
      for (nc = mg_next(mgr, NULL); nc != NULL; nc = mg_next(mgr, nc)) {

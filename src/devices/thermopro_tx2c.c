@@ -43,10 +43,13 @@ Data layout:
 
 */
 
-static int thermopro_tx2c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t thermopro_tx2c_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Compare first four bytes of rows that have 45 or 36 bits.
-    int row = bitbuffer_find_repeated_row(bitbuffer, 4, 36);
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)
         return DECODE_ABORT_EARLY;
     uint8_t *b = bitbuffer->bb[row];
@@ -65,14 +68,14 @@ static int thermopro_tx2c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if ((b[4] & 0x0F) != 0x00 || b[5] != 0x00)
         return DECODE_FAIL_SANITY;
 
-    // int type     = b[0] >> 4;
-    int id       = (((b[0] & 0xF) << 4) | (b[1] >> 4));
-    int battery  = (b[1] & 0x08) >> 3;
-    int button   = (b[1] & 0x04) >> 2;
-    int channel  = (b[1] & 0x03) + 1;
-    int temp_raw = (int16_t)((b[2] << 8) | b[3]); // uses sign-extend
+    // int32_t type     = b[0] >> 4;
+    int32_t id       = (((b[0] & 0xF) << 4) | (b[1] >> 4));
+    int32_t battery  = (b[1] & 0x08) >> 3;
+    int32_t button   = (b[1] & 0x04) >> 2;
+    int32_t channel  = (b[1] & 0x03) + 1;
+    int32_t temp_raw = (int16_t)((b[2] << 8) | b[3]); // uses sign-extend
     float temp_c = (temp_raw >> 4) * 0.1f;
-    int humidity = (((b[3] & 0xF) << 4) | (b[4] >> 4));
+    int32_t humidity = (((b[3] & 0xF) << 4) | (b[4] >> 4));
 
     /* clang-format off */
     data_t *data = data_make(
@@ -86,11 +89,13 @@ static int thermopro_tx2c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "button",        "Button",      DATA_INT, button,
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    uint32_t bit_offset = 0;
+
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         // "subtype",
         "id",

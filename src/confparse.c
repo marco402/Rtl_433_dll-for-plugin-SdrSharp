@@ -34,7 +34,7 @@
 #include <unistd.h>
 #endif
 #include "rtl_433.h"
-static off_t fsize(const char *path)
+static off_t fsize(const uint8_t *path)
 {
     struct stat st;
     if (stat(path, &st) == 0)
@@ -43,15 +43,15 @@ static off_t fsize(const char *path)
     return -1;
 }
 
-int hasconf(char const *path)
+int32_t hasconf(uint8_t const *path)
 {
-    return !access(path, R_OK);
+    return !_access(path, R_OK);
 }
 
-char *readconf(char const *path)
+uint8_t *readconf(uint8_t const *path)
 {
     FILE *fp;
-    char *conf;
+    uint8_t *conf;
     off_t file_size = fsize(path);
 
     if (file_size < 0) {
@@ -73,7 +73,7 @@ char *readconf(char const *path)
         return NULL;
     }
 
-    off_t n_read = fread(conf, sizeof(char), file_size, fp);
+    off_t n_read = (off_t)fread(conf, sizeof(uint8_t), file_size, fp);
     fclose(fp);
     if (n_read != file_size) {
         fprintf(stderr, "Failed to read \"%s\"\n", path);
@@ -85,13 +85,13 @@ char *readconf(char const *path)
     return conf;
 }
 
-int getconf(char **conf, struct conf_keywords const keywords[], char **arg)
+int32_t getconf(uint8_t **conf, struct conf_keywords const keywords[], uint8_t **arg)
 {
     // abort if no conf or EOF
     if (!conf || !*conf || !**conf)
         return -1;
 
-    char *p = *conf;
+    uint8_t *p = *conf;
 
     // skip whitespace and comments
     while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == '#')
@@ -104,7 +104,7 @@ int getconf(char **conf, struct conf_keywords const keywords[], char **arg)
         return -1;
 
     // parse keyword
-    char *kw = p;
+    uint8_t *kw = p;
     while (*p && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n')
         p++;
     if (*p)
@@ -113,13 +113,13 @@ int getconf(char **conf, struct conf_keywords const keywords[], char **arg)
     // parse arg
     while (*p == ' ' || *p == '\t')
         p++;
-    char *ka = p;
+    uint8_t *ka = p;
     if (*p == '{') { // quoted
         ka = ++p;
         while (*p) { // skip to end-quote
             while (*p && *p != '}')
                 p++;
-            char *e = p; // possible end-quote
+            uint8_t *e = p; // possible end-quote
             if (*p)
                 p++;
             // skip ws

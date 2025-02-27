@@ -20,13 +20,13 @@ Note: simple 24 bit fixed ID protocol (x1527 style) and should be handled by the
 
 #include "decoder.h"
 
-static int akhan_rke_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t akhan_rke_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int id;
-    int cmd;
-    char const *cmd_str;
+    int32_t id;
+    int32_t cmd;
+    uint8_t const *cmd_str;
 
     if (bitbuffer->bits_per_row[0] != 25)
         return DECODE_ABORT_LENGTH;
@@ -58,11 +58,11 @@ static int akhan_rke_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "data",
@@ -79,4 +79,5 @@ r_device const akhan_100F14 = {
         .tolerance   = 80, // us
         .decode_fn   = &akhan_rke_callback,
         .fields      = output_fields,
+	    .disabled = 1, // false positives with generic EV1527 devices
 };

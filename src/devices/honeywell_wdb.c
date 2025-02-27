@@ -42,16 +42,19 @@ Wireless Chimes
 
 #include "decoder.h"
 
-static int honeywell_wdb_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t honeywell_wdb_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row, secret_knock, relay, battery, parity;
+    int32_t secret_knock, relay, battery, parity;
     uint8_t *bytes;
     data_t *data;
-    unsigned int device, tmp;
-    char const *class, *alert;
+    uint32_t device, tmp;
+    uint8_t const *class, *alert;
 
     // The device transmits many rows, check for 4 matching rows.
-    row = bitbuffer_find_repeated_row(bitbuffer, 4, 48);
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 48);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
@@ -99,21 +102,21 @@ static int honeywell_wdb_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     /* clang-format off */
     data = data_make(
             "model",         "",            DATA_STRING, "Honeywell-ActivLink",
-            "subtype",       "Class",       DATA_FORMAT, "%s",   DATA_STRING, class,
+            "subtype",       "Class",       DATA_STRING, class,
             "id",            "Id",          DATA_FORMAT, "%x",   DATA_INT,    device,
             "battery_ok",    "Battery",     DATA_INT,    !battery,
-            "alert",         "Alert",       DATA_FORMAT, "%s",   DATA_STRING, alert,
+            "alert",         "Alert",       DATA_STRING, alert,
             "secret_knock",  "Secret Knock",DATA_FORMAT, "%d",   DATA_INT,    secret_knock,
             "relay",         "Relay",       DATA_FORMAT, "%d",   DATA_INT,    relay,
             "mic",           "Integrity",   DATA_STRING, "PARITY",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "subtype",
         "id",

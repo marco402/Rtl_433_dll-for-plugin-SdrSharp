@@ -19,19 +19,20 @@ There is another type of remotes that have an ID prefix of 0x56 and slightly sho
 
 #include "decoder.h"
 
-static int intertechno_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t intertechno_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 1;
     bitrow_t *bb = bitbuffer->bb;
-    uint8_t *b = bitbuffer->bb[1];
+    uint8_t *b = bitbuffer->bb[row];
 
-    if (bb[0][0] != 0 || (bb[1][0] != 0x56 && bb[1][0] != 0x69))
+    if (bb[0][0] != 0 || (bb[row][0] != 0x56 && bb[row][0] != 0x69))
         return DECODE_ABORT_EARLY;
 
-    char id_str[11];
+    uint8_t id_str[11];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4]);
-    int slave   = b[7] & 0x0f;
-    int master  = (b[7] & 0xf0) >> 4;
-    int command = b[6] & 0x07;
+    int32_t slave   = b[7] & 0x0f;
+    int32_t master  = (b[7] & 0xf0) >> 4;
+    int32_t command = b[6] & 0x07;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -42,12 +43,13 @@ static int intertechno_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "command",          "",     DATA_INT,       command,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "slave",

@@ -2,7 +2,7 @@
     Fine Offset Electronics WS90 weather station.
 
     Copyright (C) 2022 Christian W. Zuckschwerdt <zany@triq.net>
-    Protocol description by @davidefa
+    Protocol description by \@davidefa
 
     Copy of fineoffset_ws80.c with changes made to support Fine Offset WS90
     sensor array.  Changes made by John Pochmara <john@zoiedog.com>
@@ -49,27 +49,33 @@ Packet layout:
 - G = wind gust, lowest 8 bits of wind gust, m/s, scale 10
 - V = uv index, scale 10
 - U = unknown (bytes 14 and 15 appear to be fixed at 3f ff)
+- RS = rain start dection ((R1 & 0x10) >>4), 1 = raining, 0 = not raining
 - R = rain total (R3 << 8 | R4) * 0.1 mm
 - S = super cap voltage, unit of 0.1V, lower 6 bits, mask 0x3f
 - Z = Firmware version. 0x82 = 130 = 1.3.0
 - A = checksum
 - X = CRC
 
+Rain start info:
+Status 1 will be reset to 0 when:
+- Once the top is dry
+- After the amount of water on the top has remained unchanged for two hours.
+
 */
 
-static int fineoffset_ws90_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_ws90_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0xaa, 0xaa, 0x2d, 0xd4}; // 32 bit, part of preamble and sync word
     uint8_t b[32];
 
     // Validate package, WS90 nominal size is 345 bit periods
-    if (bitbuffer->bits_per_row[0] < 168 || bitbuffer->bits_per_row[0] > 400) {
+    if (bitbuffer->bits_per_row[0] < 168 || bitbuffer->bits_per_row[0] > 500) {
         decoder_logf_bitbuffer(decoder, 2, __func__, bitbuffer, "abort length" );
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a data package and extract data buffer
-    unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, 32) + 32;
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, 32) + 32;
     if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // Did not find a big enough package
         decoder_logf_bitbuffer(decoder, 2, __func__, bitbuffer, "short package at %u (%u)", bit_offset, bitbuffer->bits_per_row[0]);
         return DECODE_ABORT_LENGTH;
@@ -91,28 +97,29 @@ static int fineoffset_ws90_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int id          = (b[1] << 16) | (b[2] << 8) | (b[3]);
-    int light_raw   = (b[4] << 8) | (b[5]);
-    float light_lux = light_raw * 10;        // Lux
+    int32_t id          = (b[1] << 16) | (b[2] << 8) | (b[3]);
+    int32_t light_raw   = (b[4] << 8) | (b[5]);
+    float light_lux = (float)(light_raw * 10);        // Lux
     //float light_wm2 = light_raw * 0.078925f; // W/m2
-    int battery_mv  = (b[6] * 20);            // mV
-    int battery_lvl = battery_mv < 1400 ? 0 : (battery_mv - 1400) / 16; // 1.4V-3.0V is 0-100
-    int flags       = b[7]; // to find the wind msb
-    int temp_raw    = ((b[7] & 0x03) << 8) | (b[8]);
+    int32_t battery_mv  = (b[6] * 20);            // mV
+    int32_t battery_lvl = battery_mv < 1400 ? 0 : (battery_mv - 1400) / 16; // 1.4V-3.0V is 0-100
+    int32_t flags       = b[7]; // to find the wind msb
+    int32_t temp_raw    = ((b[7] & 0x03) << 8) | (b[8]);
     float temp_c    = (temp_raw - 400) * 0.1f;
-    int humidity    = (b[9]);
-    int wind_avg    = ((b[7] & 0x10) << 4) | (b[10]);
-    int wind_dir    = ((b[7] & 0x20) << 3) | (b[11]);
-    int wind_max    = ((b[7] & 0x40) << 2) | (b[12]);
-    int uv_index    = (b[13]);
-    int rain_raw    = (b[19] << 8 ) | (b[20]);
-    int supercap_V  = (b[21] & 0x3f);
-    int firmware    = b[29];
+    int32_t humidity    = (b[9]);
+    int32_t wind_avg    = ((b[7] & 0x10) << 4) | (b[10]);
+    int32_t wind_dir    = ((b[7] & 0x20) << 3) | (b[11]);
+    int32_t wind_max    = ((b[7] & 0x40) << 2) | (b[12]);
+    int32_t uv_index    = (b[13]);
+    int32_t rain_raw    = (b[19] << 8 ) | (b[20]);
+	int32_t rain_start = (b[16] & 0x10) >> 4;
+    int32_t supercap_V  = (b[21] & 0x3f);
+    int32_t firmware    = b[29];
 
     if (battery_lvl > 100) // More then 100%?
         battery_lvl = 100;
 
-    char extra[31];
+    uint8_t extra[31];
     snprintf(extra, sizeof(extra), "%02x%02x%02x%02x%02x------%02x%02x%02x%02x%02x%02x%02x", b[14], b[15], b[16], b[17], b[18], /* b[19,20] is the rain sensor, b[21] is supercap_V */ b[22], b[23], b[24], b[25], b[26], b[27], b[28]);
 
     /* clang-format off */
@@ -130,6 +137,7 @@ static int fineoffset_ws90_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "light_lux",        "Light",            DATA_COND, light_raw != 0xffff, DATA_FORMAT, "%.1f lux", DATA_DOUBLE, (double)light_lux,
             "flags",            "Flags",            DATA_FORMAT, "%02x", DATA_INT, flags,
             "rain_mm",          "Total Rain",       DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain_raw * 0.1f,
+			"rain_start",		"Rain Start",		DATA_INT, rain_start,
             "supercap_V",       "Supercap Voltage", DATA_COND, supercap_V != 0xff, DATA_FORMAT, "%.1f V", DATA_DOUBLE, supercap_V * 0.1f,
             "firmware",         "Firmware Version", DATA_INT, firmware,
             "data",             "Extra Data",       DATA_STRING, extra,
@@ -137,11 +145,11 @@ static int fineoffset_ws90_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",
@@ -156,6 +164,7 @@ static char const *const output_fields[] = {
         "flags",
         "unknown",
         "rain_mm",
+		"rain_start",
         "supercap_V",
         "firmware",
         "data",

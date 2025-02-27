@@ -30,19 +30,20 @@ with a repeat gap of 4 pulse widths, i.e.:
 
 #include "decoder.h"
 
-static int generic_motion_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t generic_motion_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        uint8_t *b = bitbuffer->bb[i];
+    int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
+        uint8_t *b = bitbuffer->bb[row];
         // strictly validate package as there is no checksum
-        if ((bitbuffer->bits_per_row[i] != 20)
+        if ((bitbuffer->bits_per_row[row] != 20)
                 || ((b[1] == 0) && (b[2] == 0))
                 || ((b[1] == 0xff) && (b[2] == 0xff))
-                || bitbuffer_count_repeats(bitbuffer, i, 0) < 3)
+                || bitbuffer_count_repeats(bitbuffer, row, 0) < 3)
             continue; // DECODE_ABORT_EARLY
 
-        int code = (b[0] << 12) | (b[1] << 4) | (b[2] >> 4);
-        char code_str[6];
+        int32_t code = (b[0] << 12) | (b[1] << 4) | (b[2] >> 4);
+        uint8_t code_str[6];
         snprintf(code_str, sizeof(code_str), "%05x", code);
 
         /* clang-format off */
@@ -51,14 +52,15 @@ static int generic_motion_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "code",     "",  DATA_STRING, code_str,
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     return DECODE_ABORT_EARLY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "code",
         NULL,

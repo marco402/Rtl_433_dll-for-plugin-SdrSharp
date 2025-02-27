@@ -14,7 +14,7 @@ Mebus 433.
 
 @todo Documentation needed.
 */
-static int mebus433_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t mebus433_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     bitrow_t *bb = bitbuffer->bb;
     int16_t temp;
@@ -56,18 +56,18 @@ static int mebus433_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "battery_ok",       "Battery",      DATA_INT,    !!battery,
                 "unknown1",         "Unknown 1",    DATA_INT,    unknown1,
                 "unknown2",         "Unknown 2",    DATA_INT,    unknown2,
-                "temperature_C",    "Temperature",  DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp * 0.1f,
+                "temperature_C",    "Temperature",  DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp * 0.1f,
                 "humidity",         "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, hum,
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
         return 1;
     }
     return DECODE_ABORT_EARLY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

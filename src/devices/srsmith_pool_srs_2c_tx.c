@@ -1,5 +1,5 @@
 /** @file
-    SRSmith Pool Light Remote Control, Model #SRS-2C-TX.
+    SRSmith Pool Light Remote Control, Model SRS-2C-TX.
 
     Copyright (C) 2022 gcohen55
 
@@ -12,7 +12,7 @@
 #include "decoder.h"
 
 /**
-SRSmith Pool Light Remote Control, Model #SRS-2C-TX.
+SRSmith Pool Light Remote Control, Model SRS-2C-TX.
 
 The SR Smith remote control sends broadcasts of ~144 bits and it comes in shifted (similar to the Maverick XR30 BBQ Sensor)
 - Frequency: 915MHz
@@ -46,11 +46,11 @@ Capture raw:
 #define BUTTON_ID_S             0x07
 #define BUTTON_ID_M             0x0b
 
-static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // part of preamble + sync word
     uint8_t const preamble[] = {0xaa, 0xd3, 0x91, 0xd3, 0x91};
-    int const preamble_length = sizeof(preamble) * 8;
+    int32_t const preamble_length = sizeof(preamble) * 8;
 
     if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
@@ -62,7 +62,7 @@ static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuff
 
     // next line does the search for the preamble+sync bits, returns the bit position where the preamble+sync bits START
     // so we shift that by the number of the preamble+sync bits
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble, preamble_length) + preamble_length;
+    uint32_t start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble, preamble_length) + preamble_length;
     if (start_pos >= bitbuffer->bits_per_row[0]) {
         return DECODE_ABORT_EARLY; // preamble/sync missing
     }
@@ -71,8 +71,8 @@ static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuff
     uint8_t b[TOTAL_PACKET_SIZE_BYTES];
     // now we're extracting the bytes -- we know what the total size /should/ be
     bitbuffer_extract_bytes(bitbuffer, 0, start_pos, b, TOTAL_PACKET_SIZE_BYTES * 8);
-    int total_length      = bitbuffer->bits_per_row[0];
-    int sub_packet_length = b[0];
+    int32_t total_length      = bitbuffer->bits_per_row[0];
+    int32_t sub_packet_length = b[0];
 
     // sub-packet (packet within packet that has commands and baby parity) actually starts at b[1]
     uint32_t unknown_field = ((uint32_t)b[1] << 24) | (b[2] << 16) | (b[3] << 8) | (b[4]); // not sure what these four bytes are.
@@ -83,7 +83,7 @@ static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuff
     uint8_t reversed_pin           = reverse8(inverted_pin_container); // reverse the bits
 
     // convert just the first four bits to string that contains 4 bits that the pin is
-    char pin_string[5] = {0};
+    uint8_t pin_string[5] = {0};
     snprintf(pin_string, sizeof(pin_string), "%d%d%d%d",
             (reversed_pin & 0x80 ? 1 : 0),
             (reversed_pin & 0x40 ? 1 : 0),
@@ -94,7 +94,7 @@ static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuff
     uint8_t button_id = b[6];
 
     // get label for the button that was pressed
-    char const *button_string;
+    uint8_t const *button_string;
 
     switch (button_id) {
     case BUTTON_ID_ONE:
@@ -144,11 +144,11 @@ static int srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bitbuff
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "mic",
         "id",

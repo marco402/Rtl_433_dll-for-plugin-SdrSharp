@@ -7,7 +7,7 @@
     (at your option) any later version.
 
 */
-/** @fn int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Fine Offset WH1080/WH3080 Weather Station.
 
 This module is based on Stanisław Pitucha ('viraptor' https://github.com/viraptor) code stub for the Digitech XC0348
@@ -111,7 +111,7 @@ so you can see -sometimes- some little difference between module's output and LC
 
 #include "decoder.h"
 
-static int wind_dir_degr[]= {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 315, 338};
+static int32_t const wind_dir_degr[]= {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 315, 338};
 
 // The transmission differences are 8 preamble bits (EPB) and 7 preamble bits (SPB)
 #define EPB 8
@@ -120,15 +120,15 @@ static int wind_dir_degr[]= {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 24
 #define TYPE_OOK 1
 #define TYPE_FSK 2
 
-static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer, int type)
+static int32_t fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *br;
-    int msg_type;      // 0=Weather 1=Datetime 2=UV/Light
-    int sens_msg = 10; // 10=Weather/Time sensor  7=UV/Light sensor
+    int32_t msg_type;      // 0=Weather 1=Datetime 2=UV/Light
+    int32_t sens_msg = 10; // 10=Weather/Time sensor  7=UV/Light sensor
     uint8_t bbuf[11];  // max 8 / 11 bytes needed
-    int preamble;         // 7 or 8 preamble bits
-    int temp_raw;
+    int32_t preamble;         // 7 or 8 preamble bits
+    int32_t temp_raw;
     float temperature;
     uint8_t const fsk_preamble[] = {0xAA, 0x2D, 0xD4};
 
@@ -136,8 +136,8 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
         return DECODE_ABORT_EARLY;
     }
 
-    if (type == TYPE_FSK) {
-        int bit_offset = bitbuffer_search(bitbuffer, 0, 0, fsk_preamble, sizeof(fsk_preamble) * 8) + sizeof(fsk_preamble) * 8;
+    if (package_type == TYPE_FSK) {
+        int32_t bit_offset = bitbuffer_search(bitbuffer, 0, 0, fsk_preamble, sizeof(fsk_preamble) * 8) + sizeof(fsk_preamble) * 8;
         if (bit_offset + sizeof(bbuf) * 8 > bitbuffer->bits_per_row[0]) {  // Did not find a big enough package
             decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "short package. Header index: %u", bit_offset);
             return DECODE_ABORT_LENGTH;
@@ -210,7 +210,7 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
     }
 
     // GETTING WEATHER SENSORS DATA
-    if (type == TYPE_OOK) {
+    if (package_type == TYPE_OOK) {
         temp_raw      = ((br[2] & 0x03) << 8) | br[3]; // only 10 bits, discard top bits
         temperature  = (temp_raw - 400) * 0.1f;
     }
@@ -222,22 +222,22 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
         }
         temperature = (temp_raw) * 0.1f;
     }
-    int humidity      = br[4];
-    int direction_deg = wind_dir_degr[br[9] & 0x0f];
+    int32_t humidity      = br[4];
+    int32_t direction_deg = wind_dir_degr[br[9] & 0x0f];
     float speed       = (br[5] * 0.34f) * 3.6f; // m/s -> km/h
     float gust        = (br[6] * 0.34f) * 3.6f; // m/s -> km/h
-    int rain_raw      = ((br[7] & 0x0f) << 8) | br[8];
+    int32_t rain_raw      = ((br[7] & 0x0f) << 8) | br[8];
     float rain        = rain_raw * 0.3f;
-    int device_id     = (br[1] << 4 & 0xf0) | (br[2] >> 4);
-    int battery_low   = (br[9] >> 4) == 1;
+    int32_t device_id     = (br[1] << 4 & 0xf0) | (br[2] >> 4);
+    int32_t battery_low   = (br[9] >> 4) == 1;
 
     // GETTING UV DATA
-    int uv_sensor_id = (br[1] << 4 & 0xf0) | (br[2] >> 4);
-    int uv_status_ok = br[3] == 85;
-    int uv_index     = br[2] & 0x0F;
+    int32_t uv_sensor_id = (br[1] << 4 & 0xf0) | (br[2] >> 4);
+    int32_t uv_status_ok = br[3] == 85;
+    int32_t uv_index     = br[2] & 0x0F;
 
     // GETTING LIGHT DATA
-    int light = (br[4] << 16) | (br[5] << 8) | br[6];
+    int32_t light = (br[4] << 16) | (br[5] << 8) | br[6];
     double lux = light * 0.1;
     float wm;
     if (preamble == SPB)
@@ -246,15 +246,15 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
         wm = (light / 6830.0f);
 
     // GETTING TIME DATA
-    int signal_type       = ((br[2] & 0x0F) == 10);
-    char const *signal_type_str = signal_type ? "DCF77" : "WWVB/MSF";
+    int32_t signal_type       = ((br[2] & 0x0F) == 10);
+    uint8_t const *signal_type_str = signal_type ? "DCF77" : "WWVB/MSF";
 
-    int hours   = ((br[3] & 0x30) >> 4) * 10 + (br[3] & 0x0F);
-    int minutes = ((br[4] & 0xF0) >> 4) * 10 + (br[4] & 0x0F);
-    int seconds = ((br[5] & 0xF0) >> 4) * 10 + (br[5] & 0x0F);
-    int year    = ((br[6] & 0xF0) >> 4) * 10 + (br[6] & 0x0F) + 2000;
-    int month   = ((br[7] & 0x10) >> 4) * 10 + (br[7] & 0x0F);
-    int day     = ((br[8] & 0xF0) >> 4) * 10 + (br[8] & 0x0F);
+    int32_t hours   = ((br[3] & 0x30) >> 4) * 10 + (br[3] & 0x0F);
+    int32_t minutes = ((br[4] & 0xF0) >> 4) * 10 + (br[4] & 0x0F);
+    int32_t seconds = ((br[5] & 0xF0) >> 4) * 10 + (br[5] & 0x0F);
+    int32_t year    = ((br[6] & 0xF0) >> 4) * 10 + (br[6] & 0x0F) + 2000;
+    int32_t month   = ((br[7] & 0x10) >> 4) * 10 + (br[7] & 0x0F);
+    int32_t day     = ((br[8] & 0xF0) >> 4) * 10 + (br[8] & 0x0F);
 
     // PRESENTING DATA
     if (msg_type == 0) {
@@ -264,18 +264,18 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
                 "subtype",          "Msg type",         DATA_INT,       msg_type,
                 "id",               "Station ID",       DATA_INT,       device_id,
                 "battery_ok",       "Battery",          DATA_INT,       !battery_low,
-                "temperature_C",    "Temperature",      DATA_FORMAT,    "%.01f C",  DATA_DOUBLE,    temperature,
+                "temperature_C",    "Temperature",      DATA_FORMAT,    "%.1f C",  DATA_DOUBLE,    temperature,
                 "humidity",         "Humidity",         DATA_FORMAT,    "%u %%",    DATA_INT,       humidity,
                 "wind_dir_deg",     "Wind Direction",   DATA_INT, direction_deg,
-                "wind_avg_km_h",    "Wind avg speed",   DATA_FORMAT,    "%.02f",    DATA_DOUBLE,    speed,
-                "wind_max_km_h",    "Wind gust",        DATA_FORMAT,    "%.02f",    DATA_DOUBLE,    gust,
-                "rain_mm",          "Total rainfall",   DATA_FORMAT,    "%3.1f",    DATA_DOUBLE,    rain,
+                "wind_avg_km_h",    "Wind avg speed",   DATA_FORMAT,    "%.2f",    DATA_DOUBLE,    speed,
+                "wind_max_km_h",    "Wind gust",        DATA_FORMAT,    "%.2f",    DATA_DOUBLE,    gust,
+                "rain_mm",          "Total rainfall",   DATA_FORMAT,    "%.1f",    DATA_DOUBLE,    rain,
                 "mic",              "Integrity",        DATA_STRING,    "CRC",
                 NULL);
         /* clang-format on */
     }
     else if (msg_type == 1) {
-        char clock_str[23];
+        uint8_t clock_str[23];
         snprintf(clock_str, sizeof(clock_str), "%04d-%02d-%02dT%02d:%02d:%02d",
                 year, month, day, hours, minutes, seconds);
 
@@ -304,7 +304,7 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
                 NULL);
         /* clang-format on */
     }
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -312,21 +312,21 @@ static int fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuffer,
 Fine Offset WH1080/WH3080 Weather Station.
 @sa fineoffset_wh1080_callback()
 */
-static int fineoffset_wh1080_callback_ook(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh1080_callback_ook(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    return fineoffset_wh1080_callback(decoder, bitbuffer, TYPE_OOK);
+    return fineoffset_wh1080_callback(decoder, bitbuffer, startPulses, TYPE_OOK);
 }
 
 /**
 Fine Offset WH1080/WH3080 Weather Station.
 @sa fineoffset_wh1080_callback()
 */
-static int fineoffset_wh1080_callback_fsk(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh1080_callback_fsk(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    return fineoffset_wh1080_callback(decoder, bitbuffer, TYPE_FSK);
+    return fineoffset_wh1080_callback(decoder, bitbuffer, startPulses, TYPE_FSK);
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "subtype",
         "id",

@@ -43,8 +43,8 @@ Frame types:
 
 Weather frame format:
 - Type        {8} 02
-- Temperature {16} unsigned in 0.1 Celsius steps
-- Humidity    {16} unsigned rel%
+- Temperature {16} uint32_t in 0.1 Celsius steps
+- Humidity    {16} uint32_t rel%
 
 Raw data frame (power index):
 - Version {8}
@@ -57,7 +57,7 @@ Raw data frame (power index):
 
 #include "decoder.h"
 
-static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {
             /*0xaa, 0xaa, */ 0xaa, 0xaa, // preamble
@@ -70,9 +70,9 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int row = 0;
+    int32_t row = 0;
     // Validate message and reject it as fast as possible : check for preamble
-    unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
+    uint32_t start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
 
     if (start_pos == bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY; // no preamble detected
@@ -116,7 +116,7 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t payload[62] = {0};
 
     payload[0] = frame[1] ^ info[0];
-    for (int i = 1; i < len; ++i) {
+    for (int32_t i = 1; i < len; ++i) {
         payload[i] = frame[i] ^ frame[i + 1] ^ info[i % sizeof (info)];
     }
     decoder_log_bitrow(decoder, 2, __func__, payload, len * 8, "frame data");
@@ -139,9 +139,9 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             return DECODE_FAIL_MIC;
         }
 
-        int idx      = payload[6] << 16 | payload[7] << 8 | payload[8];
-        int ts       = payload[9] << 16 | payload[10] << 8 | payload[11];
-        int maxPower = payload[12] << 8 | payload[13];
+        int32_t idx      = payload[6] << 16 | payload[7] << 8 | payload[8];
+        int32_t ts       = payload[9] << 16 | payload[10] << 8 | payload[11];
+        int32_t maxPower = payload[12] << 8 | payload[13];
 
         decoder_logf(decoder, 2, __func__, "index: %d, timestamp: %d, maxPower: %d",
                     idx, ts, maxPower);
@@ -156,30 +156,30 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",        DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 2) {
         // temp and humidity
-        int temp_raw = (payload[6] << 8 | payload[5]) - 2732;
+        int32_t temp_raw = (payload[6] << 8 | payload[5]) - 2732;
         float temp_c = temp_raw * 0.1f;
-        int humidity = payload[7];
+        int32_t humidity = payload[7];
 
         /* clang-format off */
         data = data_make(
                 "model",        "",                 DATA_STRING, "Archos-TBH",
                 "id",           "Station ID",       DATA_FORMAT, "%08X", DATA_INT, id,
-                "temperature_C", "Temperature",     DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+                "temperature_C", "Temperature",     DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
                 "humidity",     "Humidity",         DATA_FORMAT, "%d %%", DATA_INT, humidity,
                 "mic",          "Integrity",        DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 3) {
         // bat level, 0-100%
-        int batt_level = payload[5];
+        int32_t batt_level = payload[5];
 
         /* clang-format off */
         data = data_make(
@@ -189,7 +189,7 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",        DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 4) {
@@ -203,7 +203,7 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",        DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else {
@@ -212,7 +212,7 @@ static int archos_tbh_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

@@ -80,41 +80,41 @@ Interesting to note that 414b, 565a, and 53 are "AK", "VZ", and "S" which might 
 The checksum is: add all bytes after the sync word (mod 0xff).
 */
 
-static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0x2d, 0xd4};
 
     data_t *data;
     uint8_t msg[13];
 
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 128) {
-        decoder_logf(decoder, 2, __func__, "to few bits (%u)", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 128) {
+        decoder_logf(decoder, 2, __func__, "to few bits (%u)", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH; // unrecognized
     }
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof(preamble_pattern) * 8);
-    start_pos += sizeof(preamble_pattern) * 8;
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
+    bit_offset += sizeof(preamble_pattern) * 8;
 
-    if (start_pos >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         decoder_log(decoder, 2, __func__, "preamble not found");
         return DECODE_ABORT_EARLY; // no preamble found
     }
-    //if (start_pos + sizeof (msg) * 8 >= bitbuffer->bits_per_row[0]) {
-    if (start_pos + 12 * 8 >= bitbuffer->bits_per_row[0]) {
-        decoder_logf(decoder, 2, __func__, "message too short (%u)", bitbuffer->bits_per_row[0] - start_pos);
+    //if (bit_offset + sizeof (msg) * 8 >= bitbuffer->bits_per_row[row]) {
+    if (bit_offset + 12 * 8 >= bitbuffer->bits_per_row[row]) {
+        decoder_logf(decoder, 2, __func__, "message too short (%u)", bitbuffer->bits_per_row[row] - bit_offset);
         return DECODE_ABORT_LENGTH; // message too short
     }
 
-    bitbuffer_extract_bytes(bitbuffer, 0, start_pos, msg, sizeof(msg) * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, msg, sizeof(msg) * 8);
     decoder_log_bitrow(decoder, 2, __func__, msg, sizeof(msg) * 8, "MSG");
 
     uint32_t id   = ((uint32_t)msg[0] << 24) | (msg[1] << 16) | (msg[2] << 8) | (msg[3]);
-    int m_type    = (msg[4] << 8) | (msg[5]);
-    int m_subtype = (msg[6] << 8) | (msg[7]); // only Smart Socket
+    int32_t m_type    = (msg[4] << 8) | (msg[5]);
+    int32_t m_subtype = (msg[6] << 8) | (msg[7]); // only Smart Socket
 
     if (m_type == 0x7700) {
-        int sum = add_bytes(msg, 11); // socket
+        int32_t sum = add_bytes(msg, 11); // socket
         if ((sum & 0xff) != msg[11]) {
             decoder_logf(decoder, 2, __func__, "checksum fail %02x vs %02x", sum, msg[9]);
             return DECODE_FAIL_MIC;
@@ -123,8 +123,8 @@ static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             decoder_logf(decoder, 2, __func__, "wrong stop byte %02x", msg[10]);
             return DECODE_FAIL_SANITY;
         }
-        int raw     = (msg[8] << 8) | (msg[9]);
-        int power_w = (msg[9] << 8) | (msg[8]);
+        int32_t raw     = (msg[8] << 8) | (msg[9]);
+        int32_t power_w = (msg[9] << 8) | (msg[8]);
 
         /* clang-format off */
         data = data_make(
@@ -139,7 +139,7 @@ static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         /* clang-format on */
     }
     else {
-        int sum = add_bytes(msg, 9) + 0x35; // transmitter
+        int32_t sum = add_bytes(msg, 9) + 0x35; // transmitter
         if ((sum & 0xff) != msg[9]) {
             decoder_logf(decoder, 2, __func__, "checksum fail %02x vs %02x", sum, msg[9]);
             return DECODE_FAIL_MIC;
@@ -152,8 +152,8 @@ static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             decoder_logf(decoder, 2, __func__, "wrong poststop byte %02x", msg[11]);
             return DECODE_FAIL_SANITY;
         }
-        int raw     = (msg[6] << 16) | (msg[7] << 8) | (msg[8]);
-        int power_w = ((uint8_t)(msg[7] - 0x33) << 8) | (uint8_t)(msg[6] - 0x33);
+        int32_t raw     = (msg[6] << 16) | (msg[7] << 8) | (msg[8]);
+        int32_t power_w = ((uint8_t)(msg[7] - 0x33) << 8) | (uint8_t)(msg[6] - 0x33);
 
         /* clang-format off */
         data = data_make(
@@ -167,11 +167,11 @@ static int ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         /* clang-format on */
     }
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "message_type",

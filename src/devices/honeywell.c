@@ -38,27 +38,27 @@ Data layout:
 
 #include "decoder.h"
 
-static int honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // full preamble is 0xFFFE
     uint8_t const preamble_pattern[2] = {0xff, 0xe0}; // 12 bits
 
     data_t *data;
-    int row;
-    int pos;
-    int len;
+    int32_t row;
+    int32_t bit_offset;
+    int32_t len;
     uint8_t b[10] = {0};
-    int channel;
-    int device_id;
-    int event;
+    int32_t channel;
+    int32_t device_id;
+    int32_t event;
     uint16_t crc_calculated;
     uint16_t crc;
-    int reed;
-    int contact;
-    int heartbeat;
-    int alarm;
-    int tamper;
-    int battery_low;
+    int32_t reed;
+    int32_t contact;
+    int32_t heartbeat;
+    int32_t alarm;
+    int32_t tamper;
+    int32_t battery_low;
 
     row = 0; // we expect a single row only. reduce collisions
     if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60)
@@ -66,11 +66,11 @@ static int honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     bitbuffer_invert(bitbuffer);
 
-    pos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 12) + 12;
-    len = bitbuffer->bits_per_row[row] - pos;
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 12) + 12;
+    len = bitbuffer->bits_per_row[row] - bit_offset;
     if (len < 48)
         return DECODE_ABORT_LENGTH;
-    bitbuffer_extract_bytes(bitbuffer, row, pos, b, 80);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 80);
 
     channel   = b[0] >> 4;
     device_id = ((b[0] & 0xf) << 16) | (b[1] << 8) | b[2];
@@ -119,11 +119,11 @@ static int honeywell_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

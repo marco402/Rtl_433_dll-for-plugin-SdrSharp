@@ -8,7 +8,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned start_pos)
+/** @fn int32_t ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset)
 GE Color Effects Remote.
 
 Previous work decoding this device:
@@ -19,9 +19,9 @@ Previous work decoding this device:
 #include "decoder.h"
 
 // Helper to access single bit (copied from bitbuffer.c)
-static inline int bit(const uint8_t *bytes, unsigned bit)
+static inline int32_t bit(const uint8_t *bytes, uint32_t b)
 {
-    return bytes[bit >> 3] >> (7 - (bit & 7)) & 1;
+	return bytes[b >> 3] >> (7 - (b & 7)) & 1;
 }
 
 /**
@@ -29,11 +29,11 @@ Decodes the following encoding scheme:
 - 10 = 0
 - 1100 = 1
 */
-static unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitbuffer_t *outbuf)
+static uint32_t ge_decode(bitbuffer_t *inbuf, int32_t row, uint32_t start, bitbuffer_t *outbuf)
 {
     uint8_t *bits = inbuf->bb[row];
-    unsigned int len = inbuf->bits_per_row[row];
-    unsigned int ipos = start;
+    uint32_t len = inbuf->bits_per_row[row];
+    uint32_t ipos = start;
 
     while (ipos < len) {
         uint8_t bit1 = bit(bits, ipos++);
@@ -58,12 +58,12 @@ static unsigned ge_decode(bitbuffer_t *inbuf, unsigned row, unsigned start, bitb
     return ipos;
 }
 
-static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned start_pos)
+static int32_t ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitbuffer_t packet_bits = {0};
 
-    ge_decode(bitbuffer, row, start_pos, &packet_bits);
+    ge_decode(bitbuffer, row, bit_offset, &packet_bits);
     //decoder_log_bitbuffer(decoder, 0, __func__, &packet_bits, "");
 
     /* From http://www.deepdarc.com/2010/11/27/hacking-christmas-lights/
@@ -76,10 +76,10 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
      */
 
     // Frame should be 17 decoded bits (not including preamble)
-    if (packet_bits.bits_per_row[0] != 17)
+    if (packet_bits.bits_per_row[row] != 17)
         return DECODE_ABORT_LENGTH;
 
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[row];
 
     // First two bits must be 0
     if (b[0] & 0xc0)
@@ -91,12 +91,12 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
 
     // Extract device ID
     // We want bits [2..8]. Since the first two bits are zero, we'll just take the entire first byte
-    int device_id = b[0];
+    int32_t device_id = b[0];
 
     // Extract command from the second byte
     uint8_t command = b[1];
 
-    char cmd[7];
+    uint8_t cmd[7];
     switch (command) {
     case 0x5a: snprintf(cmd, sizeof(cmd), "change"); break;
     case 0xaa: snprintf(cmd, sizeof(cmd), "on"); break;
@@ -115,7 +115,7 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -123,8 +123,9 @@ static int ge_coloreffects_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
 GE Color Effects Remote.
 @sa ge_coloreffects_decode()
 */
-static int ge_coloreffects_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ge_coloreffects_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // Frame preamble:
     // 11001100 11001100 11001100 11001100 11001100 11111111 00000000
     // c   c    c   c    c   c    c   c    c   c    f   f    0   0
@@ -132,32 +133,32 @@ static int ge_coloreffects_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Sync pulse/gap might be sliced short
     uint8_t const preamble_pattern2[3] = {0xcc, 0xfe, 0x00};
 
-    unsigned bitpos = 0;
-    unsigned found  = 0;
-    int ret         = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    uint32_t found  = 0;
+    int32_t ret         = 0;
+    int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
     // (if the device id and command were all zeros)
-    while ((found = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24) + 24) + 33 <=
-                    bitbuffer->bits_per_row[0]
-            || (found = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 23) + 23) + 33 <=
-                    bitbuffer->bits_per_row[0]
-            || (found = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern2, 23) + 23) + 33 <=
-                    bitbuffer->bits_per_row[0]
-            || (found = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern2, 22) + 22) + 33 <=
-                    bitbuffer->bits_per_row[0]) {
-        bitpos = found;
-        ret = ge_coloreffects_decode(decoder, bitbuffer, 0, bitpos);
+    while ((found = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 24) + 24) + 33 <=
+                    bitbuffer->bits_per_row[row]
+            || (found = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 23) + 23) + 33 <=
+                    bitbuffer->bits_per_row[row]
+            || (found = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern2, 23) + 23) + 33 <=
+                    bitbuffer->bits_per_row[row]
+            || (found = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern2, 22) + 22) + 33 <=
+                    bitbuffer->bits_per_row[row]) {
+        bit_offset = found;
+        ret    = ge_coloreffects_decode(decoder, bitbuffer, row, bit_offset, startPulses, package_type);
         if (ret > 0)
             events += ret;
-        bitpos++;
+        bit_offset++;
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "command",

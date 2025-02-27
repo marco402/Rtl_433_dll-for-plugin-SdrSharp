@@ -25,16 +25,19 @@ TFA pool temperature sensor.
 
 #include "decoder.h"
 
-static int tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int checksum, checksum_rx, device, channel, battery;
-    int temp_raw;
+    int32_t checksum, checksum_rx, device, channel, battery;
+    int32_t temp_raw;
     float temp_f;
 
     // require 7 of 10 repeats
-    int row = bitbuffer_find_repeated_row(bitbuffer, 7, 28);
+	uint32_t nbRepeat = 7;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 28);
     if (row < 0) {
         return DECODE_ABORT_EARLY; // no repeated row found
     }
@@ -69,16 +72,16 @@ static int tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbuffer
             "id",               "Id",               DATA_INT,       device,
             "channel",          "Channel",          DATA_INT,       channel,
             "battery_ok",       "Battery",          DATA_INT,       battery,
-            "temperature_C",    "Temperature",      DATA_FORMAT,    "%.01f C",  DATA_DOUBLE,    temp_f,
+            "temperature_C",    "Temperature",      DATA_FORMAT,    "%.1f C",  DATA_DOUBLE,    temp_f,
             "mic",              "Integrity",        DATA_STRING,    "CHECKSUM",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

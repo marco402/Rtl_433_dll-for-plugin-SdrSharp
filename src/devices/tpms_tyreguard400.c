@@ -69,7 +69,7 @@ Flex decoder:
 
 #define TPMS_TYREGUARD400_MESSAGE_BITLEN     88
 
-static int tpms_tyreguard400_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_tyreguard400_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     uint8_t b[(TPMS_TYREGUARD400_MESSAGE_BITLEN + 7) / 8];
 
@@ -83,25 +83,25 @@ static int tpms_tyreguard400_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
     }
 
     uint8_t flags = b[9];
-    //int bat_low = flags & 0x1; // TBC ?!?
-    int peering_request = flags & 0x3; // bytes = 0b00000011
-    int ack_leaking = flags & 0x8; // byte = 0b00001000 :: NOTA ack_leaking = 1 means ack ;; ack_leaking=0 nothing to do
+    //int32_t bat_low = flags & 0x1; // TBC ?!?
+    int32_t peering_request = flags & 0x3; // bytes = 0b00000011
+    int32_t ack_leaking = flags & 0x8; // byte = 0b00001000 :: NOTA ack_leaking = 1 means ack ;; ack_leaking=0 nothing to do
 
     // test if bits 1st or 2nd is set to 1 of 0b000000XX
-    int leaking = flags & 0x3;
+    int32_t leaking = flags & 0x3;
 
-    //int add256  = (flags & 0x10) >> 4;  // bytes = 0b000X0000
-    //int add512  = (flags & 0x20) >> 5;  // bytes = 0b00X00000
-    //int add1024 = (flags & 0x40) >> 6; // bytes = 0b0X000000
+    //int32_t add256  = (flags & 0x10) >> 4;  // bytes = 0b000X0000
+    //int32_t add512  = (flags & 0x20) >> 5;  // bytes = 0b00X00000
+    //int32_t add1024 = (flags & 0x40) >> 6; // bytes = 0b0X000000
 
-    char id_str[8];
+    uint8_t id_str[8];
     snprintf(id_str, sizeof(id_str), "%07x", (uint32_t)(((b[3] & 0xf)<<24)) | (b[4]<<16) | (b[5]<<8) |  b[6]); // 28 bits ID
-    char flags_str[3];
+    uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%02x", flags);
 
     //id = (b[4] << 8)
-    int pressure_kpa = b[7] | ((flags & 0x70) << 4);
-    int temp_c = b[8] - 40;
+    int32_t pressure_kpa = b[7] | ((flags & 0x70) << 4);
+    int32_t temp_c = b[8] - 40;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -122,43 +122,39 @@ static int tpms_tyreguard400_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
 /** @sa tpms_tyreguard400_decode() */
-static int tpms_tyreguard400_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_tyreguard400_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     //uint8_t const tyreguard_frame_sync[] = {0xf, 0xd5, 0xfd, 0x5f}
     uint8_t const tyreguard_frame_sync[] = {0xfd, 0x5f, 0xd5, 0xf0}; // needs to shift sync to align bytes 28x bits useful
 
-    int ret    = 0;
-    int events = 0;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         if (bitbuffer->bits_per_row[row] < TPMS_TYREGUARD400_MESSAGE_BITLEN) {
             // bail out of this "too short" row early
-            if (decoder->verbose >= 2) {
-                // Output the bad row, only for message level debug / deciphering.
-                decoder_logf_bitrow(decoder, 2, __func__, bitbuffer->bb[row], bitbuffer->bits_per_row[row],
-                        "Bad message in row %d need %d bits got %d",
-                        row, TPMS_TYREGUARD400_MESSAGE_BITLEN, bitbuffer->bits_per_row[row]);
-            }
+            // Output the bad row, only for message level debug / deciphering.
+            decoder_logf_bitrow(decoder, 2, __func__, bitbuffer->bb[row], bitbuffer->bits_per_row[row],
+                    "Bad message in row %d need %d bits got %d",
+                    row, TPMS_TYREGUARD400_MESSAGE_BITLEN, bitbuffer->bits_per_row[row]);
             continue; // DECODE_ABORT_LENGTH
         }
 
-        unsigned bitpos = 0;
+        uint32_t bitpos = 0;
 
         // Find a preamble with enough bits after it that it could be a complete packet
         while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos, tyreguard_frame_sync, 28)) + TPMS_TYREGUARD400_MESSAGE_BITLEN <=
                 bitbuffer->bits_per_row[row]) {
 
-            if (decoder->verbose >= 2) {
-                decoder_logf_bitrow(decoder, 2, __func__, bitbuffer->bb[row], bitbuffer->bits_per_row[row],
-                        "Find bitpos with preamble row %d at %u", row, bitpos);
-            }
+            decoder_logf_bitrow(decoder, 2, __func__, bitbuffer->bb[row], bitbuffer->bits_per_row[row],
+                    "Find bitpos with preamble row %d at %u", row, bitpos);
 
-            ret = tpms_tyreguard400_decode(decoder, bitbuffer, row, bitpos);
+            ret = tpms_tyreguard400_decode(decoder, bitbuffer, row, bitpos, startPulses,package_type);
             if (ret > 0)
                 events += ret;
 
@@ -166,14 +162,14 @@ static int tpms_tyreguard400_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
     }
     // (Only) for future regression tests.
-    if ((decoder->verbose >= 3) & (events == 0)) {
+    if (events == 0) {
         decoder_logf(decoder, 3, __func__, "Bad transmission");
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

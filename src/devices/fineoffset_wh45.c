@@ -61,25 +61,26 @@ Technical documents for the SCD30 are here:
 https://sensirion.com/products/catalog/SCD30/
 */
 
-static int fineoffset_wh45_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh45_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row             = 0;
     uint8_t const preamble[] = {0xaa, 0x2d, 0xd4}; // 24 bit, part of preamble and sync word
     uint8_t b[15];
 
     // bit counts have been observed between 187 and 222
-    if (bitbuffer->bits_per_row[0] < 170 || bitbuffer->bits_per_row[0] > 240) {
+    if (bitbuffer->bits_per_row[row] < 170 || bitbuffer->bits_per_row[row] > 240) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a data package and extract data buffer
-    unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, 24) + 24;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // Did not find a big enough package
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, 24) + 24;
+    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[row]) { // Did not find a big enough package
         decoder_logf_bitbuffer(decoder, 2, __func__, bitbuffer, "short package at %u", bit_offset);
         return DECODE_ABORT_LENGTH;
     }
 
     // Extract package data
-    bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, b, sizeof(b) * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, sizeof(b) * 8);
 
     if (b[0] != 0x45) // Check for family code 0x45
         return DECODE_ABORT_EARLY;
@@ -94,20 +95,20 @@ static int fineoffset_wh45_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int id            = (b[1] << 16) | (b[2] << 8) | (b[3]);
-    int temp_raw      = (b[4] & 0x7) << 8 | b[5];
+    int32_t id            = (b[1] << 16) | (b[2] << 8) | (b[3]);
+    int32_t temp_raw      = (b[4] & 0x7) << 8 | b[5];
     float temp_c      = (temp_raw - 400) * 0.1f;    // range -40.0-60.0 C
-    int humidity      = b[6];
-    int battery_bars  = (b[7] & 0x40) >> 4 | (b[9] & 0xC0) >> 6;
+    int32_t humidity      = b[6];
+    int32_t battery_bars  = (b[7] & 0x40) >> 4 | (b[9] & 0xC0) >> 6;
     // A battery bars value of 6 means the sensor is powered via USB (the Ecowitt WS View app shows 'DC')
-    int ext_power     = battery_bars == 6 ? 1 : 0;
+    int32_t ext_power     = battery_bars == 6 ? 1 : 0;
     //  Battery level is indicated with 5 bars. Convert to 0 (0 bars) to 1 (5 or 6 bars)
     float battery_ok  = MIN(battery_bars * 0.2f, 1.0f);
-    int pm2_5_raw     = (b[7] & 0x3f) << 8 | b[8];
+    int32_t pm2_5_raw     = (b[7] & 0x3f) << 8 | b[8];
     float pm2_5       = pm2_5_raw * 0.1f;
-    int pm10_raw      = (b[9] & 0x3f) << 8 | b[10];
+    int32_t pm10_raw      = (b[9] & 0x3f) << 8 | b[10];
     float pm10        = pm10_raw * 0.1f;
-    int co2           = (b[11] << 8) | b[12];
+    int32_t co2           = (b[11] << 8) | b[12];
 
     /* clang-format off */
     data_t *data = data_make(
@@ -124,11 +125,12 @@ static int fineoffset_wh45_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

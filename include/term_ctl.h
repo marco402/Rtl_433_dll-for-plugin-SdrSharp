@@ -13,14 +13,14 @@
 #define INCLUDE_TERM_CTL_H_
 
 #include <stdio.h>
-
+#include <stdint.h>
 void *term_init(FILE *fp);
 
 void term_free(void *ctx);
 
-int term_get_columns(void *ctx);
+int32_t term_get_columns(void *ctx);
 
-int term_has_color(void *ctx);
+int32_t term_has_color(void *ctx);
 
 void term_ring_bell(void *ctx);
 
@@ -79,7 +79,7 @@ void term_set_bg(void *ctx, term_color_t bg, term_color_t fg);
  * And a 'term_printf (NULL, "~4Hello ~2world~0.\n");'
  * will print "Hello world" to stderr' with no colors.
  */
-int term_printf(void *ctx, _Printf_format_string_ const char *format, ...)
+int32_t term_printf(void *ctx, _Printf_format_string_ const uint8_t *format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 2, 3)))
 #endif
@@ -95,7 +95,7 @@ int term_printf(void *ctx, _Printf_format_string_ const char *format, ...)
  *   "quoted"
  *   'quoted'
  */
-int term_help_fprintf(FILE *fp, _Printf_format_string_ char const *format, ...)
+int32_t term_help_fprintf(FILE *fp, _Printf_format_string_ uint8_t const *format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 2, 3)))
 #endif
@@ -105,13 +105,13 @@ int term_help_fprintf(FILE *fp, _Printf_format_string_ char const *format, ...)
  * Like 'term_printf()', but no var-arg format.
  * Simply takes a 0-terminated buffer.
  */
-int term_puts(void *ctx, const char *buf);
+int32_t term_puts(void *ctx, const uint8_t *buf);
 
 /**
  * Like 'term_help_fprintf()', but no var-arg format.
  * Simply takes a 0-terminated buffer.
  */
-int term_help_fputs(void *ctx, const char *buf, FILE *fp);
+int32_t term_help_fputs(void *ctx, const uint8_t *buf, FILE *fp);
 
 /**
  * Change the default color map.
@@ -126,13 +126,13 @@ int term_help_fputs(void *ctx, const char *buf, FILE *fp);
  *   "~7": print using TERM_COLOR_BLACK.
  *   "~8": print using TERM_COLOR_RED.
  */
-int term_set_color_map(int idx, term_color_t color);
+int32_t term_set_color_map(int32_t idx, term_color_t color);
 
 /**
  * Returns the current color-value ('enum term_color') for color-index.
  * 'idx'. This index goes from ASCII '0' to 'X'.
  * 'X' = '0' + the dimension of the internal 'color_map[]'.
  */
-int term_get_color_map(int idx);
+int32_t term_get_color_map(int32_t idx);
 
 #endif /* INCLUDE_TERM_CTL_H_ */

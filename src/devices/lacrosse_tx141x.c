@@ -16,6 +16,7 @@ LaCrosse TX141-Bv2, TX141TH-Bv2, TX141-Bv3, TX145wsdth sensor.
 
 Also TFA 30.3221.02 (a TX141TH-Bv2),
 also TFA 30.3222.02 (a LaCrosse-TX141W).
+Also TFA 30.3249.02 (a TX141TH-Bv2),
 also TFA 30.3251.10 (a LaCrosse-TX141W).
 also some rebrand (ORIA WA50B) with a slightly longer timing, s.a. #2088
 also TFA 30.3243.02 (a LaCrosse-TX141Bv3)
@@ -60,7 +61,7 @@ The data is grouped in 5 bytes / 10 nybbles
 
 - id:    8 bit random integer generated at each powers up
 - flags: 4 bit for battery low indicator, test button press, and channel
-- temp: 12 bit unsigned temperature in degrees Celsius, scaled by 10, offset 500, range -40 C to 60 C
+- temp: 12 bit uint32_t temperature in degrees Celsius, scaled by 10, offset 500, range -40 C to 60 C
 - humi:  8 bit integer indicating relative humidity in %.
 - chk:   8 bit checksum is a digest, 0x31, 0xf4, reflected
 
@@ -98,70 +99,73 @@ Addition of TX141W and TX145wsdth:
 #define LACROSSE_TX141BV3 33
 #define LACROSSE_TX141W 65
 
-static int lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+ static int32_t lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int r;
-    int device;
+    int32_t device;
     uint8_t *b;
 
     // Find the most frequent data packet
     // reduce false positives, require at least 5 out of 12 or 3 of 4 repeats.
     // allows 4-repeats transmission to contain a bogus extra row.
-    r = bitbuffer_find_repeated_row(bitbuffer, bitbuffer->num_rows > 5 ? 5 : 3, 32); // 32
-    if (r < 0) {
+	uint32_t nbRepeat = bitbuffer->num_rows > 5 ? 4 : 3;   // marc replace 5 by 4 for replay
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 32); // 32
+    if (row < 0) {
         // try again for TX141W/TX145wsdth, require at least 2 out of 3-7 repeats.
-        r = bitbuffer_find_repeated_row(bitbuffer, 2, 64); // 65
+		nbRepeat = 2;
+        row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 64); // 65
     }
-    if (r < 0) {
+    if (row < 0) {
         return DECODE_ABORT_LENGTH;
     }
 
-    if (bitbuffer->bits_per_row[r] >= 64) {
+    if (bitbuffer->bits_per_row[row] >= 64) {
         device = LACROSSE_TX141W;
     }
-    else if (bitbuffer->bits_per_row[r] > 41) {
+    else if (bitbuffer->bits_per_row[row] > 41) {
         return DECODE_ABORT_LENGTH;
     }
-    else if (bitbuffer->bits_per_row[r] >= 41) {
+    else if (bitbuffer->bits_per_row[row] >= 41) {
         if (bitbuffer->num_rows > 12) {
             return DECODE_ABORT_LENGTH; // false-positive with GT-WT03
         }
         device = LACROSSE_TX141TH; // actually TX141TH-BV3
     }
-    else if (bitbuffer->bits_per_row[r] >= 40) {
+    else if (bitbuffer->bits_per_row[row] >= 40) {
         device = LACROSSE_TX141TH;
     }
-    else if (bitbuffer->bits_per_row[r] >= 37) {
+    else if (bitbuffer->bits_per_row[row] >= 37) {
         device = LACROSSE_TX141;
     }
-    else if (bitbuffer->bits_per_row[r] == 32) {
+    else if (bitbuffer->bits_per_row[row] == 32) {
         device = LACROSSE_TX141B;
     } else {
         device = LACROSSE_TX141BV3;
     }
 
     bitbuffer_invert(bitbuffer);
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     if (device == LACROSSE_TX141W) {
-        int pre = (b[0] >> 3);
+        int32_t pre = (b[0] >> 3);
         if (pre != 0x01) {
             return DECODE_ABORT_EARLY;
         }
 
-        int chk = crc8(b, 8, 0x31, 0x00);
+        int32_t chk = crc8(b, 8, 0x31, 0x00);
         if (chk) {
             return DECODE_FAIL_MIC;
         }
 
-        int id          = ((b[0] & 0x07) << 16) | (b[1] << 8) | b[2];
-        int battery_low = (b[3] >> 7);
-        int test        = (b[3] & 0x40) >> 6;
-        int channel     = (b[3] & 0x30) >> 4;
-        int type        = (b[3] & 0x0f);
-        int temp_raw    = (b[4] << 4) | (b[5] >> 4);
-        int humidity    = ((b[5] & 0x0f) << 8) | b[6];
+        int32_t id          = ((b[0] & 0x07) << 16) | (b[1] << 8) | b[2];
+        int32_t battery_low = (b[3] >> 7);
+        int32_t test        = (b[3] & 0x40) >> 6;
+        int32_t channel     = (b[3] & 0x30) >> 4;
+        int32_t type        = (b[3] & 0x0f);
+        int32_t temp_raw    = (b[4] << 4) | (b[5] >> 4);
+        int32_t humidity    = ((b[5] & 0x0f) << 8) | b[6];
 
         if (type == 1) {
             // Temp/Hum
@@ -202,25 +206,26 @@ static int lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             decoder_logf(decoder, 1, __func__, "unknown subtype: %d", type);
             return DECODE_FAIL_OTHER;
         }
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
         return 1;
     }
 
-    int id = b[0];
-    int battery_low;
+    int32_t id = b[0];
+    int32_t battery_low;
     if (device == LACROSSE_TX141TH) {
         battery_low = (b[1] >> 7);
     }
     else { // LACROSSE_TX141 || LACROSSE_TX141BV3
         battery_low = !(b[1] >> 7);
     }
-    int test     = (b[1] & 0x40) >> 6;
-    int channel  = (b[1] & 0x30) >> 4;
-    int temp_raw = ((b[1] & 0x0F) << 8) | b[2];
+    int32_t test     = (b[1] & 0x40) >> 6;
+    int32_t channel  = (b[1] & 0x30) >> 4;
+    int32_t temp_raw = ((b[1] & 0x0F) << 8) | b[2];
     float temp_c = (temp_raw - 500) * 0.1f; // Temperature in C
 
-    int humidity = 0;
+    int32_t humidity = 0;
     if (device == LACROSSE_TX141TH) {
         humidity = b[3];
     }
@@ -283,12 +288,13 @@ static int lacrosse_tx141x_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
     }
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

@@ -7,7 +7,7 @@
     (at your option) any later version.
 
 */
-/** @fn int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 LaCrosse WS-2310 / WS-3600 433 Mhz Weather Station.
 
 - long pulse 1464 us
@@ -37,9 +37,9 @@ Packet Format is 53 bits/ 13 nibbles:
 
 #define LACROSSE_WS_BITLEN 52
 
-static int lacrossews_detect(r_device *decoder, uint8_t *pRow, uint8_t *msg_nybbles, int16_t rowlen)
+static int32_t lacrossews_detect(r_device *decoder, uint8_t *pRow, uint8_t *msg_nybbles, int16_t rowlen)
 {
-    int i;
+    int32_t i;
     uint8_t rbyte_no, rbit_no, mnybble_no, mbit_no;
     uint8_t bit, checksum = 0, parity = 0;
 
@@ -71,7 +71,7 @@ static int lacrossews_detect(r_device *decoder, uint8_t *pRow, uint8_t *msg_nybb
     }
     checksum = checksum & 0x0F;
 
-    int checksum_ok = msg_nybbles[7] == (msg_nybbles[10] ^ 0xF)
+    int32_t checksum_ok = msg_nybbles[7] == (msg_nybbles[10] ^ 0xF)
             && msg_nybbles[8] == (msg_nybbles[11] ^ 0xF)
             && (parity & 0x1) == 0x1
             && checksum == msg_nybbles[12];
@@ -86,14 +86,14 @@ static int lacrossews_detect(r_device *decoder, uint8_t *pRow, uint8_t *msg_nybb
     return 1;
 }
 
-static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row;
-    int events = 0;
+    int32_t row;
+    int32_t events = 0;
     uint8_t msg_nybbles[(LACROSSE_WS_BITLEN / 4)];
     uint8_t ws_id, msg_type, sensor_id;
     // uint8_t msg_data, msg_unknown, msg_checksum;
-    int msg_value_bcd, msg_value_bcd2, msg_value_bin;
+    int32_t msg_value_bcd, msg_value_bcd2, msg_value_bin;
     float temp_c, wind_dir, wind_spd, rain_mm;
     data_t *data;
 
@@ -128,7 +128,7 @@ static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                     NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
             break;
 
@@ -147,7 +147,7 @@ static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                     NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
             break;
 
@@ -158,11 +158,11 @@ static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             data = data_make(
                     "model",            "",             DATA_STRING, ws_id == 0x6 ? "LaCrosse-WS3600" : "LaCrosse-WS2310",
                     "id",               "",             DATA_INT,    sensor_id,
-                    "rain_mm",          "Rainfall",     DATA_FORMAT, "%3.2f mm", DATA_DOUBLE, rain_mm,
+                    "rain_mm",          "Rainfall",     DATA_FORMAT, "%.2f mm", DATA_DOUBLE, rain_mm,
                     NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
             break;
 
@@ -181,12 +181,12 @@ static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             data = data_make(
                     "model",            "",             DATA_STRING, ws_id == 0x6 ? "LaCrosse-WS3600" : "LaCrosse-WS2310",
                     "id",               "",             DATA_INT,    sensor_id,
-                    "wind_avg_m_s",     "Wind speed",   DATA_COND,   msg_type == 3, DATA_FORMAT, "%3.1f m/s", DATA_DOUBLE, wind_spd,
-                    "wind_max_m_s",     "Gust speed",   DATA_COND,   msg_type != 3, DATA_FORMAT, "%3.1f m/s", DATA_DOUBLE, wind_spd,
+                    "wind_avg_m_s",     "Wind speed",   DATA_COND,   msg_type == 3, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind_spd,
+                    "wind_max_m_s",     "Gust speed",   DATA_COND,   msg_type != 3, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind_spd,
                     "wind_dir_deg",     "Direction",    DATA_DOUBLE, wind_dir, NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
             break;
 
@@ -201,7 +201,7 @@ static int lacrossews_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

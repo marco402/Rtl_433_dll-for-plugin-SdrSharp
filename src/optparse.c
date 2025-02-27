@@ -15,7 +15,7 @@
 #include <limits.h>
 #include <string.h>
 
-int tls_param(tls_opts_t *tls_opts, char const *key, char const *val)
+int32_t tls_param(tls_opts_t *tls_opts, uint8_t const *key, uint8_t const *val)
 {
     if (!tls_opts || !key || !*key)
         return 1;
@@ -38,7 +38,7 @@ int tls_param(tls_opts_t *tls_opts, char const *key, char const *val)
     return 0;
 }
 
-int atobv(char const *arg, int def)
+int32_t atobv(uint8_t const *arg, int32_t def)
 {
     if (!arg)
         return def;
@@ -47,23 +47,23 @@ int atobv(char const *arg, int def)
     return atoi(arg);
 }
 
-int atoiv(char const *arg, int def)
+int32_t atoiv(uint8_t const *arg, int32_t def)
 {
     if (!arg)
         return def;
-    char *endptr;
-    int val = strtol(arg, &endptr, 10);
+    uint8_t *endptr;
+    int32_t val = strtol(arg, &endptr, 10);
     if (arg == endptr)
         return def;
     return val;
 }
 
-char *arg_param(char const *arg)
+uint8_t *arg_param(uint8_t const *arg)
 {
     if (!arg)
         return NULL;
-    char *p = strchr(arg, ':');
-    char *c = strchr(arg, ',');
+    uint8_t *p = strchr(arg, ':');
+    uint8_t *c = strchr(arg, ',');
     if (p && (!c || p < c))
         return ++p;
     else if (c)
@@ -72,7 +72,7 @@ char *arg_param(char const *arg)
         return p;
 }
 
-double arg_float(char const *str, char const *error_hint)
+double arg_float(uint8_t const *str, uint8_t const *error_hint)
 {
     if (!str) {
         fprintf(stderr, "%smissing number argument\n", error_hint);
@@ -84,11 +84,11 @@ double arg_float(char const *str, char const *error_hint)
         exit(1);
     }
 
-    // allow whitespace and equals char
+    // allow whitespace and equals uint8_t
     while (*str == ' ' || *str == '=')
         ++str;
 
-    char *endptr;
+    uint8_t *endptr;
     double val = strtod(str, &endptr);
 
     if (str == endptr) {
@@ -99,41 +99,41 @@ double arg_float(char const *str, char const *error_hint)
     return val;
 }
 
-char *hostport_param(char *param, char const **host, char const **port)
-{
-    if (param && *param) {
-        if (param[0] == '/' && param[1] == '/') {
-            param += 2;
-        }
-        if (*param != ':' && *param != ',') {
-            *host = param;
-            if (*param == '[') {
-                (*host)++;
-                param = strchr(param, ']');
-                if (param) {
-                    *param++ = '\0';
-                }
-                else {
-                    fprintf(stderr, "Malformed Ipv6 address!\n");
-                    exit(1);
-                }
-            }
-        }
-        char *colon = strchr(param, ':');
-        char *comma = strchr(param, ',');
-        if (colon && (!comma || colon < comma)) {
-            *colon++ = '\0';
-            *port    = colon;
-        }
-        if (comma) {
-            *comma++ = '\0';
-            return comma;
-        }
-    }
-    return NULL;
-}
+//uint8_t *hostport_param(uint8_t *param, uint8_t const **host, uint8_t const **port)
+//{
+//    if (param && *param) {
+//        if (param[0] == '/' && param[1] == '/') {
+//            param += 2;
+//        }
+//        if (*param != ':' && *param != ',') {
+//            *host = param;
+//            if (*param == '[') {
+//                (*host)++;
+//                param = strchr(param, ']');
+//                if (param) {
+//                    *param++ = '\0';
+//                }
+//                else {
+//                    fprintf(stderr, "Malformed Ipv6 address!\n");
+//                    exit(1);
+//                }
+//            }
+//        }
+//        uint8_t *colon = strchr(param, ':');
+//        uint8_t *comma = strchr(param, ',');
+//        if (colon && (!comma || colon < comma)) {
+//            *colon++ = '\0';
+//            *port    = colon;
+//        }
+//        if (comma) {
+//            *comma++ = '\0';
+//            return comma;
+//        }
+//    }
+//    return NULL;
+//}
 
-uint32_t atouint32_metric(char const *str, char const *error_hint)
+uint32_t atouint32_metric(uint8_t const *str, uint8_t const *error_hint)
 {
     if (!str) {
         fprintf(stderr, "%smissing number argument\n", error_hint);
@@ -145,7 +145,7 @@ uint32_t atouint32_metric(char const *str, char const *error_hint)
         exit(1);
     }
 
-    char *endptr;
+    uint8_t *endptr;
     double val = strtod(str, &endptr);
 
     if (str == endptr) {
@@ -195,7 +195,7 @@ uint32_t atouint32_metric(char const *str, char const *error_hint)
     return (uint32_t)val;
 }
 
-int atoi_time(char const *str, char const *error_hint)
+int32_t atoi_time(uint8_t const *str, uint8_t const *error_hint)
 {
     if (!str) {
         fprintf(stderr, "%smissing time argument\n", error_hint);
@@ -207,9 +207,9 @@ int atoi_time(char const *str, char const *error_hint)
         exit(1);
     }
 
-    char *endptr    = NULL;
+    uint8_t *endptr    = NULL;
     double val      = 0.0;
-    unsigned colons = 0;
+    uint32_t colons = 0;
 
     do {
         double num = strtod(str, &endptr);
@@ -294,41 +294,41 @@ int atoi_time(char const *str, char const *error_hint)
     else {
         val += 1e-5; // rounding (e.g. 4123456789.99999)
     }
-    if (val - (int)(val) > 2e-5) {
+    if (val - (int32_t)(val) > 2e-5) {
         fprintf(stderr, "%sdecimal fraction (%f) did you forget m, or h suffix?\n", error_hint, val - (uint32_t)val);
     }
 
-    return (int)val;
+    return (int32_t)val;
 }
 
-char *asepc(char **stringp, char delim)
+uint8_t *asepc(uint8_t **stringp, uint8_t delim)
 {
     if (!stringp || !*stringp) return NULL;
-    char *s = strchr(*stringp, delim);
+    uint8_t *s = strchr(*stringp, delim);
     if (s) *s++ = '\0';
-    char *p = *stringp;
+    uint8_t *p = *stringp;
     *stringp = s;
     return p;
 }
 
-static char *achrb(char *s, int c, int b)
+static uint8_t *achrb(uint8_t *s, int32_t c, int32_t b)
 {
     for (; s && *s && *s != b; ++s)
-        if (*s == c) return (char *)s;
+        if (*s == c) return (uint8_t *)s;
     return NULL;
 }
 
-char *asepcb(char **stringp, char delim, char stop)
+uint8_t *asepcb(uint8_t **stringp, uint8_t delim, uint8_t stop)
 {
     if (!stringp || !*stringp) return NULL;
-    char *s = achrb(*stringp, delim, stop);
+    uint8_t *s = achrb(*stringp, delim, stop);
     if (s) *s++ = '\0';
-    char *p = *stringp;
+    uint8_t *p = *stringp;
     *stringp = s;
     return p;
 }
 
-int kwargs_match(char const *s, char const *key, char const **val)
+int32_t kwargs_match(uint8_t const *s, uint8_t const *key, uint8_t const **val)
 {
     if (!key || !*key) {
         return 0; // no match
@@ -355,7 +355,7 @@ int kwargs_match(char const *s, char const *key, char const **val)
     return 0; // no exact match
 }
 
-char const *kwargs_skip(char const *s)
+uint8_t const *kwargs_skip(uint8_t const *s)
 {
     // skip to the next comma if possible
     while (s && *s && *s != ',')
@@ -366,23 +366,23 @@ char const *kwargs_skip(char const *s)
     return s;
 }
 
-char *getkwargs(char **s, char **key, char **val)
+uint8_t *getkwargs(uint8_t **s, uint8_t **key, uint8_t **val)
 {
-    char *v = asepc(s, ',');
-    char *k = asepc(&v, '=');
+    uint8_t *v = asepc(s, ',');
+    uint8_t *k = asepc(&v, '=');
     if (key) *key = k;
     if (val) *val = v;
     return k;
 }
 
-char *trim_ws(char *str)
+uint8_t *trim_ws(uint8_t *str)
 {
     if (!str || !*str)
         return str;
     while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n')
         ++str;
-    char *e = str; // end pointer (last non ws)
-    char *p = str; // scanning pointer
+    uint8_t *e = str; // end pointer (last non ws)
+    uint8_t *p = str; // scanning pointer
     while (*p) {
         while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
             ++p;
@@ -393,12 +393,12 @@ char *trim_ws(char *str)
     return str;
 }
 
-char *remove_ws(char *str)
+uint8_t *remove_ws(uint8_t *str)
 {
     if (!str)
         return str;
-    char *d = str; // dst pointer
-    char *s = str; // src pointer
+    uint8_t *d = str; // dst pointer
+    uint8_t *s = str; // src pointer
     while (*s) {
         while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
             ++s;
@@ -421,10 +421,10 @@ char *remove_ws(char *str)
         }                                                   \
     } while (0)
 
-int main(void)
+int32_t main(void)
 {
-    unsigned passed = 0;
-    unsigned failed = 0;
+    uint32_t passed = 0;
+    uint32_t failed = 0;
 
     fprintf(stderr, "optparse:: atouint32_metric\n");
     ASSERT_EQUALS(atouint32_metric("0", ""), 0);

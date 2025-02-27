@@ -104,21 +104,21 @@ Notes:
 
 #define DSC_CT_MSGLEN        5
 
-static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int valid_cnt = 0;
+    int32_t valid_cnt = 0;
     uint8_t bytes[5];
     uint8_t status, crc;
-    //int subtype;
+    //int32_t subtype;
     uint32_t esn;
-    int s_closed, s_event, s_tamper, s_battery_low;
-    int s_xactivity, s_xtamper1, s_xtamper2, s_exception;
+    int32_t s_closed, s_event, s_tamper, s_battery_low;
+    int32_t s_xactivity, s_xtamper1, s_xtamper2, s_exception;
 
-    int result = 0;
+    int32_t result = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] > 0) {
             decoder_logf(decoder, 2, __func__, "row %d bit count %d",
                     row, bitbuffer->bits_per_row[row]);
@@ -206,9 +206,9 @@ static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // 0x80 is always set and 0x04 has never been set.
         s_exception = ((status & 0x80) != 0x80) || ((status & 0x04) == 0x04);
 
-        char status_str[3];
+        uint8_t status_str[3];
         snprintf(status_str, sizeof(status_str), "%02x", status);
-        char esn_str[7];
+        uint8_t esn_str[7];
         snprintf(esn_str, sizeof(esn_str), "%06x", esn);
 
         /* clang-format off */
@@ -231,7 +231,9 @@ static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",    DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        uint32_t bit_offset = 0;
+
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
 
         valid_cnt++; // Have a valid packet.
     }
@@ -244,7 +246,7 @@ static int dsc_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return result;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "closed",

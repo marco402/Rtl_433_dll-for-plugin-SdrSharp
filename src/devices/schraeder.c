@@ -32,20 +32,21 @@ Packet payload: 1 sync nibble and 8 bytes data, 17 nibbles:
 
 #include "decoder.h"
 
-static int schraeder_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t schraeder_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     uint8_t b[8];
-    int serial_id;
-    int flags;
-    int pressure;    // mbar/hectopascal
-    int temperature; // deg C
+    int32_t serial_id;
+    int32_t flags;
+    int32_t pressure;    // mbar/hectopascal
+    int32_t temperature; // deg C
 
     // Reject wrong amount of bits
-    if (bitbuffer->bits_per_row[0] != 68)
+    if (bitbuffer->bits_per_row[row] != 68)
         return DECODE_ABORT_LENGTH;
 
     // Shift the buffer 4 bits to remove the sync bits
-    bitbuffer_extract_bytes(bitbuffer, 0, 4, b, 64);
+    bitbuffer_extract_bytes(bitbuffer, row, 4, b, 64);
 
     // Calculate the crc
     if (b[7] != crc8(b, 7, 0x07, 0xf0)) {
@@ -58,9 +59,9 @@ static int schraeder_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     pressure    = b[5] * 25;
     temperature = b[6] - 50;
 
-    char id_str[9];
+    uint8_t id_str[9];
     snprintf(id_str, sizeof(id_str), "%07X", serial_id);
-    char flags_str[3];
+    uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%02x", flags);
 
     /* clang-format off */
@@ -74,8 +75,9 @@ static int schraeder_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -96,24 +98,25 @@ Probable packet payload:
 - T: temperature, degrees Fahrenheit
 - C: checksum, sum of byte data modulo 256
 */
-static int schrader_EG53MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t schrader_EG53MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t b[10];
-    int serial_id;
-    char id_str[9];
-    unsigned flags;
-    char flags_str[9];
-    int pressure;    // mbar
-    int temperature; // degree Fahrenheit
-    int checksum;
+    int32_t serial_id;
+    uint8_t id_str[9];
+    uint32_t flags;
+    uint8_t flags_str[9];
+    int32_t pressure;    // mbar
+    int32_t temperature; // degree Fahrenheit
+    int32_t checksum;
 
     // Check for incorrect number of bits received
-    if (bitbuffer->bits_per_row[0] != 120)
+    if (bitbuffer->bits_per_row[row] != 120)
         return DECODE_ABORT_LENGTH;
 
     // Discard the first 40 bits
-    bitbuffer_extract_bytes(bitbuffer, 0, 40, b, 80);
+    bitbuffer_extract_bytes(bitbuffer, row, 40, b, 80);
 
     // No need to decode/extract values for simple test
     // check serial flags pressure temperature value not zero
@@ -130,7 +133,7 @@ static int schrader_EG53MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Get data
     serial_id   = (b[4] << 16) | (b[5] << 8) | b[6];
-    flags       = ((unsigned)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+    flags       = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
     pressure    = b[7] * 25;
     temperature = b[8];
     snprintf(id_str, sizeof(id_str), "%06X", serial_id);
@@ -147,8 +150,9 @@ static int schrader_EG53MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -220,16 +224,17 @@ Example payloads:
 #define NUM_BITS_DATA (NUM_BITS_FLAGS + NUM_BITS_ID + NUM_BITS_PRESSURE)
 #define NUM_BITS_TOTAL (NUM_BITS_PREAMBLE + 2 * NUM_BITS_DATA)
 
-static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // Reject wrong length, with margin of error for extra bits at the end
-    if (bitbuffer->bits_per_row[0] < NUM_BITS_TOTAL
-            || bitbuffer->bits_per_row[0] >= NUM_BITS_TOTAL + 8) {
+    if (bitbuffer->bits_per_row[row] < NUM_BITS_TOTAL
+            || bitbuffer->bits_per_row[row] >= NUM_BITS_TOTAL + 8) {
         return DECODE_ABORT_LENGTH;
     }
 
     // Check preamble
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer->bb[row];
     if (b[0] != 0xf5 || b[1] != 0x55 || b[2] != 0x55 || b[3] != 0x55
             || (b[4] >> 4) != 0xe) {
         return DECODE_FAIL_SANITY;
@@ -237,26 +242,26 @@ static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Check and decode the Manchester bits
     bitbuffer_t decoded = {0};
-    int ret = bitbuffer_manchester_decode(bitbuffer, 0, NUM_BITS_PREAMBLE,
+    int32_t ret = bitbuffer_manchester_decode(bitbuffer, row, NUM_BITS_PREAMBLE,
             &decoded, NUM_BITS_DATA);
     if (ret != NUM_BITS_TOTAL) {
         decoder_log(decoder, 2, __func__, "invalid Manchester data");
         return DECODE_FAIL_MIC;
     }
     bitbuffer_invert(&decoded);
-    b = decoded.bb[0];
+    b = decoded.bb[row];
 
     // Compute parity
-    int parity = xor_bytes(b, 4) ^ (b[4] & 0xe0);
+    int32_t parity = xor_bytes(b, 4) ^ (b[4] & 0xe0);
     parity     = (parity >> 4) ^ (parity & 0x0f);
     parity     = (parity >> 2) ^ (parity & 0x03);
 
     // Get the decoded data fields
     // FFFSSSSS SSSSSSSS SSSSSSSS SSSPPPPP PPPCCxxx
-    int flags     = b[0] >> 5;
-    int serial_id = ((b[0] & 0x1f) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
-    int pressure  = ((b[3] & 0x1f) <<  3) | (b[4] >> 5);
-    int check     = ((b[4] & 0x18) >> 3);
+    int32_t flags     = b[0] >> 5;
+    int32_t serial_id = ((b[0] & 0x1f) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
+    int32_t pressure  = ((b[3] & 0x1f) <<  3) | (b[4] >> 5);
+    int32_t check     = ((b[4] & 0x18) >> 3);
 
     decoder_logf_bitbuffer(decoder, 3, __func__, &decoded, "Parity: %d%d Check: %d%d", parity >> 1, parity & 1, check >> 1, check & 1);
 
@@ -266,7 +271,7 @@ static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_SANITY;
     }
 
-    char id_str[9];
+    uint8_t id_str[9];
     snprintf(id_str, sizeof(id_str), "%06X", serial_id);
 
     /* clang-format off */
@@ -278,12 +283,13 @@ static int schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "pressure_PSI",     "Pressure",     DATA_FORMAT, "%.1f PSI", DATA_DOUBLE, pressure * 0.2f,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",
@@ -294,7 +300,7 @@ static char const *const output_fields[] = {
         NULL,
 };
 
-static char const *const output_fields_EG53MA4[] = {
+static uint8_t const *const output_fields_EG53MA4[] = {
         "model",
         "type",
         "id",
@@ -305,7 +311,7 @@ static char const *const output_fields_EG53MA4[] = {
         NULL,
 };
 
-static char const *const output_fields_SMD3MA4[] = {
+static uint8_t const *const output_fields_SMD3MA4[] = {
         "model",
         "type",
         "id",

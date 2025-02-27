@@ -13,7 +13,8 @@
 #define INCLUDE_R_API_H_
 
 #include <stdint.h>
-
+#include "r_device.h"
+#include "rtl_433.h"
 struct r_cfg;
 struct r_device;
 struct data;
@@ -23,37 +24,37 @@ struct mg_mgr;
 
 /* general */
 
-char const *version_string(void);
+uint8_t const *__stdcall version_string(void);
 
 struct r_cfg *r_create_cfg(void);
 
 void r_init_cfg(struct r_cfg *cfg);
 
-void r_free_cfg(struct r_cfg *cfg);
+void r_free_cfg(r_cfg_t *cfg);
 
 /* device decoder protocols */
 
-void register_protocol(struct r_cfg *cfg, struct r_device *r_dev, char *arg);
+void register_protocol(struct r_cfg *cfg, struct r_device *r_dev, uint8_t *arg);
 
 void free_protocol(struct r_device *r_dev);
 
 void unregister_protocol(struct r_cfg *cfg, struct r_device *r_dev);
 
-void register_all_protocols(struct r_cfg *cfg, unsigned disabled);
+void register_all_protocols(struct r_cfg *cfg, uint32_t disabled);
 
 /* output helper */
 
 void calc_rssi_snr(struct r_cfg *cfg, struct pulse_data *pulse_data);
 
-char *time_pos_str(struct r_cfg *cfg, unsigned samples_ago, char *buf);
+uint8_t *time_pos_str(struct r_cfg *cfg, uint32_t samples_ago, uint8_t *buf);
 
-char const **well_known_output_fields(struct r_cfg *cfg);
+uint8_t const **well_known_output_fields(struct r_cfg *cfg);
 
-char const **determine_csv_fields(struct r_cfg *cfg, char const *const *well_known, int *num_fields);
+uint8_t const **determine_csv_fields(struct r_cfg *cfg, uint8_t const *const *well_known, int32_t *num_fields);
 
-int run_ook_demods(struct list *r_devs, struct pulse_data *pulse_data);
+int32_t run_ook_demods(struct list *r_devs, struct pulse_data *pulse_data, int32_t startPulses, uint16_t package_type);
 
-int run_fsk_demods(struct list *r_devs, struct pulse_data *fsk_pulse_data);
+int32_t run_fsk_demods(struct list *r_devs, struct pulse_data *fsk_pulse_data, int32_t startPulses, uint16_t package_type);
 
 /* handlers */
 
@@ -61,49 +62,52 @@ void r_redirect_logging(struct r_cfg *cfg);
 
 void event_occurred_handler(struct r_cfg *cfg, struct data *data);
 
-void log_device_handler(struct r_device *r_dev, int level, struct data *data);
+void log_device_handler(struct r_device *r_dev, int32_t level, struct data *data);
 
-void data_acquired_handler(struct r_device *r_dev, struct data *data);
 
-struct data *create_report_data(struct r_cfg *cfg, int level);
+void data_acquired_handler(struct r_device *r_dev, struct data *data, defDeviceToPlugin *ptrDeviceToPlugin);
+
+struct data *create_report_data(struct r_cfg *cfg, int32_t level);
 
 void flush_report_data(struct r_cfg *cfg);
 
 /* setup */
 
-void add_json_output(struct r_cfg *cfg, char *param);
+//void add_json_output(struct r_cfg *cfg, uint8_t *param);
+//
+//void add_csv_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_csv_output(struct r_cfg *cfg, char *param);
+void add_log_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_log_output(struct r_cfg *cfg, char *param);
+void add_kv_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_kv_output(struct r_cfg *cfg, char *param);
+//void add_mqtt_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_mqtt_output(struct r_cfg *cfg, char *param);
+void add_influx_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_influx_output(struct r_cfg *cfg, char *param);
+void add_syslog_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_syslog_output(struct r_cfg *cfg, char *param);
+void add_http_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_http_output(struct r_cfg *cfg, char *param);
+void add_trigger_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_trigger_output(struct r_cfg *cfg, char *param);
+void add_null_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_null_output(struct r_cfg *cfg, char *param);
+//void add_rtltcp_output(struct r_cfg *cfg, uint8_t *param);
 
-void add_rtltcp_output(struct r_cfg *cfg, char *param);
+void start_outputs(struct r_cfg *cfg, uint8_t const *const *well_known);
 
-void start_outputs(struct r_cfg *cfg, char const *const *well_known);
+void add_sr_dumper(struct r_cfg *cfg, uint8_t const *spec, int32_t overwrite);
 
-void add_sr_dumper(struct r_cfg *cfg, char const *spec, int overwrite);
+void reopen_dumpers(struct r_cfg *cfg);
 
 void close_dumpers(struct r_cfg *cfg);
 
-void add_dumper(struct r_cfg *cfg, char const *spec, int overwrite);
+void add_dumper(struct r_cfg *cfg, uint8_t const *spec, int32_t overwrite);
 
-void add_infile(struct r_cfg *cfg, char *in_file);
+void add_infile(struct r_cfg *cfg, uint8_t *in_file);
 
-void add_data_tag(struct r_cfg *cfg, char *param);
+void add_data_tag(struct r_cfg *cfg, uint8_t *param);
 
 /* runtime */
 
@@ -111,10 +115,10 @@ struct mg_mgr *get_mgr(struct r_cfg *cfg);
 
 void set_center_freq(struct r_cfg *cfg, uint32_t center_freq);
 
-void set_freq_correction(struct r_cfg *cfg, int freq_correction);
+void set_freq_correction(struct r_cfg *cfg, int32_t freq_correction);
 
 void set_sample_rate(struct r_cfg *cfg, uint32_t sample_rate);
 
-void set_gain_str(struct r_cfg *cfg, char const *gain_str);
+void set_gain_str(struct r_cfg *cfg, uint8_t const *gain_str);
 
 #endif /* INCLUDE_R_API_H_ */

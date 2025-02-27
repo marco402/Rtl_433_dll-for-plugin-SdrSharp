@@ -43,35 +43,36 @@ Message Layout:
 
 #include "decoder.h"
 
-static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0x01}; // 8 bits
     uint8_t const data_size[] = {3, 6, 3, 6, 10, 7}; // data nibbles by sensor type
 
     data_t *data;
     uint8_t b[14] = {0}; // LaCrosse WS7000-20 meteo sensor: 14 nibbles
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, 8) + 8;
-    if (start_pos >= bitbuffer->bits_per_row[0])
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 8) + 8;
+    if (bit_offset >= bitbuffer->bits_per_row[row])
         return DECODE_ABORT_EARLY;
 
-    unsigned max_bits = MIN(14 * 5, bitbuffer->bits_per_row[0] - start_pos);
-    unsigned len      = extract_nibbles_4b1s(bitbuffer->bb[0], start_pos, max_bits, b);
+    uint32_t max_bits = MIN(14 * 5, bitbuffer->bits_per_row[row] - bit_offset);
+    uint32_t len      = extract_nibbles_4b1s(bitbuffer->bb[0], bit_offset, max_bits, b);
     if (len < 7) // at least type, addr, 3 data, xor, add nibbles needed
         return DECODE_ABORT_LENGTH;
 
     reflect_nibbles(b, len);
 
-    int type = b[0];
-    int addr = b[1] & 0x7;
-    int id   = (type << 4) | addr;
+    int32_t type = b[0];
+    int32_t addr = b[1] & 0x7;
+    int32_t id   = (type << 4) | addr;
 
     if (type > 5) {
         decoder_logf(decoder, 2, __func__, "LaCrosse-WS7000: unhandled sensor type (%d)", type);
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned data_len = data_size[type];
+    uint32_t data_len = data_size[type];
     if (len < data_len) {
         decoder_logf(decoder, 2, __func__, "LaCrosse-WS7000: short data (%u of %u)", len, data_len);
         return DECODE_ABORT_LENGTH;
@@ -91,7 +92,7 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if (type == 0) {
         // 0 = WS7000-27/28 Thermo sensor
-        int sign          = (b[1] & 0x8) ? -1 : 1;
+        int32_t sign          = (b[1] & 0x8) ? -1 : 1;
         float temperature = ((b[4] * 10) + (b[3] * 1) + (b[2] * 0.1f)) * sign;
 
         /* clang-format off */
@@ -103,15 +104,16 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 1) {
         // 1 = WS7000-22/25 Thermo/Humidity sensor
-        int sign          = (b[1] & 0x8) ? -1 : 1;
+        int32_t sign          = (b[1] & 0x8) ? -1 : 1;
         float temperature = ((b[4] * 10) + (b[3] * 1) + (b[2] * 0.1f)) * sign;
-        int humidity      = (b[7] * 10) + (b[6] * 1) + (b[5] * 0.1f);
+        int32_t humidity      =(int32_t) ( (b[7] * 10) + (b[6] * 1) + (b[5] * 0.1f));
 
         /* clang-format off */
         data = data_make(
@@ -123,13 +125,14 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 2) {
         // 2 = WS7000-16 Rain sensor
-        int rain = (b[4] << 8) | (b[3] << 4) | (b[2]);
+        int32_t rain = (b[4] << 8) | (b[3] << 4) | (b[2]);
 
         /* clang-format off */
         data = data_make(
@@ -140,14 +143,15 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 3) {
         // 3 = WS7000-15 Wind sensor
         float speed     = (b[4] * 10) + (b[3] * 1) + (b[2] * 0.1f);
-        float direction = ((b[7] >> 2) * 100) + (b[6] * 10) + (b[5] * 1);
+        float direction =(float) (((b[7] >> 2) * 100) + (b[6] * 10) + (b[5] * 1));
         float deviation = (b[7] & 0x3) * 22.5f;
 
         /* clang-format off */
@@ -161,16 +165,17 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 4) {
         // 4 = WS7000-20 Thermo/Humidity/Barometer sensor
-        int sign          = (b[1] & 0x8) ? -1 : 1;
+        int32_t sign          = (b[1] & 0x8) ? -1 : 1;
         float temperature = ((b[4] * 10) + (b[3] * 1) + (b[2] * 0.1f)) * sign;
-        int humidity      = (b[7] * 10) + (b[6] * 1) + (b[5] * 0.1f);
-        int pressure      = (b[10] * 100) + (b[9] * 10) + (b[8] * 1) + 200;
+        int32_t humidity      = (int32_t) ((b[7] * 10) + (b[6] * 1) + (b[5] * 0.1f));
+        int32_t pressure      = (b[10] * 100) + (b[9] * 10) + (b[8] * 1) + 200;
 
         /* clang-format off */
         data = data_make(
@@ -183,16 +188,17 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     else if (type == 5) {
         // 5 = WS2500-19 Brightness sensor
-        unsigned brightness = (b[4] * 100) + (b[3] * 10) + (b[2] * 1);
-        int b_exponent = b[5]; // 10^exp
-        int exposition = (b[8] * 100) + (b[7] * 10) + (b[6] * 1);
-        for (int i = b_exponent; i > 0; --i)
+        uint32_t brightness = (b[4] * 100) + (b[3] * 10) + (b[2] * 1);
+        int32_t b_exponent = b[5]; // 10^exp
+        int32_t exposition = (b[8] * 100) + (b[7] * 10) + (b[6] * 1);
+        for (int32_t i = b_exponent; i > 0; --i)
             brightness *= 10;
 
         /* clang-format off */
@@ -205,15 +211,16 @@ static int lacrosse_ws7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
     return DECODE_FAIL_SANITY; // should not be reached
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

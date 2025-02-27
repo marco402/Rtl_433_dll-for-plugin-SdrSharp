@@ -48,18 +48,19 @@ gets processed as data.
 #define PHILIPS_PACKETLEN    4
 #define PHILIPS_STARTNIBBLE  0x0
 
-static int philips_aj3650_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t philips_aj3650_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     /* Map channel values to their real-world counterparts */
     uint8_t const channel_map[] = {2, 0, 1, 0, 3};
 
     uint8_t *bb;
-    unsigned int i;
+    uint32_t i;
     uint8_t a, b, c;
     uint8_t packet[PHILIPS_PACKETLEN];
     uint8_t c_crc;
     uint8_t channel, battery_low;
-    int temp_raw;
+    int32_t temp_raw;
     float temperature;
     data_t *data;
 
@@ -73,12 +74,12 @@ static int philips_aj3650_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     /* Correct bit length? */
-    if (bitbuffer->bits_per_row[0] != PHILIPS_BITLEN) {
-        decoder_logf(decoder, 2, __func__, "wrong number of bits (%d)", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->bits_per_row[row] != PHILIPS_BITLEN) {
+        decoder_logf(decoder, 2, __func__, "wrong number of bits (%d)", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
     }
 
-    bb = bitbuffer->bb[0];
+    bb = bitbuffer->bb[row];
 
     /* Correct start sequence? */
     if ((bb[0] >> 4) != PHILIPS_STARTNIBBLE) {
@@ -129,12 +130,13 @@ static int philips_aj3650_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "channel",
         "battery_ok",

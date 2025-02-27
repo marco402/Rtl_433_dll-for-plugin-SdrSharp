@@ -49,13 +49,14 @@ It seems that the 1,2,3,4,7,8 bits changes randomly on every reset/battery chang
 
 #include "decoder.h"
 
-static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int row;
     uint8_t *b;
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 2, 36);
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -71,23 +72,23 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
     uint8_t rb[5] = { reverse8(b[0]), reverse8(b[1]), reverse8(b[2]),
             reverse8(b[3]), reverse8(b[4]) };
 
-    int sum_nibbles =
+    int32_t sum_nibbles =
         (rb[0] >> 4) + (rb[0] & 0xF)
       + (rb[1] >> 4) + (rb[1] & 0xF)
       + (rb[2] >> 4) + (rb[2] & 0xF)
       + (rb[3] >> 4) + (rb[3] & 0xF);
 
-    int checksum = rb[4] & 0x0F;  // just make sure the 10th nibble does not contain junk
+    int32_t checksum = rb[4] & 0x0F;  // just make sure the 10th nibble does not contain junk
     if (checksum != (sum_nibbles & 0xF))
         return DECODE_FAIL_MIC; // wrong checksum
 
   /* IIIICCII B???TTTT TTTTTSSS HHHHHHH1 XXXX */
-    int negative_sign = (b[2] & 7);
-    int temp          = ((rb[2]&0x1F) << 4) | (rb[1]>> 4);
-    int humidity      = (rb[3] & 0x7F) - 28;
-    int sensor_id     = (rb[0] & 0x0F) | ((rb[0] & 0xC0)>>2);
-    int battery_low   = b[1] >> 7;
-    int channel       = (b[0]>>2) & 3;
+    int32_t negative_sign = (b[2] & 7);
+    int32_t temp          = ((rb[2]&0x1F) << 4) | (rb[1]>> 4);
+    int32_t humidity      = (rb[3] & 0x7F) - 28;
+    int32_t sensor_id     = (rb[0] & 0x0F) | ((rb[0] & 0xC0)>>2);
+    int32_t battery_low   = b[1] >> 7;
+    int32_t channel       = (b[0]>>2) & 3;
 
     float tempC = (negative_sign ? -((1 << 9) - temp) : temp) * 0.1F;
 
@@ -102,12 +103,13 @@ static int tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bitbuff
             "mic",           "Integrity",   DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

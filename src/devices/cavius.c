@@ -37,8 +37,9 @@ Sometimes the receiver samplerate has to be at 250ksps to decode properly.
 
 #include "decoder.h"
 
-static int cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row             = 0;
     uint8_t const preamble[] = {0x43, 0x61, 0x76, 0x69};
 
     enum cavius_message {
@@ -53,35 +54,35 @@ static int cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     };
 
     // Find the sync
-    unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8);
-    if (bit_offset + 22 * 8 >= bitbuffer->bits_per_row[0]) { // Did not find a big enough package
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof(preamble) * 8);
+    if (bit_offset + 22 * 8 >= bitbuffer->bits_per_row[row]) { // Did not find a big enough package
         return DECODE_ABORT_EARLY;
     }
     bit_offset += sizeof(preamble) * 8; // skip sync
 
     bitbuffer_t databits = {0};
 
-    bitbuffer_manchester_decode(bitbuffer, 0, bit_offset, &databits, 11 * 8);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 11 * 8);
     bitbuffer_invert(&databits);
 
     // we require 11 bytes
-    if (databits.bits_per_row[0] < 11 * 8) {
+    if (databits.bits_per_row[row] < 11 * 8) {
         return DECODE_FAIL_SANITY; // manchester_decode fail
     }
 
-    uint8_t *b = databits.bb[0];
+    uint8_t *b = databits.bb[row];
 
-    int crc = crc8le(b, 7, 0x31, 0x0);
+    int32_t crc = crc8le(b, 7, 0x31, 0x0);
     if (crc != 0) {
         return DECODE_FAIL_MIC; // invalid CRC
     }
 
     uint32_t net_id    = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
     uint32_t sender_id = ((uint32_t)b[7] << 24) | (b[8] << 16) | (b[9] << 8) | (b[10]);
-    int batt_low       = (b[4] & cavius_battlow) != 0;
-    int message        = (b[4] & ~cavius_battlow); // exclude batt_low bit
+    int32_t batt_low       = (b[4] & cavius_battlow) != 0;
+    int32_t message        = (b[4] & ~cavius_battlow); // exclude batt_low bit
 
-    char const *text = batt_low ? "Battery low" : "Unknown";
+    uint8_t const *text = batt_low ? "Battery low" : "Unknown";
     switch (message) {
     case cavius_alarm:
         text = "Fire alarm";
@@ -114,11 +115,12 @@ static int cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

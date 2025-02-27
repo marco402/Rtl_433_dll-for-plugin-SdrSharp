@@ -6,7 +6,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 RadioHead ASK (generic) protocol.
 
 Default transmitter speed is 2000 bits per second, i.e. 500 us per bit.
@@ -30,7 +30,7 @@ Sensible Living uses a speed of 1000, i.e. 1000 us per bit.
 // into 6 bit symbols for transmission. Each 6-bit symbol has 3 1s and 3 0s
 // with at most 3 consecutive identical bits.
 // Concatenated symbols have runs of at most 4 identical bits.
-static uint8_t symbols[] = {
+static uint8_t const symbols[] = {
         0x0d, 0x0e, 0x13, 0x15, 0x16, 0x19, 0x1a, 0x1c,
         0x23, 0x25, 0x26, 0x29, 0x2a, 0x2c, 0x32, 0x34
 };
@@ -54,11 +54,11 @@ static uint8_t symbol_6to4(uint8_t symbol)
 /**
 Radiohead ASK parser.
 */
-static int radiohead_ask_extract(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t row, /*OUT*/ uint8_t *payload)
+static int32_t radiohead_ask_extract(r_device *decoder, bitbuffer_t *bitbuffer, uint8_t row, /*OUT*/ uint8_t *payload)
 {
-    int len = bitbuffer->bits_per_row[row];
-    int msg_len = RH_ASK_MAX_MESSAGE_LEN;
-    int pos, nb_bytes;
+    int32_t len = bitbuffer->bits_per_row[row];
+    int32_t msg_len = RH_ASK_MAX_MESSAGE_LEN;
+    int32_t pos, nb_bytes;
     uint8_t rxBits[2] = {0};
 
     uint16_t crc, crc_recompute;
@@ -73,7 +73,7 @@ static int radiohead_ask_extract(r_device *decoder, bitbuffer_t *bitbuffer, uint
     };
     // The first 0 is ignored by the decoder, so we look only for 28 bits of "01"
     // and not 32. Also "0x1CD" is 0xb38 (RH_ASK_START_SYMBOL) with LSBit first.
-    int init_pattern_len = 40;
+    int32_t init_pattern_len = 40;
 
     pos = bitbuffer_search(bitbuffer, row, 0, init_pattern, init_pattern_len);
     if (pos == len) {
@@ -135,14 +135,14 @@ static int radiohead_ask_extract(r_device *decoder, bitbuffer_t *bitbuffer, uint
     return msg_len;
 }
 
-static int radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t row = 0; // we are considering only first row
-    int msg_len, data_len, header_to, header_from, header_id, header_flags;
+    int32_t msg_len, data_len, header_to, header_from, header_id, header_flags;
 
     uint8_t rh_payload[RH_ASK_MAX_PAYLOAD_LEN] = {0};
-    int rh_data_payload[RH_ASK_MAX_MESSAGE_LEN];
+    int32_t rh_data_payload[RH_ASK_MAX_MESSAGE_LEN];
 
     msg_len = radiohead_ask_extract(decoder, bitbuffer, row, rh_payload);
     if (msg_len <= 0) {
@@ -158,8 +158,8 @@ static int radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     header_flags = rh_payload[4];
 
     // Format data
-    for (int j = 0; j < data_len; j++) {
-        rh_data_payload[j] = (int)rh_payload[5 + j];
+    for (int32_t j = 0; j < data_len; j++) {
+        rh_data_payload[j] = (int32_t)rh_payload[5 + j];
     }
     /* clang-format off */
     data = data_make(
@@ -174,7 +174,7 @@ static int radiohead_ask_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -183,12 +183,12 @@ Sensible Living Mini-Plant Moisture Sensor.
 
 @todo Documentation needed.
 */
-static int sensible_living_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t sensible_living_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t row = 0; // we are considering only first row
-    int msg_len, house_id, sensor_type, sensor_count, alarms;
-    int module_id, sensor_value, battery_voltage;
+    int32_t msg_len, house_id, sensor_type, sensor_count, alarms;
+    int32_t module_id, sensor_value, battery_voltage;
 
     uint8_t rh_payload[RH_ASK_MAX_PAYLOAD_LEN] = {0};
 
@@ -219,11 +219,11 @@ static int sensible_living_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const radiohead_ask_output_fields[] = {
+static uint8_t const *const radiohead_ask_output_fields[] = {
         "model",
         "len",
         "to",
@@ -235,7 +235,7 @@ static char const *const radiohead_ask_output_fields[] = {
         NULL,
 };
 
-static char const *const sensible_living_output_fields[] = {
+static uint8_t const *const sensible_living_output_fields[] = {
         "model",
         "house_id",
         "module_id",

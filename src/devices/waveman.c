@@ -25,18 +25,19 @@ long-long (0 0 by the demod) not used (1 per protocol).
 
 #include "decoder.h"
 
-static int waveman_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t waveman_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
-    uint8_t *b    = bitbuffer->bb[0];
+    uint8_t *b    = bitbuffer->bb[row];
     uint8_t nb[3] = {0}; // maps a pair of bits to two states, 1 0 -> 1 and 1 1 -> 0
-    char id_str[2];
-    int i;
+    uint8_t id_str[2];
+    int32_t i;
 
     /* TODO: iterate through all rows */
 
     /* Reject codes of wrong length */
-    if (25 != bitbuffer->bits_per_row[0])
+    if (25 != bitbuffer->bits_per_row[row])
         return DECODE_ABORT_LENGTH;
 
     /*
@@ -74,12 +75,14 @@ static int waveman_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "state",    "",     DATA_STRING,    (nb[2] == 0xe) ? "on" : "off",
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    uint32_t bit_offset = 0;
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

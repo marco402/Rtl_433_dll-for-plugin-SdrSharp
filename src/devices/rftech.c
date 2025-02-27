@@ -39,37 +39,40 @@ With fresh batteries and button pressed:
 
 #include "decoder.h"
 
-static int rftech_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t rftech_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 24);
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 24);
 
-    if (r < 0 || bitbuffer->bits_per_row[r] != 24)
+    if (row < 0 || bitbuffer->bits_per_row[row] != 24)
         return DECODE_ABORT_LENGTH;
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
 
-    int sensor_id = b[0];
+    int32_t sensor_id = b[0];
     float temp_c  = (b[1] & 0x7f) + (b[2] & 0x0f) * 0.1f;
     if (b[1] & 0x80)
         temp_c = -temp_c;
 
-    int battery = (b[2] & 0x80) == 0x80;
-    int button  = (b[2] & 0x60) != 0;
+    int32_t battery = (b[2] & 0x80) == 0x80;
+    int32_t button  = (b[2] & 0x60) != 0;
 
     /* clang-format off */
     data_t *data = data_make(
             "model",            "",             DATA_STRING, "RF-tech",
             "id",               "Id",           DATA_INT,    sensor_id,
             "battery_ok",       "Battery",      DATA_INT,    battery,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "button",           "Button",       DATA_INT,    button,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const csv_output_fields[] = {
+static uint8_t const *const csv_output_fields[] = {
         "model",
         "id",
         "battery_ok",

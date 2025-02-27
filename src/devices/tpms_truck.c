@@ -49,31 +49,31 @@ Example data:
 
 #include "decoder.h"
 
-static int tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 76);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 76);
 
     if (packet_bits.bits_per_row[row] < 76) {
         return 0; // DECODE_FAIL_SANITY;
     }
 
     uint8_t b[9] = {0};
-    bitbuffer_extract_bytes(&packet_bits, 0, 4, b, 72);
+    bitbuffer_extract_bytes(&packet_bits, row, 4, b, 72);
 
-    int chk = xor_bytes(b, 9);
+    int32_t chk = xor_bytes(b, 9);
     if (chk != 0) {
         return 0; // DECODE_FAIL_MIC;
     }
 
-    int state       = packet_bits.bb[0][0] >> 4; // fixed 0xa? could be sync
-    unsigned id     = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
-    int wheel       = b[4];
-    int flags       = b[5] >> 4;
-    int pressure    = (b[5] & 0x0f) << 8 | b[6];
-    int temperature = b[7];
+    int32_t state       = packet_bits.bb[row][0] >> 4; // fixed 0xa? could be sync
+    uint32_t id     = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    int32_t wheel       = b[4];
+    int32_t flags       = b[5] >> 4;
+    int32_t pressure    = (b[5] & 0x0f) << 8 | b[6];
+    int32_t temperature = b[7];
 
-    char id_str[4 * 2 + 1];
+    uint8_t id_str[4 * 2 + 1];
     snprintf(id_str, sizeof(id_str), "%08x", id);
 
     /* clang-format off */
@@ -90,31 +90,33 @@ static int tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_truck_decode() */
-static int tpms_truck_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_truck_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // preamble
     uint8_t const preamble_pattern[3] = {0xaa, 0xaa, 0xa9}; // after invert
 
-    unsigned bitpos = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    int32_t events      = 0;
 
     bitbuffer_invert(bitbuffer);
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 160 <=
-            bitbuffer->bits_per_row[0]) {
-        events += tpms_truck_decode(decoder, bitbuffer, 0, bitpos + 24);
-        bitpos += 2;
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 24)) + 160 <=
+            bitbuffer->bits_per_row[row]) {
+        events += tpms_truck_decode(decoder, bitbuffer, row, bit_offset + 24, startPulses, package_type);
+        bit_offset += 2;
     }
 
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

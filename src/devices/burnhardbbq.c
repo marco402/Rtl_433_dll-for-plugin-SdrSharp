@@ -31,7 +31,7 @@ Data format:
 
 #include "decoder.h"
 
-static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b;
     data_t *data;
@@ -39,14 +39,15 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
 
     // All three rows contain the same information. Return on first decoded row.
-    int ret = 0;
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
+    int32_t ret = 0;
+	int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
         // A row typically has 81 bits, but the last is just a coding artefact.
-        if (bitbuffer->bits_per_row[i] < 80 || bitbuffer->bits_per_row[i] > 81) {
+        if (bitbuffer->bits_per_row[row] < 80 || bitbuffer->bits_per_row[row] > 81) {
             ret = DECODE_ABORT_LENGTH;
             continue;
         }
-        b = bitbuffer->bb[i];
+        b = bitbuffer->bb[row];
 
         // reduce false positives
         if (b[0] == 0 && b[9] == 0) {
@@ -60,20 +61,20 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             continue;
         }
 
-        int id           = (b[0]);
-        int channel      = (b[1] & 0x07);
-        int temp_alarm   = (b[1] & 0x80) > 7;
-        int timer_alarm  = (b[1] & 0x40) > 6;
-        int timer_active = (b[1] & 0x10) > 4;
-        int setpoint_raw = ((b[7] & 0x0f) << 8) | b[6];
-        int temp_raw     = ((b[7] & 0xf0) << 4) | b[8];
+        int32_t id           = (b[0]);
+        int32_t channel      = (b[1] & 0x07);
+        int32_t temp_alarm   = (b[1] & 0x80) > 7;
+        int32_t timer_alarm  = (b[1] & 0x40) > 6;
+        int32_t timer_active = (b[1] & 0x10) > 4;
+        int32_t setpoint_raw = ((b[7] & 0x0f) << 8) | b[6];
+        int32_t temp_raw     = ((b[7] & 0xf0) << 4) | b[8];
         float setpoint_c = (setpoint_raw - 500) * 0.1f;
         float temp_c     = (temp_raw - 500) * 0.1f;
 
-        char timer_str[6];
+        uint8_t timer_str[6];
         snprintf(timer_str, sizeof(timer_str), "%02x:%02x", b[3], b[4] & 0x7f);
 
-        char const *meat;
+        uint8_t const *meat;
         switch (b[5] >> 4) {
         case 0: meat = "free"; break;
         case 1: meat = "beef"; break;
@@ -86,7 +87,7 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         default: meat = "";
         }
 
-        char const *taste;
+        uint8_t const *taste;
         switch (b[5] & 0x0f) {
         case 0: taste = "rare"; break;
         case 1: taste = "medium rare"; break;
@@ -101,7 +102,7 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "model",             "",                     DATA_STRING, "BurnhardBBQ",
                 "id",                "ID",                   DATA_INT,    id,
                 "channel",           "Channel",              DATA_INT,    channel,
-                "temperature_C",     "Temperature",          DATA_COND,   temp_raw != 0, DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+                "temperature_C",     "Temperature",          DATA_COND,   temp_raw != 0, DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
                 "setpoint_C",        "Temperature setpoint", DATA_FORMAT, "%.0f C", DATA_DOUBLE, setpoint_c,
                 "temperature_alarm", "Temperature alarm",    DATA_INT,    temp_alarm,
                 "timer",             "Timer",                DATA_STRING, timer_str,
@@ -112,14 +113,14 @@ static int burnhardbbq_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
     return ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

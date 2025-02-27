@@ -18,12 +18,12 @@ HT680 based Remote control (broadly similar to x1527 protocol).
 
 #include "decoder.h"
 
-static int ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t b[5]; // 36 bits
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] != 41 || // Length of packet is 41 (36+5)
                 (bitbuffer->bb[row][0] & 0xf8) != 0xa8) // Sync is 10101xxx (5 bits)
         continue; // DECODE_ABORT_LENGTH
@@ -38,10 +38,10 @@ static int ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         continue; // DECODE_ABORT_EARLY
 
         // Tristate coding
-        char tristate[21];
-        char *p = tristate;
-        for (int byte = 0; byte < 5; byte++) {
-            for (int bit = 7; bit > 0; bit -= 2) {
+        uint8_t tristate[21];
+        uint8_t *p = tristate;
+        for (int32_t byte = 0; byte < 5; byte++) {
+            for (int32_t bit = 7; bit > 0; bit -= 2) {
                 switch ((b[byte] >> (bit-1)) & 0x03) {
                     case 0x00: *p++ = '0'; break;
                     case 0x01: *p++ = 'X'; break; // Invalid code 01
@@ -55,11 +55,11 @@ static int ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         p -= 2;
         *p = '\0';
 
-        int address = (b[0]<<12) | (b[1]<<4) | b[2] >> 4;
-        int button1 = (b[3]>>0) & 0x03;
-        int button2 = (b[3]>>2) & 0x03;
-        int button3 = (b[3]>>6) & 0x03;
-        int button4 = (b[2]>>0) & 0x03;
+        int32_t address = (b[0]<<12) | (b[1]<<4) | b[2] >> 4;
+        int32_t button1 = (b[3]>>0) & 0x03;
+        int32_t button2 = (b[3]>>2) & 0x03;
+        int32_t button3 = (b[3]>>6) & 0x03;
+        int32_t button4 = (b[2]>>0) & 0x03;
 
         /* clang-format off */
         data = data_make(
@@ -72,14 +72,15 @@ static int ht680_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "tristate", "Tristate code",    DATA_STRING, tristate,
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         return 1;
     }
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "button1",

@@ -17,12 +17,12 @@
 
 void get_time_now(struct timeval *tv)
 {
-    int ret = gettimeofday(tv, NULL);
+    int32_t ret = gettimeofday(tv, NULL);
     if (ret)
         perror("gettimeofday");
 }
 
-char *format_time_str(char *buf, char const *format, int with_tz, time_t time_secs)
+uint8_t *format_time_str(uint8_t *buf, uint8_t const *format, int32_t with_tz, time_t time_secs)
 {
     time_t etime;
     struct tm tm_info;
@@ -52,7 +52,7 @@ char *format_time_str(char *buf, char const *format, int with_tz, time_t time_se
     return buf;
 }
 
-char *usecs_time_str(char *buf, char const *format, int with_tz, struct timeval *tv)
+uint8_t *usecs_time_str(uint8_t *buf, uint8_t const *format, int32_t with_tz, struct timeval *tv)
 {
     struct timeval now;
     struct tm tm_info;
@@ -82,7 +82,7 @@ char *usecs_time_str(char *buf, char const *format, int with_tz, struct timeval 
     return buf;
 }
 
-char *sample_pos_str(float sample_file_pos, char *buf)
+uint8_t *sample_pos_str(float sample_file_pos, uint8_t *buf)
 {
     snprintf(buf, LOCAL_TIME_BUFLEN, "@%fs", sample_file_pos);
     return buf;
@@ -144,7 +144,7 @@ float inhg2hpa(float inhg)
 }
 
 
-bool str_endswith(char const *restrict str, char const *restrict suffix)
+bool str_endswith(uint8_t const *restrict str, uint8_t const *restrict suffix)
 {
     if (!suffix) {
         return true;
@@ -152,8 +152,8 @@ bool str_endswith(char const *restrict str, char const *restrict suffix)
     if (!str) {
         return false;
     }
-    int str_len = strlen(str);
-    int suffix_len = strlen(suffix);
+    int32_t str_len = (int32_t)strlen(str);
+    int32_t suffix_len = (int32_t)strlen(suffix);
 
     return (str_len >= suffix_len) &&
            (0 == strcmp(str + (str_len - suffix_len), suffix));
@@ -163,25 +163,25 @@ bool str_endswith(char const *restrict str, char const *restrict suffix)
 // https://stackoverflow.com/questions/779875/what-is-the-function-to-replace-string-in-c/779960#779960
 //
 // You must free the result if result is non-NULL.
-char *str_replace(char const *orig, char const *rep, char const *with)
+uint8_t *str_replace(uint8_t const *orig, uint8_t const *rep, uint8_t const *with)
 {
-    char *result;  // the return string
-    char const *ins; // the next insert point
-    char *tmp;     // varies
-    int len_rep;   // length of rep (the string to remove)
-    int len_with;  // length of with (the string to replace rep with)
-    int len_front; // distance between rep and end of last rep
-    int count;     // number of replacements
+    uint8_t *result;  // the return string
+    uint8_t const *ins; // the next insert point
+    uint8_t *tmp;     // varies
+    int32_t len_rep;   // length of rep (the string to remove)
+    int32_t len_with;  // length of with (the string to replace rep with)
+    int32_t len_front; // distance between rep and end of last rep
+    int32_t count;     // number of replacements
 
     // sanity checks and initialization
     if (!orig || !rep)
         return NULL;
-    len_rep = strlen(rep);
+    len_rep = (int32_t)strlen(rep);
     if (len_rep == 0)
         return NULL; // empty rep causes infinite loop during count
     if (!with)
         with = "";
-    len_with = strlen(with);
+    len_with = (int32_t)strlen(with);
 
     // count the number of replacements needed
     ins = orig;
@@ -202,7 +202,7 @@ char *str_replace(char const *orig, char const *rep, char const *with)
     //    orig points to the remainder of orig after "end of rep"
     while (count--) {
         ins = strstr(orig, rep);
-        len_front = ins - orig;
+        len_front = (int32_t)(ins - orig);
         tmp = strncpy(tmp, orig, len_front) + len_front;
         tmp = strcpy(tmp, with) + len_with; // NOLINT
         orig += len_front + len_rep; // move to next "end of rep"
@@ -212,9 +212,9 @@ char *str_replace(char const *orig, char const *rep, char const *with)
 }
 
 // Make a more readable string for a frequency.
-char const *nice_freq (double freq)
+uint8_t const *nice_freq (double freq)
 {
-  static char buf[30];
+  static uint8_t buf[30];
 
   if (freq >= 1E9)
      snprintf (buf, sizeof(buf), "%.3fGHz", freq/1E9);

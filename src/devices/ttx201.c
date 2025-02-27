@@ -34,8 +34,8 @@ A complete message is 445 bits:
 54-bit data packet format
 
     0    1   2    3   4    5   6    7   8    9   10   11  12   13  (nibbles #, aligned to 8-bit values)
-    ..LL LLKKKKKK IIIIIIII StttBCCC 0XXXTTTT TTTTTTTT MMMMMMMM JJJJ	(temperature)
-or  ..LL LLKKKKKK zyyyyyyy 0tttmmmm dddddHHH HHMMMMMM 0SSSSSS? JJJJ	(date/time)
+    ..LL LLKKKKKK IIIIIIII StttBCCC 0XXXTTTT TTTTTTTT MMMMMMMM JJJJ (temperature)
+or  ..LL LLKKKKKK zyyyyyyy 0tttmmmm dddddHHH HHMMMMMM 0SSSSSS? JJJJ (date/time)
 
 - L = 4-bit start of packet, always 0
 - K = 6-bit checksum, sum of nibbles 3-12
@@ -102,64 +102,40 @@ Data decoded:
 #define DATA_TYPE_TEMP       0x00
 #define DATA_TYPE_DATETIME   0x05
 
-static int checksum_calculate(uint8_t *b)
+static int32_t ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
-    int i;
-    int sum = 0;
-
-    for (i = 1; i < 6; i++) {
-        sum += ((b[i] & 0xf0) >> 4) + (b[i] & 0x0f);
-    }
-    return sum & 0x3f;
-}
-
-static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
-{
-    uint8_t b[MSG_PACKET_LEN];
-    int bits = bitbuffer->bits_per_row[row];
-    int checksum;
-    int checksum_calculated;
-    int data_type;
-    int postmark;
-    int device_id;
-    int battery_low;
-    int channel;
-    int temperature;
-    float temperature_c;
-    data_t *data;
-
-    if (bits != MSG_PACKET_MIN_BITS && bits != MSG_PACKET_BITS) {
-        if (decoder->verbose > 1) {
-            if (row == 0) {
-                if (bits < MSG_PREAMBLE_BITS) {
-                    decoder_logf(decoder, 2, __func__, "Short preamble: %d bits (expected %d)",
-                            bits, MSG_PREAMBLE_BITS);
-                }
-            } else if (row != (unsigned)bitbuffer->num_rows - 1 && bits == 1) {
-                decoder_logf(decoder, 2, __func__, "Wrong packet #%u length: %d bits (expected %d)",
-                        row, bits, MSG_PACKET_BITS);
+    int32_t rowlen = bitbuffer->bits_per_row[row];
+    if (rowlen != MSG_PACKET_MIN_BITS && rowlen != MSG_PACKET_BITS) {
+        if (row == 0) {
+            if (rowlen < MSG_PREAMBLE_BITS) {
+                decoder_logf(decoder, 2, __func__, "Short preamble: %d bits (expected %d)",
+                        rowlen, MSG_PREAMBLE_BITS);
             }
+        } else if (row != (uint32_t)bitbuffer->num_rows - 1 && rowlen == 1) {
+            decoder_logf(decoder, 2, __func__, "Wrong packet #%u length: %d bits (expected %d)",
+                    row, rowlen, MSG_PACKET_BITS);
         }
         return DECODE_ABORT_LENGTH;
     }
 
+    uint8_t b[MSG_PACKET_LEN];
     bitbuffer_extract_bytes(bitbuffer, row, bitpos + MSG_PAD_BITS, b, MSG_PACKET_BITS + MSG_PAD_BITS);
 
     /* Aligned data: LLKKKKKK IIIIIIII S???BCCC ?XXXTTTT TTTTTTTT MMMMMMMM JJJJ */
-    checksum = b[0] & 0x3f;
-    checksum_calculated = checksum_calculate(b);
-    data_type = (b[2] & 0x70) >> 4;
-    postmark = b[5];
+    int32_t chk = b[0] & 0x3f;
+    int32_t sum = add_nibbles(&b[1], 5);
+    int32_t data_type = (b[2] & 0x70) >> 4;
+    int32_t postmark = b[5];
 
-    if (decoder->verbose > 1) {
+    if (decoder_verbose(decoder) > 1) {
         decoder_log(decoder, 0, __func__, "TTX201 received raw data");
         decoder_log_bitbuffer(decoder, 0, __func__, bitbuffer, "");
         decoder_logf(decoder, 0, __func__, "Data decoded:" \
                 " r  cs    K   ID    S   B  C  X    T    M     J\n");
         decoder_logf(decoder, 0, __func__, "%2u  %2d    %2d  %3d  0x%01x  %1d  %1d  %1d  %4d  0x%02x",
                 row,
-                checksum_calculated,
-                checksum,
+                sum,
+                chk,
                 b[1],                                       // Device Id
                 (b[2] & 0xf0) >> 4,                         // Unknown 1
                 (b[2] & 0x08) >> 3,                         // Battery
@@ -167,25 +143,31 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
                 b[3] >> 4,                                  // Packet index
                 ((int8_t)((b[3] & 0x0f) << 4) << 4) | b[4], // Temperature
                 postmark);
-        if (bits == MSG_PACKET_BITS) {
+        if (rowlen == MSG_PACKET_BITS) {
             decoder_logf(decoder, 0, __func__, "  0x%01x", b[6] >> 4);         // Packet separator
         }
         decoder_log(decoder, 0, __func__, "");
     }
 
-    if (checksum != checksum_calculated) {
+    // reduce false positives
+    if (sum == 0) {
+        return DECODE_ABORT_EARLY;
+    }
+
+    if (chk != (sum & 0x3f)) {
         decoder_logf(decoder, 2, __func__, "Packet #%u checksum error.", row);
         return DECODE_FAIL_MIC;
     }
 
+    data_t *data;
     if (data_type == DATA_TYPE_DATETIME) {
-        int cest = b[1] & 0x80;
-        int year = b[1] & 0x7f;
-        int month = b[2] & 0x0f;
-        int day = (b[3] & 0xf8) >> 3;
-        int hour = (b[3] & 0x07) << 2 | (b[4] & 0xc0) >> 6;
-        int minute = b[4] & 0x3f;
-        int second = (b[5] & 0x7e) >> 1;
+        int32_t cest = b[1] & 0x80;
+        int32_t year = b[1] & 0x7f;
+        int32_t month = b[2] & 0x0f;
+        int32_t day = (b[3] & 0xf8) >> 3;
+        int32_t hour = (b[3] & 0x07) << 2 | (b[4] & 0xc0) >> 6;
+        int32_t minute = b[4] & 0x3f;
+        int32_t second = (b[5] & 0x7e) >> 1;
         char clock_str[25];
         snprintf(clock_str, sizeof(clock_str), "%04d-%02d-%02dT%02d:%02d:%02d %s", year + 2000, month, day, hour, minute, second, cest ? "CEST" : "CET");
 
@@ -197,11 +179,11 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
                 NULL);
         /* clang-format on */
     } else { // temperature
-        device_id = b[1];
-        battery_low = (b[2] & 0x08) != 0; // if not zero, battery is low
-        channel = (b[2] & 0x07) + 1;
-        temperature   = (int16_t)(((b[3] & 0x0f) << 12) | (b[4] << 4)); // uses sign extend
-        temperature_c = (temperature >> 4) * 0.1f;
+        int32_t device_id       = b[1];
+        int32_t battery_low     = (b[2] & 0x08) != 0; // if not zero, battery is low
+        int32_t channel         = (b[2] & 0x07) + 1;
+        int32_t temperature     = (int16_t)(((b[3] & 0x0f) << 12) | (b[4] << 4)); // uses sign extend
+        float temperature_c = (temperature >> 4) * 0.1f;
 
         /* clang-format off */
         data = data_make(
@@ -215,7 +197,7 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
         /* clang-format on */
     }
 
-    decoder_output_data(decoder, data);
+	decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -223,18 +205,18 @@ static int ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row
 Emos TTX201 Thermo Remote Sensor.
 @sa ttx201_decode()
 */
-static int ttx201_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ttx201_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row;
-    int ret    = 0;
-    int events = 0;
+    int32_t row;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     if (MSG_MIN_ROWS <= bitbuffer->num_rows && bitbuffer->num_rows <= MSG_MAX_ROWS) {
         for (row = 0; row < bitbuffer->num_rows; ++row) {
-            ret = ttx201_decode(decoder, bitbuffer, row, 0);
+            ret = ttx201_decode(decoder, bitbuffer, row, 0, startPulses, package_type);
             if (ret > 0)
                 events += ret;
-            if (events && !decoder->verbose)
+            if (events && !decoder_verbose(decoder))
                 return events; // for now, break after first successful message
         }
     }

@@ -61,74 +61,84 @@ typedef enum {
 } device_state_t;
 
 typedef struct r_cfg {
+	struct dm_state *demod;
 #ifndef DLL_RTL_433
     device_mode_t dev_mode;   ///< Input device run mode
     device_state_t dev_state; ///< Input device run state
 #endif
-    char *dev_query;
-    char const *dev_info;
-    char *gain_str;
-    char *settings_str;
-    int ppm_error;
+    uint8_t *dev_query;
+    uint8_t const *dev_info;
+    uint8_t *gain_str;
+    uint8_t *settings_str;
+    int32_t ppm_error;
     uint32_t out_block_size;
-    char const *test_data;
+    uint8_t const *test_data;
     list_t in_files;
-    char const *in_filename;
-    int in_replay;
+    uint8_t const *in_filename;
+    int32_t in_replay;
     volatile sig_atomic_t hop_now;
     volatile sig_atomic_t exit_async;
     volatile sig_atomic_t exit_code; ///< 0=no err, 1=params or cmd line err, 2=sdr device read error, 3=usb init error, 5=USB error (reset), other=other error
-    int frequencies;
-    int frequency_index;
+    int32_t frequencies;
+    int32_t frequency_index;
     uint32_t frequency[MAX_FREQS];
     uint32_t center_frequency;
-    int fsk_pulse_detect_mode;
-    int hop_times;
-    int hop_time[MAX_FREQS];
+    int32_t fsk_pulse_detect_mode;
+    int32_t hop_times;
+    int32_t hop_time[MAX_FREQS];
     time_t hop_start_time;
-    int duration;
+    int32_t duration;
     time_t stop_time;
-    int after_successful_events_flag;
+    int32_t after_successful_events_flag;
     uint32_t samp_rate;
     uint64_t input_pos;
     uint32_t bytes_to_read;
     struct sdr_dev *dev;
-    int grab_mode; ///< Signal grabber mode: 0=off, 1=all, 2=unknown, 3=known
-    int raw_mode;  ///< Raw pulses printing mode: 0=off, 1=all, 2=unknown, 3=known
-    int verbosity; ///< 0=normal, 1=verbose, 2=verbose decoders, 3=debug decoders, 4=trace decoding.
-    int verbose_bits;
+    int32_t grab_mode; ///< Signal grabber mode: 0=off, 1=all, 2=unknown, 3=known
+    int32_t raw_mode;  ///< Raw pulses printing mode: 0=off, 1=all, 2=unknown, 3=known
+    int32_t verbosity; ///< 0=normal, 1=verbose, 2=verbose decoders, 3=debug decoders, 4=trace decoding.
+    int32_t verbose_bits;
     conversion_mode_t conversion_mode;
-    int report_meta;
-    int report_noise;
-    int report_protocol;
+    int32_t report_meta;
+    int32_t report_noise;
+    int32_t report_protocol;
     time_mode_t report_time;
-    int report_time_hires;
-    int report_time_tz;
-    int report_time_utc;
-    int report_description;
-    int report_stats;
-    int stats_interval;
+    int32_t report_time_hires;
+    int32_t report_time_tz;
+    int32_t report_time_utc;
+    int32_t report_description;
+    int32_t report_stats;
+    int32_t stats_interval;
     volatile sig_atomic_t stats_now;
     time_t stats_time;
-    int no_default_devices;
+    int32_t no_default_devices;
     struct r_device *devices;
     uint16_t num_r_devices;
     list_t data_tags;
     list_t output_handler;
     list_t raw_handler;
-    int has_logout;
-    struct dm_state *demod;
-    char const *sr_filename;
-    int sr_execopen;
+    int32_t has_logout;
+    //struct dm_state *demod;
+    uint8_t const *sr_filename;
+    int32_t sr_execopen;
 #ifndef DLL_RTL_433
-    int watchdog; ///< SDR acquire stall watchdog
+    int32_t watchdog; ///< SDR acquire stall watchdog
 #endif
-    /* stats*/
-    time_t frames_since;    ///< stats start time
-    unsigned frames_count;  ///< stats counter for interval
-    unsigned frames_fsk;    ///< stats counter for interval
-    unsigned frames_events; ///< stats counter for interval
-    struct mg_mgr *mgr;
+	/* global stats */
+	time_t running_since;           ///< program start time statistic
+	uint32_t total_frames_count;    ///< total frames recieved statistic
+	uint32_t total_frames_squelch;  ///< total frames with noise only statistic
+	uint32_t total_frames_ook;      ///< total frames with ook demod statistic
+	uint32_t total_frames_fsk;      ///< total frames with fsk demod statistic
+	uint32_t total_frames_events;   ///< total frames with decoder events statistic
+	/* sdr stats */
+	time_t sdr_since; ///< time of last SDR connect statistic
+	/* per report interval stats */
+	time_t frames_since;    ///< time at start of report interval statistic
+	uint32_t frames_ook;    ///< counter of ook demods for report interval statistic
+	uint32_t frames_fsk;    ///< counter of fsk demods for report interval statistic
+	uint32_t frames_events; ///< counter of decoder events for report interval statistic
+	struct mg_mgr *mgr;
 } r_cfg_t;
 
 #endif /* INCLUDE_RTL_433_H_ */

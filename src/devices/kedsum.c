@@ -36,7 +36,7 @@ Frame structure:
 
 #include "decoder.h"
 
-static int kedsum_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t kedsum_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t b[5];
     data_t *data;
@@ -53,26 +53,29 @@ static int kedsum_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // the signal should have 6 repeats with a sync pulse between
     // require at least 4 received repeats
-    int r = bitbuffer_find_repeated_row(bitbuffer, 4, 42);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 42)
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 42);
+    if (row < 0 || bitbuffer->bits_per_row[row] != 42)
         return DECODE_ABORT_LENGTH;
 
     // remove the two leading 0-bits and align the data
-    bitbuffer_extract_bytes(bitbuffer, r, 2, b, 40);
+    bitbuffer_extract_bytes(bitbuffer, row, 2, b, 40);
 
     // CRC-4 poly 0x3, init 0x0 over 32 bits then XOR the next 4 bits
-    int crc = crc4(b, 4, 0x3, 0x0) ^ (b[4] >> 4);
+    int32_t crc = crc4(b, 4, 0x3, 0x0) ^ (b[4] >> 4);
     if (crc != (b[4] & 0xf))
         return DECODE_FAIL_MIC;
 
-    int id       = (b[0]);
-    int battery  = (b[1] >> 6); // level 0-2
-    int channel  = ((b[1] & 0x30) >> 4) + 1;
-    int temp_raw = ((b[2] & 0x0f) << 8) | (b[2] & 0xf0) | (b[1] & 0x0f);
-    int humidity = ((b[3] & 0x0f) << 4) | ((b[3] & 0xf0) >> 4);
+    int32_t id       = (b[0]);
+    int32_t battery  = (b[1] >> 6); // level 0-2
+    int32_t channel  = ((b[1] & 0x30) >> 4) + 1;
+    int32_t temp_raw = ((b[2] & 0x0f) << 8) | (b[2] & 0xf0) | (b[1] & 0x0f);
+    int32_t humidity = ((b[3] & 0x0f) << 4) | ((b[3] & 0xf0) >> 4);
     float temp_f = (temp_raw - 900) * 0.1f;
 
-    int flags = (b[1] & 0xc0) | (b[4] >> 4);
+    int32_t flags = (b[1] & 0xc0) | (b[4] >> 4);
 
     battery = battery == 2 ? 100 : battery * 10; // level 0,1,2 -> 0,10,100
 
@@ -83,17 +86,17 @@ static int kedsum_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "channel",          "Channel",          DATA_INT,    channel,
             "battery_ok",       "Battery level",    DATA_DOUBLE, battery * 0.01f,
             "flags",            "Flags2",           DATA_INT,    flags,
-            "temperature_F",    "Temperature",      DATA_FORMAT, "%.02f F", DATA_DOUBLE, temp_f,
+            "temperature_F",    "Temperature",      DATA_FORMAT, "%.2f F", DATA_DOUBLE, temp_f,
             "humidity",         "Humidity",         DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

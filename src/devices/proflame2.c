@@ -10,7 +10,7 @@
     (at your option) any later version.
 */
 
-/** @fn int proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 SmartFire Proflame 2 remote protocol.
 
 See https://github.com/johnellinwood/smartfire
@@ -43,15 +43,15 @@ The payload data is 7 bytes:
 #include "decoder.h"
 
 /// out needs to be at least (bits / 26, usually 7) bytes long
-static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, uint8_t *out)
+static int32_t proflame2_mc(bitbuffer_t *bitbuffer, int32_t row, uint32_t start, uint8_t *out)
 {
     uint8_t *b   = bitbuffer->bb[row];
-    unsigned pos = start;
-    for (int f = 0;; ++f) {
+    uint32_t pos = start;
+    for (int32_t f = 0;; ++f) {
         if (bitbuffer->bits_per_row[row] - pos < 26)
             return f;
         // expect sync and start bit of "1110"
-        int sync = bitrow_get_bit(b, pos + 0) << 3
+        int32_t sync = bitrow_get_bit(b, pos + 0) << 3
                 | bitrow_get_bit(b, pos + 1) << 2
                 | bitrow_get_bit(b, pos + 2) << 1
                 | bitrow_get_bit(b, pos + 3) << 0;
@@ -61,21 +61,21 @@ static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, ui
 
         bitbuffer_t decoded = {0};
         pos = bitbuffer_manchester_decode(bitbuffer, row, pos, &decoded, 11);
-        if (decoded.bits_per_row[0] != 11)
+        if (decoded.bits_per_row[row] != 11)  // to see 
             return f;
 
         // invert IEEE MC to G.E.T. MC
-        uint8_t data = decoded.bb[0][0] ^ 0xff;
-        uint8_t flag = decoded.bb[0][1] ^ 0xe0;
+        uint8_t data = decoded.bb[row][0] ^ 0xff;
+        uint8_t flag = decoded.bb[row][1] ^ 0xe0;
 
-        int pad = (flag >> 7) & 1;
-        int par = (flag >> 6) & 1;
-        int end = (flag >> 5) & 1;
+        int32_t pad = (flag >> 7) & 1;
+        int32_t par = (flag >> 6) & 1;
+        int32_t end = (flag >> 5) & 1;
 
         if (pad != (f == 0))
             return f;
 
-        int par_chk = parity8(data) ^ pad ^ par;
+        int32_t par_chk = parity8(data) ^ pad ^ par;
         if (par_chk)
             return f;
 
@@ -87,29 +87,29 @@ static int proflame2_mc(bitbuffer_t *bitbuffer, unsigned row, unsigned start, ui
     return 0;
 }
 
-static int proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         uint8_t b[7] = {0};
-        int ret = proflame2_mc(bitbuffer, row, 0, b);
+        int32_t ret = proflame2_mc(bitbuffer, row, 0, b);
 
         if (ret != 7)
             continue;
 
-        int id   = b[0] << 16 | b[1] << 8 | b[2];
-        int cmd1 = b[3];
-        int cmd2 = b[4];
-        int err1 = b[5];
-        int err2 = b[6];
+        int32_t id   = b[0] << 16 | b[1] << 8 | b[2];
+        int32_t cmd1 = b[3];
+        int32_t cmd2 = b[4];
+        int32_t err1 = b[5];
+        int32_t err2 = b[6];
 
-        int pilot      = (b[3] >> 7);
-        int light      = (b[3] & 0x70) >> 4;
-        int thermostat = (b[3] & 0x02) >> 1;
-        int power      = (b[3] & 0x01);
-        int front      = (b[4] >> 7);
-        int fan        = (b[4] & 0x70) >> 4;
-        int aux        = (b[4] & 0x08) >> 3;
-        int flame      = (b[4] & 0x07);
+        int32_t pilot      = (b[3] >> 7);
+        int32_t light      = (b[3] & 0x70) >> 4;
+        int32_t thermostat = (b[3] & 0x02) >> 1;
+        int32_t power      = (b[3] & 0x01);
+        int32_t front      = (b[4] >> 7);
+        int32_t fan        = (b[4] & 0x70) >> 4;
+        int32_t aux        = (b[4] & 0x08) >> 3;
+        int32_t flame      = (b[4] & 0x07);
 
         /* clang-format off */
         data_t *data = data_make(
@@ -130,14 +130,14 @@ static int proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",    DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
         return 1;
     }
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "pilot",

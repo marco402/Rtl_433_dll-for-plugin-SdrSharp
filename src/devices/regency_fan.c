@@ -66,9 +66,9 @@ and ANDing the result with 0x0f.
 
 */
 
-static int regency_fan_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t regency_fan_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    char const * const command_names[] = {
+    uint8_t const *const command_names[] = {
             /* 0  */ "invalid",
             /* 1  */ "fan_speed",
             /* 2  */ "fan_speed",
@@ -87,12 +87,12 @@ static int regency_fan_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             /* 15 */ "invalid",
     };
 
-    int return_code = 0;
+    int32_t return_code = 0;
 
     bitbuffer_invert(bitbuffer);
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
-        int num_bits = bitbuffer->bits_per_row[row];
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
+        int32_t num_bits = bitbuffer->bits_per_row[row];
 
         if (num_bits != 21) { // Max number of bits is 21
             decoder_logf(decoder, 2, __func__, "Expected %d bits, got %d.", 21, num_bits);
@@ -104,18 +104,18 @@ static int regency_fan_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         reflect_bytes(bytes, 3); // Max number of bytes is 3
 
         // Calculate nibble sum and compare
-        int checksum = add_nibbles(bytes, 2) & 0x0f;
+        int32_t checksum = add_nibbles(bytes, 2) & 0x0f;
         if (checksum != bytes[2]) { // Sum is in byte 2
-            decoder_logf(decoder, 2, __func__, "Checksum failure: expected %0x, got %0x", bytes[2], checksum);
+            decoder_logf(decoder, 2, __func__, "Checksum failure: expected %x, got %x", bytes[2], checksum);
             continue;
         }
 
         // Now that message "envelope" has been validated, start parsing data.
-        int command = bytes[0] >> 4;    // Command and Channel are in byte 0
-        int channel = ~bytes[0] & 0x0f; // Command and Channel are in byte 0
-        int value   = bytes[1];         // Value is in byte 1
+        int32_t command = bytes[0] >> 4;    // Command and Channel are in byte 0
+        int32_t channel = ~bytes[0] & 0x0f; // Command and Channel are in byte 0
+        int32_t value   = bytes[1];         // Value is in byte 1
 
-        char value_string[64] = {0};
+        uint8_t value_string[64] = {0};
 
         switch (command) {
         case 1: // 1 is the command to STOP
@@ -153,14 +153,14 @@ static int regency_fan_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return_code++;
     }
 
     return return_code;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "channel",

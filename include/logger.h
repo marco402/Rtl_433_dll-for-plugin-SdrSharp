@@ -11,7 +11,7 @@
 
 #ifndef INCLUDE_LOGGER_H_
 #define INCLUDE_LOGGER_H_
-
+#include <stdint.h>
 // Defined in newer <sal.h> for MSVC.
 #ifndef _Printf_format_string_
 #define _Printf_format_string_
@@ -31,7 +31,7 @@ typedef enum log_level {
     LOG_TRACE    = 8, //!< A tracing message. This is the lowest priority.
 } log_level_t;
 
-typedef void (*r_logger_handler)(log_level_t level, char const *src, char const *msg, void *userdata);
+typedef void (*r_logger_handler)(log_level_t level, uint8_t const *src, uint8_t const *msg, void *userdata);
 
 /** Set the log handler.
 
@@ -46,7 +46,7 @@ void r_logger_set_log_handler(r_logger_handler const handler, void *userdata);
     @param src the log source, typically the function name ("__func__") or a module ("SoapySDR")
     @param msg a log message
 */
-void print_log(log_level_t level, char const *src, char const *msg);
+void print_log(log_level_t level, uint8_t const *src, uint8_t const *msg);
 
 /** Log a message format string.
 
@@ -56,7 +56,7 @@ void print_log(log_level_t level, char const *src, char const *msg);
     @param src the log source, typically the function name ("__func__") or a module ("SoapySDR")
     @param fmt a log message format string
 */
-void print_logf(log_level_t level, char const *src, _Printf_format_string_ char const *fmt, ...)
+void print_logf(log_level_t level, uint8_t const *src, _Printf_format_string_ uint8_t const *fmt, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 3, 4)))
 #endif

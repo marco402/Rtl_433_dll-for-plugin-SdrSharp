@@ -28,16 +28,17 @@ Data layout:
 
 #include "decoder.h"
 
-static int kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int row;
     uint8_t *b;
-    int temp_raw, rain, device;
-    unsigned char chksum;
+    int32_t temp_raw, rain, device;
+    uint8_t chksum;
     float temp_c;
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 3, 36);
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -54,7 +55,7 @@ static int kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
               (reverse8(b[1]) >> 4) + (reverse8(b[1]) & 0x0f) +
               (reverse8(b[2]) >> 4) + (reverse8(b[2]) & 0x0f) +
               (reverse8(b[3]) >> 4) + (reverse8(b[3]) & 0x0f));
-    int battery_low = b[1] >> 7;
+    int32_t battery_low = b[1] >> 7;
 
     if ((chksum & 0x0f) != (reverse8(b[4]) & 0x0f))
         return DECODE_FAIL_MIC;
@@ -69,12 +70,13 @@ static int kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "rain_mm",          "Rain Total",   DATA_DOUBLE, rain * 0.45f,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const kw9015b_csv_output_fields[] = {
+static uint8_t const *const kw9015b_csv_output_fields[] = {
         "model",
         "id",
         "battery_ok",

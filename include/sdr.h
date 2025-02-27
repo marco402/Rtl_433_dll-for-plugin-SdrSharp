@@ -31,11 +31,11 @@ typedef enum sdr_event_flags {
 typedef struct sdr_event {
     sdr_event_flags_t ev;
     uint32_t sample_rate;
-    int freq_correction;
+    int32_t freq_correction;
     uint32_t center_frequency;
-    char const *gain_str;
+    uint8_t const *gain_str;
     void *buf;
-    int len;
+    int32_t len;
 } sdr_event_t;
 
 typedef void (*sdr_event_cb_t)(sdr_event_t *ev, void *ctx);
@@ -47,7 +47,7 @@ typedef void (*sdr_event_cb_t)(sdr_event_t *ev, void *ctx);
     @param verbose the verbosity level for reports to stderr
     @return dev 0 if successful
 */
-int sdr_open(sdr_dev_t **out_dev, char const *dev_query, int verbose);
+int32_t sdr_open(sdr_dev_t **out_dev, uint8_t const *dev_query, int32_t verbose);
 
 /** Close the device.
 
@@ -58,28 +58,28 @@ int sdr_open(sdr_dev_t **out_dev, char const *dev_query, int verbose);
     @param dev the device handle
     @return 0 on success
 */
-int sdr_close(sdr_dev_t *dev);
+int32_t sdr_close(sdr_dev_t *dev);
 
 /** Get device info.
 
     @param dev the device handle
     @return JSON device info string
 */
-char const *sdr_get_dev_info(sdr_dev_t *dev);
+uint8_t const *sdr_get_dev_info(sdr_dev_t *dev);
 
 /** Get sample size.
 
     @param dev the device handle
     @return Sample size of I/Q elements in bytes (CU8: 2, CS16: 4, ...)
 */
-int sdr_get_sample_size(sdr_dev_t *dev);
+int32_t sdr_get_sample_size(sdr_dev_t *dev);
 
 /** Get sample signedness.
 
     @param dev the device handle
     @return 1 if the samples are signed (CS8, CS16, ...), 0 otherwise (CU8, ...)
 */
-int sdr_get_sample_signed(sdr_dev_t *dev);
+int32_t sdr_get_sample_signed(sdr_dev_t *dev);
 
 /** Set device frequency, optionally report status.
 
@@ -88,7 +88,7 @@ int sdr_get_sample_signed(sdr_dev_t *dev);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_center_freq(sdr_dev_t *dev, uint32_t freq, int verbose);
+int32_t sdr_set_center_freq(sdr_dev_t *dev, uint32_t freq, int32_t verbose);
 
 /** Get device frequency.
 
@@ -104,7 +104,7 @@ uint32_t sdr_get_center_freq(sdr_dev_t *dev);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_freq_correction(sdr_dev_t *dev, int ppm, int verbose);
+int32_t sdr_set_freq_correction(sdr_dev_t *dev, int32_t ppm, int32_t verbose);
 
 /** Enable auto gain, optionally report status.
 
@@ -112,7 +112,7 @@ int sdr_set_freq_correction(sdr_dev_t *dev, int ppm, int verbose);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_auto_gain(sdr_dev_t *dev, int verbose);
+int32_t sdr_set_auto_gain(sdr_dev_t *dev, int32_t verbose);
 
 /** Set tuner gain or gain elements, optionally report status.
 
@@ -121,7 +121,7 @@ int sdr_set_auto_gain(sdr_dev_t *dev, int verbose);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_tuner_gain(sdr_dev_t *dev, char const *gain_str, int verbose);
+int32_t sdr_set_tuner_gain(sdr_dev_t *dev, uint8_t const *gain_str, int32_t verbose);
 
 /** Set device sample rate, optionally report status.
 
@@ -130,7 +130,7 @@ int sdr_set_tuner_gain(sdr_dev_t *dev, char const *gain_str, int verbose);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_sample_rate(sdr_dev_t *dev, uint32_t rate, int verbose);
+int32_t sdr_set_sample_rate(sdr_dev_t *dev, uint32_t rate, int32_t verbose);
 
 /** Set device antenna.
 
@@ -139,7 +139,7 @@ int sdr_set_sample_rate(sdr_dev_t *dev, uint32_t rate, int verbose);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_set_antenna(sdr_dev_t *dev, char const *antenna_str, int verbose);
+int32_t sdr_set_antenna(sdr_dev_t *dev, uint8_t const *antenna_str, int32_t verbose);
 
 /** Get device sample rate.
 
@@ -155,21 +155,21 @@ uint32_t sdr_get_sample_rate(sdr_dev_t *dev);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_apply_settings(sdr_dev_t *dev, char const *sdr_settings, int verbose);
+int32_t sdr_apply_settings(sdr_dev_t *dev, uint8_t const *sdr_settings, int32_t verbose);
 
 /** Activate stream (only needed for SoapySDR).
 
     @param dev the device handle
     @return 0 on success
 */
-int sdr_activate(sdr_dev_t *dev);
+int32_t sdr_activate(sdr_dev_t *dev);
 
 /** Deactivate stream (only needed for SoapySDR).
 
     @param dev the device handle
     @return 0 on success
 */
-int sdr_deactivate(sdr_dev_t *dev);
+int32_t sdr_deactivate(sdr_dev_t *dev);
 
 /** Reset buffer (only needed for RTL-SDR), optionally report status.
 
@@ -177,7 +177,7 @@ int sdr_deactivate(sdr_dev_t *dev);
     @param verbose the verbosity level for reports to stderr
     @return 0 on success
 */
-int sdr_reset(sdr_dev_t *dev, int verbose);
+int32_t sdr_reset(sdr_dev_t *dev, int32_t verbose);
 
 /** Start the SDR data acquisition.
 
@@ -192,8 +192,8 @@ int sdr_reset(sdr_dev_t *dev, int verbose);
     @param buf_len the size in bytes of each buffer
     @return 0 on success
 */
-int sdr_start(sdr_dev_t *dev, sdr_event_cb_t async_cb, void *async_ctx, uint32_t buf_num, uint32_t buf_len);
-int sdr_start_sync(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
+int32_t sdr_start(sdr_dev_t *dev, sdr_event_cb_t async_cb, void *async_ctx, uint32_t buf_num, uint32_t buf_len);
+int32_t sdr_start_sync(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_num, uint32_t buf_len);
 
 /** Stop the SDR data acquisition.
 
@@ -203,8 +203,8 @@ int sdr_start_sync(sdr_dev_t *dev, sdr_event_cb_t cb, void *ctx, uint32_t buf_nu
     @param dev the device handle
     @return 0 on success
 */
-int sdr_stop(sdr_dev_t *dev);
-int sdr_stop_sync(sdr_dev_t *dev);
+int32_t sdr_stop(sdr_dev_t *dev);
+int32_t sdr_stop_sync(sdr_dev_t *dev);
 
 /** Redirect SoapySDR library logging.
 */

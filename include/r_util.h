@@ -49,7 +49,7 @@ void get_time_now(struct timeval *tv);
     @param time_secs 0 for now, or seconds since the epoch
     @return buf pointer (for short hand use as operator)
 */
-char *format_time_str(char *buf, char const *format, int with_tz, time_t time_secs);
+uint8_t *format_time_str(uint8_t *buf, uint8_t const *format, int32_t with_tz, time_t time_secs);
 
 /** Printable timestamp in local time with microseconds.
 
@@ -59,7 +59,7 @@ char *format_time_str(char *buf, char const *format, int with_tz, time_t time_se
     @param tv NULL for now, or seconds and microseconds since the epoch
     @return buf pointer (for short hand use as operator)
 */
-char *usecs_time_str(char *buf, char const *format, int with_tz, struct timeval *tv);
+uint8_t *usecs_time_str(uint8_t *buf, uint8_t const *format, int32_t with_tz, struct timeval *tv);
 
 /** Printable sample position.
 
@@ -67,7 +67,7 @@ char *usecs_time_str(char *buf, char const *format, int with_tz, struct timeval 
     @param buf output buffer, long enough for "@0.000000s"
     @return buf pointer (for short hand use as operator)
 */
-char *sample_pos_str(float sample_file_pos, char *buf);
+uint8_t *sample_pos_str(float sample_file_pos, uint8_t *buf);
 
 /** Convert Celsius to Fahrenheit.
 
@@ -145,7 +145,7 @@ float inhg2hpa(float inhg);
     @param suffix the pattern to search
     @return true if the string ends with the specified suffix, false otherwise.
 */
-bool str_endswith(char const *restrict str, char const *restrict suffix);
+bool str_endswith(uint8_t const *restrict str, uint8_t const *restrict suffix);
 
 /** Replace a pattern in a string.
 
@@ -156,12 +156,12 @@ bool str_endswith(char const *restrict str, char const *restrict suffix);
     @param with the replacement pattern
     @return a new string that has rep replaced with with
 */
-char *str_replace(char const *orig, char const *rep, char const *with);
+uint8_t *str_replace(uint8_t const *orig, uint8_t const *rep, uint8_t const *with);
 
 /** Make a nice printable string for a frequency.
 
     @param freq the frequency to convert to a string.
 */
-char const *nice_freq (double freq);
+uint8_t const *nice_freq (double freq);
 
 #endif /* INCLUDE_R_UTIL_H_ */

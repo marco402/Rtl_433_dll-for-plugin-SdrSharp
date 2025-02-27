@@ -44,14 +44,14 @@ Format string:
 
 */
 
-static int gasmate_ba1008_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t gasmate_ba1008_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     if (bitbuffer->num_rows != 1) {
         decoder_log(decoder, 2, __func__, "Row check fail");
         return DECODE_ABORT_LENGTH;
     }
 
-    int row = 0;
+    int32_t row = 0;
     uint8_t *b = bitbuffer->bb[row];
     // we expect 32 bits
     if (bitbuffer->bits_per_row[row] != 32) {
@@ -71,13 +71,13 @@ static int gasmate_ba1008_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int sign     = (b[0] & 0x04) >> 2;
-    int huns     = (b[0] & 0x03);
-    int tens     = (b[1] & 0xf0) >> 4;
-    int ones     = (b[1] & 0x0f);
-    int temp_raw = huns * 100 + tens * 10 + ones;
-    int temp_c   = sign ? -temp_raw : temp_raw;
-    int unknown1 = (b[2] << 4) | (b[3] >> 4);
+    int32_t sign     = (b[0] & 0x04) >> 2;
+    int32_t huns     = (b[0] & 0x03);
+    int32_t tens     = (b[1] & 0xf0) >> 4;
+    int32_t ones     = (b[1] & 0x0f);
+    int32_t temp_raw = huns * 100 + tens * 10 + ones;
+    int32_t temp_c   = sign ? -temp_raw : temp_raw;
+    int32_t unknown1 = (b[2] << 4) | (b[3] >> 4);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -87,12 +87,13 @@ static int gasmate_ba1008_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "temperature_C",
         "unknown_1",

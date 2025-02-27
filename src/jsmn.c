@@ -22,7 +22,7 @@ static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser,
  * Fills token type and boundaries.
  */
 static void jsmn_fill_token(jsmntok_t *token, jsmntype_t type,
-                            int start, int end) {
+                            int32_t start, int32_t end) {
 	token->type = type;
 	token->start = start;
 	token->end = end;
@@ -32,10 +32,10 @@ static void jsmn_fill_token(jsmntok_t *token, jsmntype_t type,
 /**
  * Fills next available token with JSON primitive.
  */
-static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
+static int32_t jsmn_parse_primitive(jsmn_parser *parser, const uint8_t *js,
 		size_t len, jsmntok_t *tokens, size_t num_tokens) {
 	jsmntok_t *token;
-	int start;
+	int32_t start;
 
 	start = parser->pos;
 
@@ -81,17 +81,17 @@ found:
 /**
  * Fills next token with JSON string.
  */
-static int jsmn_parse_string(jsmn_parser *parser, const char *js,
+static int32_t jsmn_parse_string(jsmn_parser *parser, const uint8_t *js,
 		size_t len, jsmntok_t *tokens, size_t num_tokens) {
 	jsmntok_t *token;
 
-	int start = parser->pos;
+	int32_t start = parser->pos;
 
 	parser->pos++;
 
 	/* Skip starting quote */
 	for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
-		char c = js[parser->pos];
+		uint8_t c = js[parser->pos];
 
 		/* Quote: end of string */
 		if (c == '\"') {
@@ -112,7 +112,7 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 
 		/* Backslash: Quoted symbol expected */
 		if (c == '\\' && parser->pos + 1 < len) {
-			int i;
+			int32_t i;
 			parser->pos++;
 			switch (js[parser->pos]) {
 				/* Allowed escaped symbols */
@@ -148,15 +148,15 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 /**
  * Parse JSON string and fill tokens.
  */
-int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
-		jsmntok_t *tokens, unsigned int num_tokens) {
-	int r;
-	int i;
+int32_t jsmn_parse(jsmn_parser *parser, const uint8_t *js, size_t len,
+		jsmntok_t *tokens, uint32_t num_tokens) {
+	int32_t r;
+	int32_t i;
 	jsmntok_t *token;
-	int count = parser->toknext;
+	int32_t count = parser->toknext;
 
 	for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
-		char c;
+		uint8_t c;
 		jsmntype_t type;
 
 		c = js[parser->pos];
@@ -283,7 +283,7 @@ int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
 				break;
 
 #ifdef JSMN_STRICT
-			/* Unexpected char in strict mode */
+			/* Unexpected uint8_t in strict mode */
 			default:
 				return JSMN_ERROR_INVAL;
 #endif

@@ -16,15 +16,15 @@
 #define DELTA_EPOCH_IN_MICROSECS 11644473600000000ULL
 #endif
 
-int gettimeofday(struct timeval *tv, void *tz)
+int32_t gettimeofday(struct timeval *tv, void *tz)
 {
     if (tz)
         return -1; // we don't support TZ
 
     FILETIME ft;
-    unsigned __int64 t64;
+    __int64 t64;
     GetSystemTimeAsFileTime(&ft);
-    t64 = (((unsigned __int64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+    t64 = (((__int64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
     t64 /= 10; // convert to microseconds
     t64 -= DELTA_EPOCH_IN_MICROSECS; // convert file time to unix epoch
     tv->tv_sec = (long)(t64 / 1000000UL);
@@ -35,18 +35,20 @@ int gettimeofday(struct timeval *tv, void *tz)
 
 #endif // _WIN32
 
-int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y)
+int32_t timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y)
 {
+	// Copy one input
+	struct timeval yy = *y;
     // Perform the carry for the later subtraction by updating y
-    if (x->tv_usec < y->tv_usec) {
-        int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
-        y->tv_usec -= 1000000 * nsec;
-        y->tv_sec += nsec;
+    if (x->tv_usec < yy.tv_usec) {
+        int32_t nsec = (yy.tv_usec - x->tv_usec) / 1000000 + 1;
+		yy.tv_usec -= 1000000 * nsec;
+		yy.tv_sec += nsec;
     }
-    if (x->tv_usec - y->tv_usec > 1000000) {
-        int nsec = (x->tv_usec - y->tv_usec) / 1000000;
-        y->tv_usec += 1000000 * nsec;
-        y->tv_sec -= nsec;
+    if (x->tv_usec - yy.tv_usec > 1000000) {
+        int32_t nsec = (x->tv_usec - yy.tv_usec) / 1000000;
+		yy.tv_usec += 1000000 * nsec;
+		yy.tv_sec -= nsec;
     }
 
     // Compute the time difference, tv_usec is certainly positive

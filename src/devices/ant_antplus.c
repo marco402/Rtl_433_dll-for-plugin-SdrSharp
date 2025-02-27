@@ -77,21 +77,22 @@ https://reveng.sourceforge.io/ to reverse engineer the CRC algorithm used
 
 #include "decoder.h"
 
-static int ant_antplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ant_antplus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row=0;
     uint8_t const preamble[] = {0xAA};
     uint8_t b[17]; // aligned packet data for both preambles/offsets
-    unsigned bit_offset;
-    int antplus_flag = 0;
+    uint32_t bit_offset;
+    int32_t antplus_flag = 0;
 
     // validate buffer: ANT messages are shorter than 150us, i.e. ~140 bits at 1Mbps
-    if (bitbuffer->bits_per_row[0] < 120 || bitbuffer->bits_per_row[0] > 200) {
+    if (bitbuffer->bits_per_row[row] < 120 || bitbuffer->bits_per_row[row] > 200) {
         return DECODE_ABORT_LENGTH;
     }
 
     // find a data package and extract data buffer
-    bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
-    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // did not find a big enough package
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
+    if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[row]) { // did not find a big enough package
         return DECODE_ABORT_LENGTH;
     }
 
@@ -99,12 +100,12 @@ static int ant_antplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // the following byte. i.e. 10101010 1xxxxxxx or 01010101 0xxxxxxx
     // the best way to know which is being used, is to verify which one has a valid CRC
     // the following code relies on the fact that 55 is aa shifted right
-    bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, b, sizeof(b) * 8); // assume preamble is aa
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, sizeof(b) * 8); // assume preamble is aa
 
     // calculate CRC for both alternatives, starting with aa (used by all ANT+ devices)
     // if the two crc bytes b[15] and b[16] are included in the crc calculation, a valid packet returns 0
     if (crc16(b, 17, 0x1021, 0xffff) != 0) { // no, preamble is not aa
-        bitbuffer_extract_bytes(bitbuffer, 0, bit_offset + 1, b, sizeof(b) * 8); // shift one bit right for 55 preamble
+        bitbuffer_extract_bytes(bitbuffer, row, bit_offset + 1, b, sizeof(b) * 8); // shift one bit right for 55 preamble
         if (crc16(b, 17, 0x1021, 0xffff) != 0) // nope, not preamble = 55 either, invalid packet, abort
             return DECODE_FAIL_MIC;
     }
@@ -114,7 +115,7 @@ static int ant_antplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t device_type = b[4];
     uint8_t tx_type     = b[5];
     // display ANT and ANT+ payload in the same format used by ANT tools
-    char payload[8 * 3 + 1]; // payload is 8 hex pairs for ANT and ANT+
+    uint8_t payload[8 * 3 + 1]; // payload is 8 hex pairs for ANT and ANT+
     snprintf(payload, sizeof(payload), "%02x %02x %02x %02x %02x %02x %02x %02x", b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14]);
 
     // display ANT or ANT+ depending on the network key used.
@@ -135,11 +136,12 @@ static int ant_antplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "network",
         "channel",

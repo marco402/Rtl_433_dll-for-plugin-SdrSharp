@@ -12,9 +12,9 @@
 #include <windows.h>
 #include <signal.h>
 #include <io.h>    /* alarm() for MinGW is possibly here */
-
+#include <stdint.h>
 #if !defined(_POSIX) && !defined(__USE_MINGW_ALARM)
-int win_alarm(unsigned seconds);
+int32_t win_alarm(uint32_t seconds);
 #define alarm(sec)  win_alarm(sec)
 #define HAVE_win_alarm
 #endif

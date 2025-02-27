@@ -8,7 +8,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Ambient Weather TX-8300 (also sold as TFA 30.3211.02).
 
 1970us pulse with variable gap (third pulse 3920 us).
@@ -50,7 +50,7 @@ static uint8_t tx8300_chk(uint8_t *b)
 {
     uint16_t x = 0;
     uint16_t y = 0;
-    for (int i = 0; i < 4; ++i) {
+    for (int32_t i = 0; i < 4; ++i) {
         x += (b[i] & 0xF) + ((b[i] & 0xF0) >> 4);
         y += (b[i] & 0x5) + ((b[i] & 0x50) >> 4);
     }
@@ -59,19 +59,20 @@ static uint8_t tx8300_chk(uint8_t *b)
     return c0 << 4 | c1;
 }
 
-static int ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t b[9] = {0};
 
     /* length check */
-    if (74 != bitbuffer->bits_per_row[0]) {
-        decoder_logf(decoder, 2, __func__, "AmbientWeather-TX8300: wrong size (%u bits)", bitbuffer->bits_per_row[0]);
+    if (74 != bitbuffer->bits_per_row[row]) {
+        decoder_logf(decoder, 2, __func__, "AmbientWeather-TX8300: wrong size (%u bits)", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
     }
 
     /* dropping 2 bit preamble */
-    bitbuffer_extract_bytes(bitbuffer, 0, 2, b, 72);
+    bitbuffer_extract_bytes(bitbuffer, row, 2, b, 72);
 
     // flip inverted bytes
     b[4] ^= 0xff;
@@ -93,11 +94,11 @@ static int ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuf
         return DECODE_FAIL_MIC;
 
     float temp      = (b[2] & 0x0f) * 10 + ((b[3] & 0xf0) >> 4) + (b[3] & 0x0f) * 0.1F;
-    int channel     = (b[1] & 0x30) >> 4;
-    int battery_low = (b[1] & 0xc0) >> 6; // bit mapping unknown
-    int minus       = (b[1] & 0x08) >> 3;
-    int humidity    = ((b[0] & 0xf0) >> 4) * 10 + (b[0] & 0x0f);
-    int sensor_id   = ((b[1] & 0x07) << 4) | ((b[2] & 0xf0) >> 4);
+    int32_t channel     = (b[1] & 0x30) >> 4;
+    int32_t battery_low = (b[1] & 0xc0) >> 6; // bit mapping unknown
+    int32_t minus       = (b[1] & 0x08) >> 3;
+    int32_t humidity    = ((b[0] & 0xf0) >> 4) * 10 + (b[0] & 0x0f);
+    int32_t sensor_id   = ((b[1] & 0x07) << 4) | ((b[2] & 0xf0) >> 4);
     float temp_c    = (minus == 1 ? temp * -1 : temp);
     if (((b[0] & 0xf0) >> 4) > 9 || (b[0] & 0x0f) > 9) // invalid humidity
         humidity = -1;
@@ -113,12 +114,13 @@ static int ambientweather_tx8300_callback(r_device *decoder, bitbuffer_t *bitbuf
             "mic",           "MIC",         DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

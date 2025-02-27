@@ -45,8 +45,9 @@ https://web.archive.org/web/20090828043201/http://www.openamr.org/wiki/ItronERTM
 
 */
 
-static int ert_scm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ert_scm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // TODO: Verify preamble
     //static const uint8_t ERT_PREAMBLE[]  = {/*0xF*/ 0x2A, 0x60};
     uint8_t *b;
@@ -54,10 +55,10 @@ static int ert_scm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint32_t consumption_data, ert_id;
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] != 96)
+    if (bitbuffer->bits_per_row[row] != 96)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[0];
+    b = bitbuffer->bb[row];
 
     // No need to decode/extract values for simple test
     // check id tamper type crc  value not all zero'ed
@@ -90,12 +91,13 @@ static int ert_scm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",             "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "physical_tamper",

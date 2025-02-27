@@ -27,12 +27,12 @@ typedef struct {
     FILE *file;
 } data_output_log_t;
 
-static void R_API_CALLCONV print_log_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV print_log_array(data_output_t *output, data_array_t *array, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_log_t *log = (data_output_log_t *)output;
 
     fprintf(log->file, "[");
-    for (int c = 0; c < array->num_values; ++c) {
+    for (int32_t c = 0; c < array->num_values; ++c) {
         if (c)
             fprintf(log->file, ", ");
         print_array_value(output, array, format, c);
@@ -40,7 +40,7 @@ static void R_API_CALLCONV print_log_array(data_output_t *output, data_array_t *
     fprintf(log->file, "]");
 }
 
-static void R_API_CALLCONV print_log_data(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV print_log_data(data_output_t *output, data_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_log_t *log = (data_output_log_t *)output;
@@ -49,7 +49,7 @@ static void R_API_CALLCONV print_log_data(data_output_t *output, data_t *data, c
     for (bool separator = false; data; data = data->next) {
         if (separator)
             fprintf(log->file, ", ");
-        output->print_string(output, data->key, NULL);
+        output->print_string(output, data->key, NULL, NULL);
         fprintf(log->file, ": ");
         print_value(output, data->type, data->value, data->format);
         separator = true;
@@ -57,7 +57,7 @@ static void R_API_CALLCONV print_log_data(data_output_t *output, data_t *data, c
     fputc('}', log->file);
 }
 
-static void R_API_CALLCONV print_log_string(data_output_t *output, const char *str, char const *format)
+static void R_API_CALLCONV print_log_string(data_output_t *output, const uint8_t *str, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_log_t *log = (data_output_log_t *)output;
@@ -65,7 +65,7 @@ static void R_API_CALLCONV print_log_string(data_output_t *output, const char *s
     fprintf(log->file, "%s", str);
 }
 
-static void R_API_CALLCONV print_log_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV print_log_double(data_output_t *output, double data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_log_t *log = (data_output_log_t *)output;
@@ -73,7 +73,7 @@ static void R_API_CALLCONV print_log_double(data_output_t *output, double data, 
     fprintf(log->file, "%.3f", data);
 }
 
-static void R_API_CALLCONV print_log_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV print_log_int(data_output_t *output, int32_t data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_log_t *log = (data_output_log_t *)output;
@@ -81,7 +81,7 @@ static void R_API_CALLCONV print_log_int(data_output_t *output, int data, char c
     fprintf(log->file, "%d", data);
 }
 
-static void R_API_CALLCONV data_output_log_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_log_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_log_t *log = (data_output_log_t *)output;
 
@@ -98,12 +98,12 @@ static void R_API_CALLCONV data_output_log_print(data_output_t *output, data_t *
             data_msg = d;
     }
 
-    int is_log = data_src && data_lvl && data_msg;
+    int32_t is_log = data_src && data_lvl && data_msg;
     if (!is_log) {
         return; // print log messages only
     }
 
-    // int level = 0;
+    // int32_t level = 0;
     // if (data_lvl->type == DATA_INT) {
     //     level = data_lvl->value.v_int;
     // }
@@ -125,7 +125,7 @@ static void R_API_CALLCONV data_output_log_print(data_output_t *output, data_t *
         }
 
         fprintf(log->file, " ");
-        output->print_string(output, data->key, NULL);
+        output->print_string(output, data->key, NULL, NULL);
         fprintf(log->file, " ");
         print_value(output, data->type, data->value, data->format);
     }
@@ -142,7 +142,7 @@ static void R_API_CALLCONV data_output_log_free(data_output_t *output)
     free(output);
 }
 
-struct data_output *data_output_log_create(int log_level, FILE *file)
+struct data_output *data_output_log_create(int32_t log_level, FILE *file)
 {
     data_output_log_t *log = calloc(1, sizeof(data_output_log_t));
     if (!log) {

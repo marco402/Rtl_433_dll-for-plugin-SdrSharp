@@ -114,8 +114,9 @@ Decoded example:
 
 #define EMAX_MESSAGE_BITLEN     264   //33 * 8
 
-static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t emax_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // full preamble is ffffaaaaaaaaaacaca54
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0xca, 0xca, 0x54};
 
@@ -124,26 +125,26 @@ static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int ret = 0;
-    int pos = 0;
-    while ((pos = bitbuffer_search(bitbuffer, 0, pos, preamble_pattern, sizeof(preamble_pattern) * 8)) + EMAX_MESSAGE_BITLEN <= bitbuffer->bits_per_row[0]) {
+    int32_t ret = 0;
+    int32_t bit_offset = 0;
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, sizeof(preamble_pattern) * 8)) + EMAX_MESSAGE_BITLEN <= bitbuffer->bits_per_row[row]) {
 
-        if (pos >= bitbuffer->bits_per_row[0]) {
+        if (bit_offset >= bitbuffer->bits_per_row[row]) {
             decoder_log(decoder, 2, __func__, "Preamble not found");
             ret = DECODE_ABORT_EARLY;
             continue;
         }
-        decoder_logf(decoder, 2, __func__, "Found Emax preamble pos: %d", pos);
+        decoder_logf(decoder, 2, __func__, "Found Emax preamble pos: %d", bit_offset);
 
-        pos += sizeof(preamble_pattern) * 8;
+        bit_offset += sizeof(preamble_pattern) * 8;
         // we expect at least 32 bytes
-        if (pos + 32 * 8 > bitbuffer->bits_per_row[0]) {
+        if (bit_offset + 32 * 8 > bitbuffer->bits_per_row[row]) {
             decoder_log(decoder, 2, __func__, "Length check fail");
             ret = DECODE_ABORT_LENGTH;
             continue;
         }
         uint8_t b[32] = {0};
-        bitbuffer_extract_bytes(bitbuffer, 0, pos, b, sizeof(b) * 8);
+        bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, sizeof(b) * 8);
 
         // verify checksum
         if ((add_bytes(b, 31) & 0xff) != b[31]) {
@@ -152,19 +153,18 @@ static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             continue;
         }
 
-        int channel     = (b[1] & 0x0f);
-        int kind        = ((b[1] & 0xf0) >> 4);
-        int id          = (b[2] << 4) | (b[3] >> 4);
-        int battery_low = (b[3] & 0x08);
-        int pairing     = (b[3] & 0x04);
+        int32_t channel     = (b[1] & 0x0f);
+        int32_t kind        = ((b[1] & 0xf0) >> 4);
+        int32_t id          = (b[2] << 4) | (b[3] >> 4);
+        int32_t battery_low = (b[3] & 0x08);
+        int32_t pairing     = (b[3] & 0x04);
 
         // depend if external temp/hum sensor or Weather rain/wind station the values are not decode the same
-
         if (kind != 0) {  // if not Rain/Wind ... sensor
 
-            int temp_raw    = ((b[4] & 0x0f) << 8) | (b[5] & 0xf0) | (b[6] & 0x0f); // weird format
+            int32_t temp_raw    = ((b[4] & 0x0f) << 8) | (b[5] & 0xf0) | (b[6] & 0x0f); // weird format
             float temp_f    = (temp_raw - 900) * 0.1f;
-            int humidity    = b[7];
+            int32_t humidity    = b[7];
 
             /* clang-format off */
             data_t *data = data_make(
@@ -179,30 +179,31 @@ static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+        
             return 1;
         }
         else {  // if Rain/Wind sensor
 
-            int temp_raw      = ((b[4] & 0x0f) << 8) | (b[5]); // weird format
+            int32_t temp_raw      = ((b[4] & 0x0f) << 8) | (b[5]); // weird format
             float temp_f      = (temp_raw - 900) * 0.1f;
-            int humidity      = b[6];
-            int wind_raw      = (((b[7] - 1) & 0xff) << 8) | ((b[8] - 1) & 0xff);   // need to remove 1 from byte , 0x01 - 1 = 0 , 0x02 - 1 = 1 ... 0xff -1 = 254 , 0x00 - 1 = 255.
+            int32_t humidity      = b[6];
+            int32_t wind_raw      = (((b[7] - 1) & 0xff) << 8) | ((b[8] - 1) & 0xff);   // need to remove 1 from byte , 0x01 - 1 = 0 , 0x02 - 1 = 1 ... 0xff -1 = 254 , 0x00 - 1 = 255.
             float speed_kmh   = wind_raw * 0.2f;
-            int direction_deg = (((b[9] - 1) & 0x0f) << 8) | ((b[10] - 1) & 0xff);
-            int rain_raw      = (((b[11] - 1) & 0xff) << 8) | ((b[12] - 1) & 0xff);
+            int32_t direction_deg = (((b[9] - 1) & 0x0f) << 8) | ((b[10] - 1) & 0xff);
+            int32_t rain_raw      = (((b[11] - 1) & 0xff) << 8) | ((b[12] - 1) & 0xff);
             float rain_mm     = rain_raw * 0.2f;
 
             if (b[29] == 0x17) {                               // with UV/Lux, without Wind Gust
-                int uv_index      = (b[13] - 1) & 0x1f;
-                int lux_14        = (b[14] - 1) & 0xFF;
-                int lux_15        = (b[15] - 1) & 0xFF;
-                int lux_multi     = ((lux_14 & 0x80) >> 7);
-                int light_lux     = ((lux_14 & 0x7f) << 8) | (lux_15);
+                int32_t uv_index      = (b[13] - 1) & 0x1f;
+                int32_t lux_14        = (b[14] - 1) & 0xFF;
+                int32_t lux_15        = (b[15] - 1) & 0xFF;
+                int32_t lux_multi     = ((lux_14 & 0x80) >> 7);
+                int32_t light_lux     = ((lux_14 & 0x7f) << 8) | (lux_15);
                 if (lux_multi == 1) {
                     light_lux = light_lux * 10;
                 }
-                int tag           = ((b[13] - 1) & 0xC0)>>6;  // if tag = 3 = model IMETEO X6 without UV and LUX #2753
+                int32_t tag           = ((b[13] - 1) & 0xC0)>>6;  // if tag = 3 = model IMETEO X6 without UV and LUX #2753
                 /* clang-format off */
                 data_t *data = data_make(
                         "model",            "",                 DATA_COND, tag !=3, DATA_STRING, "Emax-W6",
@@ -221,8 +222,10 @@ static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                         "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                         NULL);
                 /* clang-format on */
+                uint32_t bit_offset = 0;
 
-                decoder_output_data(decoder, data);
+                decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+            
                 return 1;
             }
             if (b[29] == 0x16) {                               //without UV/Lux with Wind Gust
@@ -243,17 +246,19 @@ static int emax_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                         "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                         NULL);
                 /* clang-format on */
+                uint32_t bit_offset = 0;
 
-                decoder_output_data(decoder, data);
+                decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+            
                 return 1;
             }
         }
-        pos += EMAX_MESSAGE_BITLEN;
+        bit_offset += EMAX_MESSAGE_BITLEN;
     }
     return ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

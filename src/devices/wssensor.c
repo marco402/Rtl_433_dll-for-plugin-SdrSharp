@@ -31,18 +31,21 @@ Hyundai WS SENZOR Remote Temperature Sensor.
 #define WS_MINREPEATS 4
 #define WS_REPEATS 23
 
-static int wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b;
     data_t *data;
 
     // the signal should have 23 repeats
     // require at least 4 received repeats
-    int r = bitbuffer_find_repeated_row(bitbuffer, WS_MINREPEATS, WS_REPEATS);
-    if (r < 0 || bitbuffer->bits_per_row[r] != WS_PACKETLEN)
+	uint32_t nbRepeat = WS_MINREPEATS;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, WS_REPEATS);
+    if (row < 0 || bitbuffer->bits_per_row[row] != WS_PACKETLEN)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     // No need to decode/extract values for simple test
     if ((!b[0] && !b[1] && !b[2])
@@ -51,11 +54,11 @@ static int wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_SANITY;
     }
 
-    int temperature;
-    int battery_status;
-    int startup;
-    int channel;
-    int sensor_id;
+    int32_t temperature;
+    int32_t battery_status;
+    int32_t startup;
+    int32_t channel;
+    int32_t sensor_id;
     float temperature_c;
 
     /* TTTTTTTT TTTTBSCC IIIIIIII  */
@@ -73,16 +76,16 @@ static int wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",            "House Code",  DATA_INT, sensor_id,
             "channel",       "Channel",     DATA_INT, channel,
             "battery_ok",    "Battery",     DATA_INT,    !!battery_status,
-            "temperature_C", "Temperature", DATA_FORMAT, "%.02f C", DATA_DOUBLE, temperature_c,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temperature_c,
             "button",           "Button",       DATA_INT, startup,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

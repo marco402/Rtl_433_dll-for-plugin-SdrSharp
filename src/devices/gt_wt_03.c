@@ -8,7 +8,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Globaltronics GT-WT-03 sensor on 433.92MHz.
 
 The 01-set sensor has 60 ms packet gap with 10 repeats.
@@ -68,13 +68,13 @@ Battery voltages:
 
 #include "decoder.h"
 
-static uint8_t chk_rollbyte(uint8_t const message[], unsigned bytes, uint16_t gen)
+static uint8_t chk_rollbyte(uint8_t const message[], uint32_t bytes, uint16_t gen)
 {
     uint8_t sum = 0;
-    for (unsigned k = 0; k < bytes; ++k) {
+    for (uint32_t k = 0; k < bytes; ++k) {
         uint8_t data = message[k];
         uint16_t key = gen;
-        for (int i = 7; i >= 0; --i) {
+        for (int32_t i = 7; i >= 0; --i) {
             // XOR key into sum if data bit is set
             if ((data >> i) & 1)
                 sum ^= key & 0xff;
@@ -86,15 +86,17 @@ static uint8_t chk_rollbyte(uint8_t const message[], unsigned bytes, uint16_t ge
     return sum;
 }
 
-static int gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int row = 0;
+    int32_t row = 0;
     uint8_t *b;
-
+	uint32_t nbRepeat = bitbuffer->num_rows / 2 + 1;
+	
+		
     // nominal 1 row or 23 rows, require more than half to match
     if (bitbuffer->num_rows > 1)
-        row = bitbuffer_find_repeated_row(bitbuffer, bitbuffer->num_rows / 2 + 1, 41);
+        row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 41);
 
     if (row < 0)
         return DECODE_ABORT_LENGTH;
@@ -109,24 +111,24 @@ static int gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
 
     // accept only correct checksum
-    int chk = chk_rollbyte(b, 4, 0x3100) ^ b[4] ^ 0x2d;
+    int32_t chk = chk_rollbyte(b, 4, 0x3100) ^ b[4] ^ 0x2d;
     if (chk) {
         decoder_log_bitrow(decoder, 1, __func__, b, 5, "Invalid checksum ");
         return DECODE_FAIL_MIC;
     }
 
     // humidity: see above the note about working range
-    int humidity = b[1]; // extract 8 bits humidity
+    int32_t humidity = b[1]; // extract 8 bits humidity
     if (humidity <= 10) // actually the sensors sends 10 below working range of 20%
         humidity = 0;
     else if (humidity > 95) // actually the sensors sends 110 above working range of 90%
         humidity = 100;
 
-    int sensor_id      = (b[0]);          // 8 bits
-    int battery_low    = (b[2] >> 7 & 1); // 1 bits
-    int button_pressed = (b[2] >> 6 & 1); // 1 bits
-    int channel        = (b[2] >> 4 & 3); // 2 bits
-    int temp_raw       = (int16_t)(((b[2] & 0x0f) << 12) | (b[3] << 4)); // uses sign extend
+    int32_t sensor_id      = (b[0]);          // 8 bits
+    int32_t battery_low    = (b[2] >> 7 & 1); // 1 bits
+    int32_t button_pressed = (b[2] >> 6 & 1); // 1 bits
+    int32_t channel        = (b[2] >> 4 & 3); // 2 bits
+    int32_t temp_raw       = (int16_t)(((b[2] & 0x0f) << 12) | (b[3] << 4)); // uses sign extend
     float temp_c       = (temp_raw >> 4) * 0.1F;
 
     /* clang-format off */
@@ -135,18 +137,17 @@ static int gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",               "ID Code",      DATA_INT,    sensor_id,
             "channel",          "Channel",      DATA_INT,    channel + 1,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "humidity",         "Humidity",     DATA_FORMAT, "%.0f %%", DATA_DOUBLE, (double)humidity,
             "button",           "Button",       DATA_INT,    button_pressed,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

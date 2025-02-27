@@ -49,9 +49,12 @@ Data format:
 
 #include "decoder.h"
 
-static int rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row = bitbuffer_find_repeated_row(bitbuffer, 2, 41);
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 41);
     if (row < 0 || bitbuffer->bits_per_row[row] != 41)
         return DECODE_ABORT_LENGTH;
 
@@ -61,13 +64,16 @@ static int rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // validate some static bits
     if (b[3] & 0xF || b[5])
         return DECODE_ABORT_EARLY;
-
+	// reduce false positives
+	if (b[0] == 0 && b[2] == 0 && b[4] == 0) {
+		return DECODE_ABORT_EARLY;
+	}
     if (crc8(b, 4, 0x31, 0x00) != b[4])
         return DECODE_FAIL_MIC;
 
-    int channel = (b[0] >> 4) + 1;
-    int random_id = (b[0] & 0x0F) << 6 | (b[1] & 0xFC) >> 2;
-    int battery_low = b[2] >> 7;
+    int32_t channel = (b[0] >> 4) + 1;
+    int32_t random_id = (b[0] & 0x0F) << 6 | (b[1] & 0xFC) >> 2;
+    int32_t battery_low = b[2] >> 7;
     float temp_c = ((((b[2] & 0x7F) << 4) | (b[3] >> 4)) - 1024) * 0.1f;
 
     decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
@@ -82,12 +88,13 @@ static int rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",            "Integrity",    DATA_STRING,  "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "channel",
         "id",

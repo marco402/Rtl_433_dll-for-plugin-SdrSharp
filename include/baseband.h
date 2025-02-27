@@ -24,7 +24,7 @@
     @param len number of samples to process
     @return the average level in dB
 */
-float envelope_detect(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len);
+__declspec(dllexport) float __stdcall envelope_detect(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len);
 
 // for evaluation
 float envelope_detect_nolut(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len);
@@ -40,10 +40,10 @@ float magnitude_true_cs16(int16_t const *iq_buf, uint16_t *y_buf, uint32_t len);
 #else
 #define _exp10f(x) powf(10, x)
 #endif
-#define DB_TO_AMP(x) ((int)(_exp10f(((x) + 42.1442f) / 10.0f)))  // 10*log10f(16384.0f)
-#define DB_TO_MAG(x) ((int)(_exp10f(((x) + 84.2884f) / 20.0f)))  // 20*log10f(16384.0f)
-#define DB_TO_AMP_F(x) ((int)(0.5 + _exp10f((x) / 10.0f)))
-#define DB_TO_MAG_F(x) ((int)(0.5 + _exp10f((x) / 20.0f)))
+#define DB_TO_AMP(x) ((int32_t)(_exp10f(((x) + 42.1442f) / 10.0f)))  // 10*log10f(16384.0f)
+#define DB_TO_MAG(x) ((int32_t)(_exp10f(((x) + 84.2884f) / 20.0f)))  // 20*log10f(16384.0f)
+#define DB_TO_AMP_F(x) ((int32_t)(0.5 + _exp10f((x) / 10.0f)))
+#define DB_TO_MAG_F(x) ((int32_t)(0.5 + _exp10f((x) / 20.0f)))
 
 /*
 tabulated magnitude and amplitude values:
@@ -91,6 +91,8 @@ tabulated magnitude and amplitude values:
 typedef struct filter_state {
     int16_t y[FILTER_ORDER];
     int16_t x[FILTER_ORDER];
+    int16_t memoy[FILTER_ORDER];
+    int16_t memox[FILTER_ORDER];
 } filter_state_t;
 
 /// FM_Demod state buffer.
@@ -114,7 +116,7 @@ typedef struct demodfm_state {
     @param len number of samples to process
     @param[in,out] state State to store between chunk processing
 */
-void baseband_low_pass_filter(uint16_t const *x_buf, int16_t *y_buf, uint32_t len, filter_state_t *state);
+__declspec(dllexport) void __stdcall baseband_low_pass_filter(uint16_t const *x_buf, int16_t *y_buf, uint32_t len, filter_state_t *state);
 
 /** FM demodulator.
 
@@ -125,7 +127,7 @@ void baseband_low_pass_filter(uint16_t const *x_buf, int16_t *y_buf, uint32_t le
     @param low_pass Low-pass filter frequency or ratio
     @param[in,out] state State to store between chunk processing
 */
-void baseband_demod_FM(uint8_t const *x_buf, int16_t *y_buf, unsigned long num_samples, uint32_t samp_rate, float low_pass, demodfm_state_t *state);
+__declspec(dllexport) void __stdcall baseband_demod_FM(uint8_t const *x_buf, int16_t *y_buf, uint64_t num_samples, uint32_t samp_rate, float low_pass, demodfm_state_t *state);
 
 /// For evaluation.
 void baseband_demod_FM_cs16(int16_t const *x_buf, int16_t *y_buf, unsigned long num_samples, uint32_t samp_rate, float low_pass, demodfm_state_t *state);

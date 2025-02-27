@@ -10,7 +10,6 @@
  */
 
 #include <stdlib.h>
-#include "fatal.h"
 #include "decoder.h"
 
 /**
@@ -150,14 +149,14 @@ enabled), then add this decoder back with a parameter.  The command line looks l
 #define BLUELINE_ID_GUESS_THRESHOLD 4
 
 struct blueline_stateful_context {
-    unsigned id_guess_hits[MAX_POSSIBLE_BLUELINE_IDS];
+    uint32_t id_guess_hits[MAX_POSSIBLE_BLUELINE_IDS];
     uint16_t current_sensor_id;
-    unsigned searching_for_new_id;
+    uint32_t searching_for_new_id;
 };
 
-static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t remainder)
+static uint8_t rev_crc8(uint8_t const message[], uint32_t nBytes, uint8_t polynomial, uint8_t remainder)
 {
-    unsigned byte, bit;
+    uint32_t byte, bit;
 
     // Run a CRC backwards to find out what the init value would have been.
     // Alternatively, put a known init value in the first byte, and it will
@@ -189,7 +188,7 @@ static uint8_t rev_crc8(uint8_t const message[], unsigned nBytes, uint8_t polyno
 
 static uint16_t guess_blueline_id(r_device *decoder, const uint8_t *current_row)
 {
-    struct blueline_stateful_context *const context = decoder->decode_ctx;
+    struct blueline_stateful_context *const context = decoder_user_data(decoder);
     const uint16_t start_value = ((current_row[2] << 8) | current_row[1]);
     const uint8_t recv_crc = current_row[3];
     const uint8_t rcv_msg_type = (current_row[1] & 0x03);
@@ -197,9 +196,9 @@ static uint16_t guess_blueline_id(r_device *decoder, const uint8_t *current_row)
     uint8_t working_buffer[2];
     uint8_t reverse_crc_result;
     uint16_t best_id;
-    unsigned best_hits;
-    unsigned num_at_best_hits;
-    unsigned high_byte_steps;
+    uint32_t best_hits;
+    uint32_t num_at_best_hits;
+    uint32_t high_byte_steps;
 
     // TL;DR - Try all possible IDs against every incoming message, and count how many times each one
     // succeeds.  If one of them passes a threshold, assume it must be the right one and return it.
@@ -230,21 +229,21 @@ static uint16_t guess_blueline_id(r_device *decoder, const uint8_t *current_row)
                 }
             }
         }
-        working_buffer[1] += 1;
+        working_buffer[1] ++;
     }
 
     decoder_logf(decoder, 1, __func__, "Attempting Blueline autodetect: best_hits=%u num_at_best_hits=%u", best_hits, num_at_best_hits);
     return ((best_hits >= BLUELINE_ID_GUESS_THRESHOLD) && (num_at_best_hits == 1)) ? best_id : 0;
 }
 
-static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    struct blueline_stateful_context *const context = decoder->decode_ctx;
+    struct blueline_stateful_context *const context = decoder_user_data(decoder);
     data_t *data;
-    int row_index;
+    int32_t row;
     uint8_t *current_row;
-    int payloads_decoded = 0;
-    int most_applicable_failure = 0;
+    int32_t payloads_decoded = 0;
+    int32_t most_applicable_failure = 0;
     uint8_t calc_crc;
     uint16_t offset_payload_u16 = 0;
     uint8_t offset_payload_u8[BLUELINE_CRC_BYTELEN] = {0};
@@ -253,11 +252,11 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
 
     // Look at each row we just received independently
-    for (row_index = 0; row_index < bitbuffer->num_rows; row_index++) {
-        current_row = bitbuffer->bb[row_index];
+    for (row = 0; row < bitbuffer->num_rows; row++) {
+        current_row = bitbuffer->bb[row];
 
         // All valid rows will have a fixed length and start with the same byte
-        if ((bitbuffer->bits_per_row[row_index] != BLUELINE_BITLEN) || (current_row[0] != BLUELINE_STARTBYTE)) {
+        if ((bitbuffer->bits_per_row[row] != BLUELINE_BITLEN) || (current_row[0] != BLUELINE_STARTBYTE)) {
             if (DECODE_ABORT_LENGTH < most_applicable_failure) {
                 most_applicable_failure = DECODE_ABORT_LENGTH;
             }
@@ -265,7 +264,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // We need to know which type of message to decide how to check CRC
-        const unsigned message_type = (current_row[1] & 0x03);
+        const uint32_t message_type = (current_row[1] & 0x03);
         const uint8_t recv_crc = current_row[3];
 
         if (message_type == BLUELINE_TXID_MSG) {
@@ -304,7 +303,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",          "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             payloads_decoded++;
             if (context->searching_for_new_id) {
                 decoder_logf(decoder, 1, __func__,"Switching to received Blueline ID %u", received_sensor_id);
@@ -321,7 +320,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",          "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             payloads_decoded++;
         } else if (message_type == BLUELINE_TEMPERATURE_MSG) {
             // TODO - Confirm battery flag is working properly
@@ -352,7 +351,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             const uint8_t temperature = offset_payload_u8[1];
             const uint8_t flags = offset_payload_u8[0] >> 2;
             const uint8_t battery = (flags & 0x20) >> 5;
-            const float temperature_C = (0.436 * temperature) - 30.36;
+            const float temperature_C = (0.436f * temperature) - 30.36f;
             /* clang-format off */
             data = data_make(
                     "model",            "",             DATA_STRING, "Blueline-PowerCost",
@@ -363,7 +362,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             payloads_decoded++;
         } else { // Assume BLUELINE_ENERGY_MSG
             // (The lowest two bits of the pulse count will always be the same because message_type is overlaid there)
@@ -376,7 +375,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             payloads_decoded++;
         }
     }
@@ -384,7 +383,7 @@ static int blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return ((payloads_decoded > 0) ? payloads_decoded : most_applicable_failure);
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "flags",
@@ -396,24 +395,18 @@ static char const *const output_fields[] = {
         NULL,
 };
 
-r_device const blueline;
+//r_device const blueline;
+r_device blueline;
 
-static r_device *blueline_create(char *arg)
+static r_device *blueline_create(uint8_t *arg,uint32_t protocol_num)
 {
-    r_device *r_dev = create_device(&blueline);
+	blueline.protocol_num = protocol_num;
+    r_device *r_dev = decoder_create(&blueline, sizeof(struct blueline_stateful_context));
     if (!r_dev) {
-        fprintf(stderr, "blueline_create() failed\n");
         return NULL; // NOTE: returns NULL on alloc failure.
     }
 
-    struct blueline_stateful_context *context = malloc(sizeof(*context));
-    if (!context) {
-        WARN_MALLOC("blueline_create()");
-        free(r_dev);
-        return NULL; // NOTE: returns NULL on alloc failure.
-    }
-    memset(context, 0, sizeof(*context));
-    r_dev->decode_ctx = context;
+    struct blueline_stateful_context *context = decoder_user_data(r_dev);
 
     if (arg != NULL) {
         if (strcmp(arg, "auto") == 0) {
@@ -422,7 +415,7 @@ static r_device *blueline_create(char *arg)
             //fprintf(stderr, "Blueline decoder will try to autodetect ID.\n");
         } else {
             // Assume user is trying to pass in hex ID
-            context->current_sensor_id = strtoul(arg, NULL, 0);
+            context->current_sensor_id = (uint16_t)strtoul(arg, NULL, 0);
             //fprintf(stderr, "Blueline decoder using ID %u\n", context->current_sensor_id);
         }
     }
@@ -430,7 +423,8 @@ static r_device *blueline_create(char *arg)
     return r_dev;
 }
 
-r_device const blueline = {
+r_device blueline = {
+		.protocol_num = 0,     // marc see with programer RTL_433
         .name        = "BlueLine Innovations Power Cost Monitor",
         .modulation  = OOK_PULSE_PPM,
         .short_width = 500,

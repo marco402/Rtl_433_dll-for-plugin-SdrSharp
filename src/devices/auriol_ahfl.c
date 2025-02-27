@@ -30,21 +30,22 @@ Lidl Auriol Auriol AHFL 433B2 IPX4
 
 #include "decoder.h"
 
-static int auriol_ahfl_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t auriol_ahfl_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int row;
-    int id;
-    int channel;
-    int tx_button;
-    int battery_ok;
-    int temp_raw;
+    int32_t id;
+    int32_t channel;
+    int32_t tx_button;
+    int32_t battery_ok;
+    int32_t temp_raw;
     float temp_c;
-    int humidity;
-    int nibble_sum, checksum;
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 2, 42);
+    int32_t humidity;
+    int32_t nibble_sum, checksum;
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 42);
     if (row < 0) {
         return DECODE_ABORT_EARLY; // no repeated row found
     }
@@ -91,12 +92,13 @@ static int auriol_ahfl_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",         DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

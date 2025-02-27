@@ -48,44 +48,45 @@ Example data:
 
 #include "decoder.h"
 
-static int tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble_pattern[] = {0x55, 0x56}; // 12 bit preamble + 4 bit data
-    int row;
     data_t *data;
     uint8_t *b;
     bitbuffer_t databits = {0};
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 2, 48 * 2 + 12); // expected are 4 rows, require 2
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 48 * 2 + 12); // expected are 4 rows, require 2
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 16);
-    start_pos += 12; // skip preamble
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 16);
+    bit_offset += 12; // skip preamble
 
-    if (bitbuffer->bits_per_row[row] - start_pos < 48 * 2)
+    if (bitbuffer->bits_per_row[row] - bit_offset < 48 * 2)
         return DECODE_ABORT_LENGTH; // short buffer or preamble not found
 
-    bitbuffer_manchester_decode(bitbuffer, row, start_pos, &databits, 48);
-
-    if (databits.bits_per_row[0] < 48)
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 48);
+//row = 0;
+    if (databits.bits_per_row[row] < 48)    // to see
         return DECODE_ABORT_LENGTH; // payload malformed MC
-
-    b = databits.bb[0];
+    
+    b = databits.bb[row];
 
     if (b[0] != 0xa8)
         return DECODE_FAIL_SANITY;
 
     uint16_t digest = (b[4] << 8) | (b[5]);
-    int chk         = lfsr_digest16(b, 4, 0x8810, 0x22d0) ^ digest;
+    int32_t chk         = lfsr_digest16(b, 4, 0x8810, 0x22d0) ^ digest;
 
     //decoder_logf_bitrow(decoder, 0, __func__, b, 48, "TFA-303196 (%08x  %04x  %04x)", chk_data, digest, session);
 
-    int channel     = (b[1] >> 4) + 1;
-    int temp_raw    = ((b[1] & 0x0F) << 8) | b[2];
+    int32_t channel     = (b[1] >> 4) + 1;
+    int32_t temp_raw    = ((b[1] & 0x0F) << 8) | b[2];
     float temp_c    = (temp_raw - 400) * 0.1f;
-    int battery_low = b[3] >> 7;
-    int humidity    = b[3] & 0x7F;
+    int32_t battery_low = b[3] >> 7;
+    int32_t humidity    = b[3] & 0x7F;
 
     /* clang-format off */
     data = data_make(
@@ -99,11 +100,11 @@ static int tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

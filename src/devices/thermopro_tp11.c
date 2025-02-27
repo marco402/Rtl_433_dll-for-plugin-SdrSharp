@@ -23,10 +23,13 @@ normal sequence of bit rows:
 
 */
 
-static int thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Compare first four bytes of rows that have 32 or 33 bits.
-    int row = bitbuffer_find_repeated_row(bitbuffer, 2, 32);
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 32);
     if (row < 0)
         return DECODE_ABORT_EARLY;
     uint8_t *b = bitbuffer->bb[row];
@@ -46,23 +49,23 @@ static int thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bitbuf
         return DECODE_FAIL_SANITY;
     }
 
-    int device   = (b[0] << 4) | (b[1] >> 4);
-    int temp_raw = ((b[1] & 0x0f) << 8) | b[2];
+    int32_t device   = (b[0] << 4) | (b[1] >> 4);
+    int32_t temp_raw = ((b[1] & 0x0f) << 8) | b[2];
     float temp_c = (temp_raw - 200) * 0.1f;
 
     /* clang-format off */
     data_t *data = data_make(
             "model",         "",            DATA_STRING, "Thermopro-TP11",
             "id",            "Id",          DATA_INT,    device,
-            "temperature_C", "Temperature", DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "mic",           "Integrity",   DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

@@ -91,8 +91,9 @@ Example packets:
 
 */
 
-static int somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0x57, 0xfd, 0x99};
 
     uint8_t b[1 + 31 + 2]; // Length, payload, CRC
@@ -100,14 +101,14 @@ static int somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
-    unsigned offset = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, 24) + 24;
-    if (offset >= bitbuffer->bits_per_row[0])
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 24) + 24;
+    if (bit_offset >= bitbuffer->bits_per_row[row])
         return DECODE_ABORT_EARLY;
-    int num_bits = bitbuffer->bits_per_row[0] - offset;
+    int32_t num_bits = bitbuffer->bits_per_row[row] - bit_offset;
 
     num_bits = MIN((size_t)num_bits, sizeof (b) * 8);
 
-    int len = extract_bytes_uart(bitbuffer->bb[0], offset, num_bits, b);
+    int32_t len = extract_bytes_uart(bitbuffer->bb[0], bit_offset, num_bits, b);
     if (len < 11)
         return DECODE_ABORT_LENGTH;
 
@@ -117,43 +118,43 @@ static int somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     // start_flag : 1
     // protocol_mode : 1
     // frame_length : 5
-    int msg_len = b[0] & 0x1f;
+    int32_t msg_len = b[0] & 0x1f;
     if (len < msg_len + 3)
         return DECODE_ABORT_LENGTH;
     if (msg_len < 8)
         return DECODE_ABORT_LENGTH;
     len = msg_len + 3;
 
-    int msg_end_flag      = (b[0] & 0x80) >> 7;
-    int msg_start_flag    = (b[0] & 0x40) >> 6;
-    int msg_protocol_mode = (b[0] & 0x20) >> 5;
+    int32_t msg_end_flag      = (b[0] & 0x80) >> 7;
+    int32_t msg_start_flag    = (b[0] & 0x40) >> 6;
+    int32_t msg_protocol_mode = (b[0] & 0x20) >> 5;
 
     // Control byte 2
     // use_beacon : 1
     // is_routed : 1
     // low_power_mode : 1
     // protocol_version : 3
-    int msg_use_beacon       = (b[1] & 0x80) >> 7;
-    int msg_is_routed        = (b[1] & 0x40) >> 6;
-    int msg_low_power_mode   = (b[1] & 0x20) >> 5;
-    int msg_protocol_version = b[1] & 0x03;
+    int32_t msg_use_beacon       = (b[1] & 0x80) >> 7;
+    int32_t msg_is_routed        = (b[1] & 0x40) >> 6;
+    int32_t msg_low_power_mode   = (b[1] & 0x20) >> 5;
+    int32_t msg_protocol_version = b[1] & 0x03;
 
     // Addresses
     // dst_addr : 24
     // src_addr : 24
-    int msg_dst_addr = (b[2] << 16) | (b[3] << 8) | b[4];
-    int msg_src_addr = (b[5] << 16) | (b[6] << 8) | b[7];
+    int32_t msg_dst_addr = (b[2] << 16) | (b[3] << 8) | b[4];
+    int32_t msg_src_addr = (b[5] << 16) | (b[6] << 8) | b[7];
 
     // Command ID
     // cmd_id : 8
-    int msg_cmd_id = b[8];
+    int32_t msg_cmd_id = b[8];
 
     // optional fields
-    int msg_seq_nr = 0;
-    char msg_mac[13] = {0};
+    int32_t msg_seq_nr = 0;
+    uint8_t msg_mac[13] = {0};
 
-    char msg_data[31 * 2 + 1]; // variable length, converted to hex string
-    unsigned int data_length = msg_len - 8;
+    uint8_t msg_data[31 * 2 + 1]; // variable length, converted to hex string
+    uint32_t data_length = msg_len - 8;
     if (msg_protocol_mode == 0 || data_length < 8) {
         bitrow_snprint(&b[9], data_length * 8, msg_data, sizeof (msg_data));
     } else {
@@ -164,13 +165,13 @@ static int somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // crc : 16;
-    //int msg_crc = (b[len - 2] << 8) | b[len - 1];
+    //int32_t msg_crc = (b[len - 2] << 8) | b[len - 1];
 
     // calculate and verify checksum
     if (crc16lsb(b, len, 0x8408, 0x0000) != 0) // unreflected poly 0x1021
         return DECODE_FAIL_MIC;
 
-    decoder_logf_bitrow(decoder, 2, __func__, b, len * 8, "offset %u, num_bits %u, len %d, msg_len %d", offset, num_bits, len, msg_len);
+    decoder_logf_bitrow(decoder, 2, __func__, b, len * 8, "offset %u, num_bits %u, len %d, msg_len %d", bit_offset, num_bits, len, msg_len);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -193,11 +194,11 @@ static int somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "dst_id",

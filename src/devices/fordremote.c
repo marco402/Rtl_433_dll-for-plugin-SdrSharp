@@ -23,28 +23,30 @@ The output changed and the fields are very likely not as intended.
 
 #include "decoder.h"
 
-static int fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t *bytes;
-    int found = 0;
-    int device_id, code;
+    int32_t found = 0;
+    int32_t device_id, code;
 
     // expect {1} {9} {1} preamble
-    for (int i = 3; i < bitbuffer->num_rows; i++) {
-        if (bitbuffer->bits_per_row[i] < 78) {
+    for (row = 3; row < bitbuffer->num_rows; row++) {
+        if (bitbuffer->bits_per_row[row] < 78) {
             continue; // DECODE_ABORT_LENGTH
         }
 
         // Validate preamble
-        if (bitbuffer->bits_per_row[i - 3] != 1 || bitbuffer->bits_per_row[i - 1] != 1
-                || bitbuffer->bits_per_row[i - 2] != 9 || bitbuffer->bb[i - 2][0] != 0) {
+        // pf 9_ford-unlock002_250k_131072b__STEREO.wav ok with hideki_250k_gfile001_262144b_STEREO twice are OOK_PULSE_DMC
+		if (bitbuffer->bits_per_row[row - 3] != 1 || bitbuffer->bits_per_row[row - 1] != 1 
+                || bitbuffer->bits_per_row[row - 2] != 9 || bitbuffer->bb[row - 2][0] != 0) {
             continue; // DECODE_ABORT_EARLY
         }
 
         decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
 
-        bytes     = bitbuffer->bb[i];
+        bytes     = bitbuffer->bb[row];
         device_id = (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];
         code      = bytes[7];
 
@@ -54,7 +56,9 @@ static int fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "id",       "device-id",    DATA_INT,    device_id,
                 "code",     "data",         DATA_INT,    code,
                 NULL);
-        decoder_output_data(decoder, data);
+uint32_t bit_offset = 0;
+		decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
         /* clang-format on */
 
         found++;
@@ -62,7 +66,7 @@ static int fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return found;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "code",

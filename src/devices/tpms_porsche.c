@@ -37,34 +37,34 @@ Data layout (nibbles):
 
 #include "decoder.h"
 
-static int tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 80);
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 80);
 
     // make sure we decoded the expected number of bits
-    if (packet_bits.bits_per_row[0] < 80) {
-        // decoder_logf(decoder, 0, __func__, "bitpos=%u start_pos=%u = %u", bitpos, start_pos, (start_pos - bitpos));
+    if (packet_bits.bits_per_row[row] < 80) {
+        // decoder_logf(decoder, 0, __func__, "bit_offset=%u bit_offset=%u = %u", bit_offset, bit_offset, (bit_offset - bit_offset));
         return 0; // DECODE_FAIL_SANITY;
     }
 
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[row];
 
     // Checksum is CRC-16 poly 0x1021 init 0xffff over 8 bytes
-    int checksum = crc16(b, 10, 0x1021, 0xffff);
+    int32_t checksum = crc16(b, 10, 0x1021, 0xffff);
     if (checksum != 0) {
         return 0; // DECODE_FAIL_MIC;
     }
 
-    int id          = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
-    int pressure    = b[4];
-    int temperature = b[5];
-    int flags       = b[6] << 8 | b[7];
+    int32_t id          = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    int32_t pressure    = b[4];
+    int32_t temperature = b[5];
+    int32_t flags       = b[6] << 8 | b[7];
 
-    int pressure_kpa  = pressure * 5 / 2 - 100;
-    int temperature_c = temperature - 40;
+    int32_t pressure_kpa  = pressure * 5 / 2 - 100;
+    int32_t temperature_c = temperature - 40;
 
-    char id_str[4 * 2 + 1];
+    uint8_t id_str[4 * 2 + 1];
     snprintf(id_str, sizeof(id_str), "%08x", id);
 
     /* clang-format off */
@@ -79,30 +79,32 @@ static int tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_porsche_decode() */
-static int tpms_porsche_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_porsche_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // Full preamble is {30}ccccccca (33333332).
     uint8_t const preamble_pattern[] = {0x33, 0x33, 0x20}; // 20 bit
 
-    int events = 0;
+    int32_t events = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    unsigned bitpos = 0;
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 20)) + 100 <=
-            bitbuffer->bits_per_row[0]) {
-        events += tpms_porsche_decode(decoder, bitbuffer, 0, bitpos + 20);
-        bitpos += 2;
+    uint32_t bit_offset = 0;
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 20)) + 100 <=
+            bitbuffer->bits_per_row[row]) {
+        events += tpms_porsche_decode(decoder, bitbuffer, row, bit_offset + 20, startPulses, package_type);
+        bit_offset += 2;
     }
 
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

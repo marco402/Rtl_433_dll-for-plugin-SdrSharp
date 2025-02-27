@@ -21,13 +21,14 @@ packet gap is 6964 us
 */
 #include "decoder.h"
 
-static int blyss_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t blyss_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        if (bitbuffer->bits_per_row[i] != 33) // last row is 32
+    int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
+        if (bitbuffer->bits_per_row[row] != 33) // last row is 32
             continue; // DECODE_ABORT_LENGTH
 
-        uint8_t *b = bitbuffer->bb[i];
+        uint8_t *b = bitbuffer->bb[row];
 
         //This needs additional validation, but works on mine. Suspect each DC5-UK-WH uses different codes as the transmitter
         //is paired to the receivers to avoid being triggered by the neighbours transmitter ?!?
@@ -36,7 +37,7 @@ static int blyss_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 ((b[0] != 0xe7) || (b[1] != 0x37) || (b[2] != 0x7a) || (b[3] != 0x2c) || (b[4] != 0x80)))
             continue; // DECODE_ABORT_EARLY
 
-        char id_str[16];
+        uint8_t id_str[16];
         snprintf(id_str, sizeof(id_str), "%02x%02x%02x%02x", b[0], b[1], b[2], b[3]);
 
         /* clang-format off */
@@ -45,15 +46,16 @@ static int blyss_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "id",       "", DATA_STRING, id_str,
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
     return DECODE_FAIL_SANITY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         NULL,

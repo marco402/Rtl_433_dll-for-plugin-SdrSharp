@@ -16,7 +16,7 @@
 #define TYPE_OOK 1
 #define TYPE_FSK 2
 
-/** @fn in fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned bitpos, int type)
+/** @fn in fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t bitpos, int32_t type)
 Fine Offset WH1050 and TFA 30.3151 Weather Station.
 
 This module is a cut-down version of the WH1080 decoder.
@@ -105,7 +105,7 @@ Time data - Message layout and example:
 - P :  8 bits : CRC, poly 0x31, init 0x00 (excluding preamble)
 
 */
-static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned bitpos, int type)
+static int32_t fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t bitpos, int32_t type, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t br[9];
@@ -118,13 +118,13 @@ static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
     }
 
     // GETTING MESSAGE TYPE
-    int msg_type = (br[0] >> 4);
+    int32_t msg_type = (br[0] >> 4);
 
     if (msg_type == 5) {
         // GETTING WEATHER SENSORS DATA
-        int temp_sign     = (br[1] & 0x08) >> 3; // only FSK version
-        int temp_raw      = ((br[1] & 0x03) << 8) | br[2];
-        int rain_raw      = (br[6] << 8) | br[7];
+        int32_t temp_sign     = (br[1] & 0x08) >> 3; // only FSK version
+        int32_t temp_raw      = ((br[1] & 0x03) << 8) | br[2];
+        int32_t rain_raw      = (br[6] << 8) | br[7];
         if (type == TYPE_OOK) {
             temperature = (temp_raw - 400) * 0.1f;
             rain        = rain_raw * 0.3f;
@@ -136,11 +136,11 @@ static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
                 temperature = -temperature;
             }
         }
-        int humidity      = br[3];
+        int32_t humidity      = br[3];
         float speed       = (br[4] * 0.34f) * 3.6f; // m/s -> km/h
         float gust        = (br[5] * 0.34f) * 3.6f; // m/s -> km/h
-        int device_id     = (br[0] << 4 & 0xf0) | (br[1] >> 4);
-        int battery_low   = br[1] & 0x04;
+        int32_t device_id     = (br[0] << 4 & 0xf0) | (br[1] >> 4);
+        int32_t battery_low   = br[1] & 0x04;
 
         /* clang-format off */
         data = data_make(
@@ -149,27 +149,27 @@ static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
                 "id",               "Station ID",       DATA_FORMAT, "%02X",    DATA_INT,    device_id,
                 "msg_type",         "Msg type",         DATA_INT,    msg_type,
                 "battery_ok",       "Battery",          DATA_INT,    !battery_low,
-                "temperature_C",    "Temperature",      DATA_FORMAT, "%.01f C", DATA_DOUBLE, temperature,
+                "temperature_C",    "Temperature",      DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
                 "humidity",         "Humidity",         DATA_FORMAT, "%u %%",   DATA_INT,    humidity,
-                "wind_avg_km_h",    "Wind avg speed",   DATA_FORMAT, "%.02f km/h",   DATA_DOUBLE, speed,
-                "wind_max_km_h",    "Wind gust",        DATA_FORMAT, "%.02f km/h ",   DATA_DOUBLE, gust,
-                "rain_mm",          "Total rainfall",   DATA_FORMAT, "%.01f mm",   DATA_DOUBLE, rain,
+                "wind_avg_km_h",    "Wind avg speed",   DATA_FORMAT, "%.2f km/h",   DATA_DOUBLE, speed,
+                "wind_max_km_h",    "Wind gust",        DATA_FORMAT, "%.2f km/h ",   DATA_DOUBLE, gust,
+                "rain_mm",          "Total rainfall",   DATA_FORMAT, "%.1f mm",   DATA_DOUBLE, rain,
                 "mic",              "Integrity",        DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
     }
     else if (msg_type == 6) {
         // GETTING TIME DATA
-        int device_id   = (br[0] << 4 & 0xf0) | (br[1] >> 4);
-        int battery_low = br[1] & 0x04;
-        int hours       = ((br[2] & 0x30) >> 4) * 10 + (br[2] & 0x0F);
-        int minutes     = ((br[3] & 0xF0) >> 4) * 10 + (br[3] & 0x0F);
-        int seconds     = ((br[4] & 0xF0) >> 4) * 10 + (br[4] & 0x0F);
-        int year        = ((br[5] & 0xF0) >> 4) * 10 + (br[5] & 0x0F) + 2000;
-        int month       = ((br[6] & 0x10) >> 4) * 10 + (br[6] & 0x0F);
-        int day         = ((br[7] & 0xF0) >> 4) * 10 + (br[7] & 0x0F);
+        int32_t device_id   = (br[0] << 4 & 0xf0) | (br[1] >> 4);
+        int32_t battery_low = br[1] & 0x04;
+        int32_t hours       = ((br[2] & 0x30) >> 4) * 10 + (br[2] & 0x0F);
+        int32_t minutes     = ((br[3] & 0xF0) >> 4) * 10 + (br[3] & 0x0F);
+        int32_t seconds     = ((br[4] & 0xF0) >> 4) * 10 + (br[4] & 0x0F);
+        int32_t year        = ((br[5] & 0xF0) >> 4) * 10 + (br[5] & 0x0F) + 2000;
+        int32_t month       = ((br[6] & 0x10) >> 4) * 10 + (br[6] & 0x0F);
+        int32_t day         = ((br[7] & 0xF0) >> 4) * 10 + (br[7] & 0x0F);
 
-        char clock_str[23];
+        uint8_t clock_str[23];
         snprintf(clock_str, sizeof(clock_str), "%04d-%02d-%02dT%02d:%02d:%02d",
                 year, month, day, hours, minutes, seconds);
 
@@ -190,7 +190,7 @@ static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
         return 0; // DECODE_FAIL_MIC;
     }
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
@@ -198,10 +198,10 @@ static int fineoffset_wh1050_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 Fineoffset or TFA OOK/FSK protocol.
 @sa fineoffset_wh1050_decode()
 */
-static int fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    unsigned bitpos = 0;
-    int events      = 0;
+    uint32_t bitpos = 0;
+    int32_t events      = 0;
 
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
@@ -221,17 +221,17 @@ static int fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer)
        gap is 11 bits long, preamble need to be searched into a while loop to get the repeated message
     */
 
-    unsigned bits = bitbuffer->bits_per_row[0];
+    uint32_t bits = bitbuffer->bits_per_row[0];
     uint8_t preamble_byte = bitbuffer->bb[0][0]; // for OOK
     uint8_t const preamble_fsk[] = {0xAA, 0x2D, 0xD4}; // part of preamble and sync word for FSK
     if (bits == 79 && preamble_byte == 0xfe) {
-        fineoffset_wh1050_decode(decoder, bitbuffer, 7, TYPE_OOK);
+        fineoffset_wh1050_decode(decoder, bitbuffer, 7, TYPE_OOK, startPulses,package_type);
     } else if (bits == 80 && preamble_byte == 0xff) {
-        fineoffset_wh1050_decode(decoder, bitbuffer, 8, TYPE_OOK);
+        fineoffset_wh1050_decode(decoder, bitbuffer, 8, TYPE_OOK, startPulses,package_type);
     } else if (bits > 112 && bits < 760) {
         while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_fsk, sizeof(preamble_fsk) * 8)) + 72 <=
                 bitbuffer->bits_per_row[0]) {
-            events += fineoffset_wh1050_decode(decoder, bitbuffer, bitpos + sizeof(preamble_fsk) * 8, TYPE_FSK);
+            events += fineoffset_wh1050_decode(decoder, bitbuffer, bitpos + sizeof(preamble_fsk) * 8, TYPE_FSK, startPulses,package_type);
             bitpos += 123;
         }
     } else {
@@ -240,7 +240,7 @@ static int fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "msg_type",

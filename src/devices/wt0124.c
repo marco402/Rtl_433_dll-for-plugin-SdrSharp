@@ -29,8 +29,9 @@ WT0124 Pool Thermometer decoder.
 
 #include "decoder.h"
 
-static int wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 1;
     data_t *data;
     uint8_t *b; // bits of a row
     uint16_t sum;
@@ -38,11 +39,11 @@ static int wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     float temp_c;
     uint8_t channel;
 
-    if (bitbuffer->bits_per_row[1] != 49)
+    if (bitbuffer->bits_per_row[row] != 49)
         return DECODE_ABORT_LENGTH;
 
     /* select row after preamble */
-    b = bitbuffer->bb[1];
+    b = bitbuffer->bb[row];
 
     /* Validate constant */
     if (b[0] >> 4 != 0x5) {
@@ -83,9 +84,9 @@ static int wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
-
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     // Return 1 if message successfully decoded
     return 1;
 }
@@ -97,7 +98,7 @@ static int wt1024_callback(r_device *decoder, bitbuffer_t *bitbuffer)
  * order for this device when using -F csv.
  *
  */
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

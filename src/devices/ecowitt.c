@@ -13,7 +13,7 @@ Ecowitt Wireless Outdoor Thermometer WH53/WH0280/WH0281A.
 
 55-bit one-row data packet format (inclusive ranges, 0-indexed):
 
-|  0-6  | 7-bit header, ignored for checksum, always 1111111
+|  0-6  | 7-bit header, ignored for checksum, always 1111111, not stable, could be 6 x 1 bit see #2933
 |  7-14 | Model code, 0x53
 | 15-22 | Sensor ID, randomly reinitialized on boot
 | 23-24 | Always 00
@@ -26,39 +26,45 @@ Ecowitt Wireless Outdoor Thermometer WH53/WH0280/WH0281A.
 
 #include "decoder.h"
 
-static int ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    uint8_t const preamble_pattern[] = {
+        0xf5, 0x30  // preamble and model code nominally 7+8 bit, look for 12 bit only #2933
+        };
+
     // All Ecowitt packets have one row.
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_LENGTH;
     }
 
-    // All Ecowitt packets have 55 bits.
-    if (bitbuffer->bits_per_row[0] != 55) {
-        return DECODE_ABORT_LENGTH;
-    }
+    uint32_t pos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, 12);
 
-    uint8_t *row = bitbuffer->bb[0];
-
-    // All Ecowitt packets have the first 7 bits set.
-    uint8_t first7bits = row[0] >> 1;
-    if (first7bits != 0x7F) {
+    // Preamble found ?
+    if (pos >= bitbuffer->bits_per_row[0]) {
+        decoder_logf(decoder, 2, __func__, "Preamble not found");
         return DECODE_ABORT_EARLY;
     }
 
-    // Byte-align the rest of the message by skipping the first 7 bits.
+    // 4 + 6*8 bit required
+    if ((bitbuffer->bits_per_row[0] - pos) < 52) {
+        decoder_logf(decoder, 2, __func__, "Too short");
+        return DECODE_ABORT_EARLY;
+    }
+
+    // Byte-align the rest of the message by skipping the first 4 bit.
     uint8_t b[6];
-    bitbuffer_extract_bytes(bitbuffer, /* row= */ 0, /* pos= */ 7, b, sizeof(b) * 8); // Skip first 7 bits
+    bitbuffer_extract_bytes(bitbuffer, 0, pos + 4 , b, sizeof(b) * 8); // Skip first 4 bit but keep model 0x53 needed for crc
+    decoder_log_bitrow(decoder, 2, __func__, b, sizeof(b) * 8, "MSG");
 
-    // All Ecowitt packets continue with a fixed header
-    if (b[0] != 0x53) {
-        return DECODE_ABORT_EARLY;
+    // check crc, poly 0x31, init 0x00
+    if (crc8(b, 6, 0x31, 0)) {
+        return DECODE_FAIL_MIC;
     }
 
     // Randomly generated at boot time sensor ID.
-    int sensor_id = b[1];
+    int32_t sensor_id = b[1];
 
-    int channel = b[2] >> 4; // First nybble.
+    int32_t channel = b[2] >> 4; // First nybble.
     channel++; // Convert 0-indexed wire protocol to 1-indexed channels on the device UI
     if (channel > 3) {
         return DECODE_FAIL_SANITY; // The switch only has 1-3.
@@ -73,7 +79,7 @@ static int ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Temperature is next 10 bits
-    int temp_raw = ((b[2] & 0x3) << 8) | b[3];
+    int32_t temp_raw = ((b[2] & 0x3) << 8) | b[3];
     float temp_c = (temp_raw - 400) * 0.1f;
 
     // All Ecowitt observed packets have bits 39-48 set.
@@ -81,32 +87,21 @@ static int ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    // Compute checksum skipping first 7 bits
-    uint8_t wire_crc = b[5];
-    int computed_crc = crc8(
-            b,
-            /* nBytes= */ sizeof(b) - 1, // Exclude the CRC byte itself
-            /* polynomial= */ 0x31,
-            /* init= */ 0);
-    if (wire_crc != computed_crc) {
-        return DECODE_FAIL_MIC;
-    }
-
     /* clang-format off */
     data_t *data = data_make(
-            "model", "", DATA_STRING, "Ecowitt-WH53",
-            "id", "Id", DATA_INT, sensor_id,
-            "channel", "Channel", DATA_INT, channel,
-            "temperature_C", "Temperature", DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
-            "mic", "Integrity", DATA_STRING, "CRC",
+            "model",         "",            DATA_STRING, "Ecowitt-WH53",
+            "id",            "Id",          DATA_INT,    sensor_id,
+            "channel",       "Channel",     DATA_INT,    channel,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
+            "mic",           "Integrity",   DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

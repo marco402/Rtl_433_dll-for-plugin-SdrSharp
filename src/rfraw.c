@@ -13,12 +13,12 @@
 #include "fatal.h"
 #include <string.h>
 
-static int hexstr_get_nibble(char const **p)
+static int32_t hexstr_get_nibble(uint8_t const **p)
 {
     if (!p || !*p || !**p) return -1;
     while (**p == ' ' || **p == '\t' || **p == '-' || **p == ':') ++*p;
 
-    int c = **p;
+    int32_t c = **p;
     if (c >= '0' && c <= '9') {
         ++*p;
         return c - '0';
@@ -35,34 +35,34 @@ static int hexstr_get_nibble(char const **p)
     return -1;
 }
 
-static int hexstr_get_byte(char const **p)
+static int32_t hexstr_get_byte(uint8_t const **p)
 {
-    int h = hexstr_get_nibble(p);
-    int l = hexstr_get_nibble(p);
+    int32_t h = hexstr_get_nibble(p);
+    int32_t l = hexstr_get_nibble(p);
     if (h >= 0 && l >= 0)
         return (h << 4) | l;
     return -1;
 }
 
-static int hexstr_get_word(char const **p)
+static int32_t hexstr_get_word(uint8_t const **p)
 {
-    int h = hexstr_get_byte(p);
-    int l = hexstr_get_byte(p);
+    int32_t h = hexstr_get_byte(p);
+    int32_t l = hexstr_get_byte(p);
     if (h >= 0 && l >= 0)
         return (h << 8) | l;
     return -1;
 }
 
-static int hexstr_peek_byte(char const *p)
+static int32_t hexstr_peek_byte(uint8_t const *p)
 {
-    int h = hexstr_get_nibble(&p);
-    int l = hexstr_get_nibble(&p);
+    int32_t h = hexstr_get_nibble(&p);
+    int32_t l = hexstr_get_nibble(&p);
     if (h >= 0 && l >= 0)
         return (h << 4) | l;
     return -1;
 }
 
-bool rfraw_check(char const *p)
+bool rfraw_check(uint8_t const *p)
 {
     // require 0xaa 0xb0 or 0xaa 0xb1
     return hexstr_get_nibble(&p) == 0xa
@@ -89,14 +89,14 @@ bool rfraw_check(char const *p)
 */
 }
 
-static bool parse_rfraw(pulse_data_t *data, char const **p)
+static bool parse_rfraw(pulse_data_t *data, uint8_t const **p)
 {
     if (!p || !*p || !**p) return false;
 
-    int hdr = hexstr_get_byte(p);
+    int32_t hdr = hexstr_get_byte(p);
     if (hdr !=0xaa) return false;
 
-    int fmt = hexstr_get_byte(p);
+    int32_t fmt = hexstr_get_byte(p);
     if (fmt != 0xb0 && fmt != 0xb1)
         return false;
 
@@ -104,24 +104,24 @@ static bool parse_rfraw(pulse_data_t *data, char const **p)
         hexstr_get_byte(p); // ignore len
     }
 
-    int bins_len = hexstr_get_byte(p);
+    int32_t bins_len = hexstr_get_byte(p);
     if (bins_len > 8) return false;
 
-    int repeats = 1;
+    int32_t repeats = 1;
     if (fmt == 0xb0) {
         repeats = hexstr_get_byte(p);
     }
 
-    int bins[8] = {0};
-    for (int i = 0; i < bins_len; ++i) {
+    int32_t bins[8] = {0};
+    for (int32_t i = 0; i < bins_len; ++i) {
         bins[i] = hexstr_get_word(p);
     }
 
     // check if this is the old or new format
     bool oldfmt = true;
-    char const *t = *p;
+    uint8_t const *t = *p;
     while (*t) {
-        int b = hexstr_get_byte(&t);
+        int32_t b = hexstr_get_byte(&t);
         if (b < 0 || b == 0x55) {
             break;
         }
@@ -131,7 +131,7 @@ static bool parse_rfraw(pulse_data_t *data, char const **p)
         }
     }
 
-    unsigned prev_pulses = data->num_pulses;
+    uint32_t prev_pulses = data->num_pulses;
     bool pulse_needed = true;
     bool aligned = true;
     while (*p) {
@@ -140,7 +140,7 @@ static bool parse_rfraw(pulse_data_t *data, char const **p)
             break;
         }
 
-        int w = hexstr_get_nibble(p);
+        int32_t w = hexstr_get_nibble(p);
         aligned = !aligned;
         if (w < 0) return false;
         if (w >= 8 || (oldfmt && !aligned)) { // pulse
@@ -162,8 +162,8 @@ static bool parse_rfraw(pulse_data_t *data, char const **p)
     }
     //data->gap[data->num_pulses - 1] = 3000; // TODO: extend last gap?
 
-    unsigned pkt_pulses = data->num_pulses - prev_pulses;
-    for (int i = 1; i < repeats && data->num_pulses + pkt_pulses <= PD_MAX_PULSES; ++i) {
+    uint32_t pkt_pulses = data->num_pulses - prev_pulses;
+    for (int32_t i = 1; i < repeats && data->num_pulses + pkt_pulses <= PD_MAX_PULSES; ++i) {
         memcpy(&data->pulse[data->num_pulses], &data->pulse[prev_pulses], pkt_pulses * sizeof (*data->pulse));
         memcpy(&data->gap[data->num_pulses], &data->gap[prev_pulses], pkt_pulses * sizeof (*data->pulse));
         data->num_pulses += pkt_pulses;
@@ -174,7 +174,7 @@ static bool parse_rfraw(pulse_data_t *data, char const **p)
     return true;
 }
 
-bool rfraw_parse(pulse_data_t *data, char const *p)
+bool rfraw_parse(pulse_data_t *data, uint8_t const *p)
 {
     if (!p || !*p)
         return false;

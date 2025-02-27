@@ -42,16 +42,17 @@ The second pack of 16 bits is interwoven:
 
 #include "decoder.h"
 
-static int markisol_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t markisol_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     uint8_t buf[5];
     uint8_t cksum = 0;
-    int got_proper_row_length = 0;
-    for (int i = 0; i < bitbuffer->num_rows; i++) {
-        decoder_logf(decoder, 1, __func__, "bits_per_row[%d] = %d", i, bitbuffer->bits_per_row[i]);
-        if (bitbuffer->bits_per_row[i] == 41 || bitbuffer->bits_per_row[i] == 42) {
-            uint8_t *b = bitbuffer->bb[i];
-            for (int j = 0; j < 5; ++j) {
+    int32_t got_proper_row_length = 0;
+    for ( row = 0; row < bitbuffer->num_rows; row++) {
+        decoder_logf(decoder, 1, __func__, "bits_per_row[%d] = %d", row, bitbuffer->bits_per_row[row]);
+        if (bitbuffer->bits_per_row[row] == 41 || bitbuffer->bits_per_row[row] == 42) {
+            uint8_t *b = bitbuffer->bb[row];
+            for (int32_t j = 0; j < 5; ++j) {
                 buf[j] = (b[j] << 1) + (b[j + 1] >> 7); // shift stream to discard spurious first bit
                 buf[j] = ~reverse8(buf[j]);
                 cksum += buf[j];
@@ -69,14 +70,14 @@ static int markisol_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (cksum != 1)
         return DECODE_FAIL_MIC;
 
-    int address = (buf[0] << 8) | buf[1];
-    int channel = buf[2] & 0xf;
-    int control = ((buf[2] >> 4) & ~2) | ((buf[3] & 0x10) >> 3);
-    int zone    = ((buf[2] & 0x20) >> 5) + ((buf[3] & 0x80) >> 6) + 1;
+    int32_t address = (buf[0] << 8) | buf[1];
+    int32_t channel = buf[2] & 0xf;
+    int32_t control = ((buf[2] >> 4) & ~2) | ((buf[3] & 0x10) >> 3);
+    int32_t zone    = ((buf[2] & 0x20) >> 5) + ((buf[3] & 0x80) >> 6) + 1;
     // buf[3] seems to be always 0x01, 0x11, 0x81, 0x91
     // ... so there are 6 bits that seem constant (for my remotes)
 
-    char const *const control_strs[] = {
+    uint8_t const *const control_strs[] = {
             "Limit (0)", // seems like Limit=0 for channel=1, otherwise Limit=13
             "Down (1)",
             "? (2)",
@@ -105,12 +106,13 @@ static int markisol_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",            "Integrity",      DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "control",

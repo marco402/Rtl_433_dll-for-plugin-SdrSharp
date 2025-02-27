@@ -44,7 +44,7 @@ extern "C" {
    Also, when `ordering' is RETURN_IN_ORDER,
    each non-option ARGV-element is returned here.  */
 
-extern char *optarg;
+extern uint8_t *optarg;
 
 /* Index in ARGV of the next element to be scanned.
    This is used for communication to and from the caller
@@ -58,17 +58,17 @@ extern char *optarg;
    Otherwise, `optind' communicates from one call to the next
    how much of ARGV has been scanned so far.  */
 
-extern int optind;
+extern int32_t optind;
 
-extern int __getopt_initialized;  //pour rtl_433.c DLL_RTL_433
+extern int32_t __getopt_initialized;  //pour rtl_433.c DLL_RTL_433
 /* Callers store zero here to inhibit the error message `getopt' prints
    for unrecognized options.  */
 
-extern int opterr;
+extern int32_t opterr;
 
 /* Set to an option character which was unrecognized.  */
 
-extern int optopt;
+extern int32_t optopt;
 
 #ifndef __need_getopt
 /* Describe the long-named options requested by the application.
@@ -85,7 +85,7 @@ extern int optopt;
    to the value given in the field `val' when the option is found, but
    left unchanged if the option is not found.
 
-   To have a long-named option do something other than set an `int' to
+   To have a long-named option do something other than set an `int32_t' to
    a compiled-in constant, such as set a value from `optarg', set the
    option's `flag' field to zero and its `val' field to a nonzero
    value (the equivalent single-letter option character, if there is
@@ -95,15 +95,15 @@ extern int optopt;
 struct option
 {
 # if (defined __STDC__ && __STDC__) || defined __cplusplus
-  const char *name;
+  const uint8_t *name;
 # else
-  char *name;
+  uint8_t *name;
 # endif
   /* has_arg can't be an enum because some compilers complain about
-     type mismatches in all the code that assumes it is an int.  */
-  int has_arg;
-  int *flag;
-  int val;
+     type mismatches in all the code that assumes it is an int32_t.  */
+  int32_t has_arg;
+  int32_t *flag;
+  int32_t val;
 };
 
 /* Names for the values of the `has_arg' field of `struct option'.  */
@@ -143,31 +143,31 @@ struct option
 /* Many other libraries have conflicting prototypes for getopt, with
    differences in the consts, in stdlib.h.  To avoid compilation
    errors, only prototype getopt for the GNU C library.  */
-extern int getopt (int __argc, char *const *__argv, const char *__shortopts);
+extern int32_t getopt (int32_t __argc, uint8_t *const *__argv, const uint8_t *__shortopts);
 # else /* not __GNU_LIBRARY__ */
-extern int getopt ();
+extern int32_t getopt ();
 # endif /* __GNU_LIBRARY__ */
 
 # ifndef __need_getopt
-extern int getopt_long (int __argc, char *const *__argv, const char *__shortopts,
-		        const struct option *__longopts, int *__longind);
-extern int getopt_long_only (int __argc, char *const *__argv,
-			     const char *__shortopts,
-		             const struct option *__longopts, int *__longind);
+extern int32_t getopt_long (int32_t __argc, uint8_t *const *__argv, const uint8_t *__shortopts,
+		        const struct option *__longopts, int32_t *__longind);
+extern int32_t getopt_long_only (int32_t __argc, uint8_t *const *__argv,
+			     const uint8_t *__shortopts,
+		             const struct option *__longopts, int32_t *__longind);
 
 /* Internal only.  Users should not call this directly.  */
-extern int _getopt_internal (int __argc, char *const *__argv,
-			     const char *__shortopts,
-		             const struct option *__longopts, int *__longind,
-			     int __long_only);
+extern int32_t _getopt_internal (int32_t __argc, uint8_t *const *__argv,
+			     const uint8_t *__shortopts,
+		             const struct option *__longopts, int32_t *__longind,
+			     int32_t __long_only);
 # endif
 #else /* not __STDC__ */
-extern int getopt ();
+extern int32_t getopt ();
 # ifndef __need_getopt
-extern int getopt_long ();
-extern int getopt_long_only ();
+extern int32_t getopt_long ();
+extern int32_t getopt_long_only ();
 
-extern int _getopt_internal ();
+extern int32_t _getopt_internal ();
 # endif
 #endif /* __STDC__ */
 

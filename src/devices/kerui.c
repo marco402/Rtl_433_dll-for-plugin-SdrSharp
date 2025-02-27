@@ -29,21 +29,23 @@ Long: 860-1016 us, short: 304-560 us, older sync: 480 us, newer sync: 340 us,
 
 #include "decoder.h"
 
-static int kerui_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t kerui_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int id;
-    int cmd;
-    char const *cmd_str;
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 9, 25); // expected are 25 packets, require 9
-    if (r < 0)
+    int32_t id;
+    int32_t cmd;
+    uint8_t const *cmd_str;
+	uint32_t nbRepeat = 9;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 25); // expected are 25 packets, require 9
+    if (row < 0)
         return DECODE_ABORT_LENGTH;
 
-    if (bitbuffer->bits_per_row[r] != 25)
+    if (bitbuffer->bits_per_row[row] != 25)
         return DECODE_ABORT_LENGTH;
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     // No need to decode/extract values for simple test
     if (!b[0] && !b[1] && !b[2]) {
@@ -85,12 +87,13 @@ static int kerui_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "state",        "State",            DATA_STRING, cmd_str,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "cmd",

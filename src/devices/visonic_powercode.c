@@ -46,13 +46,16 @@ Protocol cribbed from:
 
 #include "decoder.h"
 
-static int visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t msg[32];
     uint8_t lrc;
 
     // 37 bits expected, 6 packet repetitions, accept 4
-    int row = bitbuffer_find_repeated_row(bitbuffer, 4, 37);
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 37);
 
     // exit if anything other than one row returned (-1 if failed)
     if (row != 0)
@@ -79,7 +82,7 @@ static int visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_logf(decoder, 2, __func__, "data byte is %02x", msg[3]);
 
     // format device id
-    char id_str[7];
+    uint8_t id_str[7];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x", msg[0], msg[1], msg[2]);
 
     /* clang-format off */
@@ -99,11 +102,13 @@ static int visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     /* clang-format on */
 
     // return data
-    decoder_output_data(decoder, data);
+    uint32_t bit_offset = 0;
+
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "tamper",

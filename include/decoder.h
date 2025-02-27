@@ -4,13 +4,16 @@
 
 #ifndef INCLUDE_DECODER_H_
 #define INCLUDE_DECODER_H_
-
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "r_device.h"
 #include "bitbuffer.h"
 #include "data.h"
-#include "util.h"
+#include "bit_util.h"
 #include "decoder_util.h"
+#include "c_util.h"
 #include "dll_rtl_433.h"
+
 #endif /* INCLUDE_DECODER_H_ */

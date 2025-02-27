@@ -18,13 +18,16 @@ also sold as "1 by One" wireless doorbell
 
 #include "decoder.h"
 
-static int quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int r = bitbuffer_find_repeated_row(bitbuffer, 5, 18);
-    if (r < 0)
+	uint32_t nbRepeat = 5;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 18);
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
 
     // No need to decode/extract values for simple test
     if (!b[0] && !b[1] && !b[2]) {
@@ -36,7 +39,7 @@ static int quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     b[1] = ~b[1];
     b[2] = ~b[2];
 
-    if (bitbuffer->bits_per_row[r] != 18
+    if (bitbuffer->bits_per_row[row] != 18
             || (b[1] & 0x03) != 0x03
             || (b[2] & 0xC0) != 0xC0)
         return DECODE_ABORT_LENGTH;
@@ -49,13 +52,13 @@ static int quhwa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",     "ID",  DATA_INT, id,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
-
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         NULL,

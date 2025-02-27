@@ -30,25 +30,25 @@ F - ones
 #define SYNC_PATTERN_START_OFF 72
 
 // Convert two BCD encoded nibbles to an integer
-static unsigned bcd2int(uint8_t bcd)
+static uint32_t bcd2int(uint8_t bcd)
 {
     return 10 * (bcd >> 4) + (bcd & 0xF);
 }
 
-static int abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row;
     float temp_c;
     bitbuffer_t packet_bits = {0};
-    unsigned int id;
-    data_t *data;
-    unsigned bitpos = 0;
+    uint32_t id;
+    uint32_t bitpos = 0;
     uint8_t *b;
     int16_t temp;
     uint8_t const sync_pattern[3] = {0x55, 0xAA, 0xAA};
-
+	uint32_t nbRepeat = 4;
+	
+		
     // Find repeats
-    row = bitbuffer_find_repeated_row(bitbuffer, 4, 90);
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 90);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -71,17 +71,17 @@ static int abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     temp_c = (float)temp;
 
     /* clang-format off */
-     data = data_make(
+    data_t *data = data_make(
              "model",         "",            DATA_STRING, "Basics-Meat",
              "id",            "Id",          DATA_INT,    id,
-             "temperature_C", "Temperature", DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+             "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
              NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

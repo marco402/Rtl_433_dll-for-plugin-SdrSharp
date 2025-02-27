@@ -34,37 +34,38 @@ Example codes:
     55555554985a8ef0b01004fa89af4878040ec681fe1859ced74714c7e82f349a7000000000
 
 */
-static int simplisafe_gen3_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t simplisafe_gen3_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0x93, 0x0b, 0x51, 0xde}; // 32 bit
 
-    int bitpos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, 32) + 32;
-    if (bitpos >= bitbuffer->bits_per_row[0]) {
+    int32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 32) + 32;
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY;
     }
 
     // a row needs to have at least 1+21+2 bytes
-    if (bitpos + 24 * 8 > bitbuffer->bits_per_row[0]) {
+    if (bit_offset + 24 * 8 > bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
 
     uint8_t b[27]; // for length 21 to 24 (plus 3)
-    bitbuffer_extract_bytes(bitbuffer, 0, bitpos, b, 27 * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 27 * 8);
 
     // The row must start with length indicator of 21, 22, or 24 (0x15, 0x16, 0x18)
     if (b[0] != 0x15 && b[0] != 0x16 && b[0] != 0x18)
         return DECODE_ABORT_EARLY;
 
-    int len      = (b[0]); // verified to be 21, 22, or 24
-    int msg_type = (b[1]);
-    int id       = ((unsigned)b[2] << 24) | (b[3] << 16) | (b[4] << 8) | (b[5]);
-    int ctr      = (b[8] << 16) | (b[7] << 8) | (b[6]); // note: little endian
-    int cmac     = ((unsigned)b[9] << 24) | (b[10] << 16) | (b[11] << 8) | (b[12]);
-    // int crc      = (b[23] << 8) | (b[24]);
-    char encr[12 * 2 + 1]; // 9, 10, or 12 hex bytes
+    int32_t len      = (b[0]); // verified to be 21, 22, or 24
+    int32_t msg_type = (b[1]);
+    int32_t id       = ((uint32_t)b[2] << 24) | (b[3] << 16) | (b[4] << 8) | (b[5]);
+    int32_t ctr      = (b[8] << 16) | (b[7] << 8) | (b[6]); // note: little endian
+    int32_t cmac     = ((uint32_t)b[9] << 24) | (b[10] << 16) | (b[11] << 8) | (b[12]);
+    // int32_t crc      = (b[23] << 8) | (b[24]);
+    uint8_t encr[12 * 2 + 1]; // 9, 10, or 12 hex bytes
     bitrow_snprint(&b[13], (len - 12) * 8, encr, sizeof(encr));
 
-    int chk = crc16(b, len + 3, 0x8005, 0xffff);
+    int32_t chk = crc16(b, len + 3, 0x8005, 0xffff);
     if (chk) {
         decoder_logf_bitrow(decoder, 1, __func__, b, (len + 3) * 8, "crc failed (%04x)", chk);
         return DECODE_FAIL_MIC;
@@ -82,11 +83,12 @@ static int simplisafe_gen3_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "msg_type",

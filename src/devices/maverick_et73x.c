@@ -40,7 +40,7 @@ note that the mentioned quaternary conversion is actually manchester code.
 
 #include "decoder.h"
 
-static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitbuffer_t mc = {0};
@@ -65,16 +65,16 @@ static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     uint8_t *b = mc.bb[0];
-    int pre    = (b[0] << 4) | (b[1] & 0xf0) >> 4;
-    int flags  = b[1] & 0x0f;
-    int temp1  = (b[2] << 2) | (b[3] & 0xc0) >> 6;
-    int temp2  = (b[3] & 0x3f) << 4 | (b[4] & 0xf0) >> 4;
-    int digest = (b[4] & 0x0f) << 12 | b[5] << 4 | b[6] >> 4;
+    int32_t pre    = (b[0] << 4) | (b[1] & 0xf0) >> 4;
+    int32_t flags  = b[1] & 0x0f;
+    int32_t temp1  = (b[2] << 2) | (b[3] & 0xc0) >> 6;
+    int32_t temp2  = (b[3] & 0x3f) << 4 | (b[4] & 0xf0) >> 4;
+    int32_t digest = (b[4] & 0x0f) << 12 | b[5] << 4 | b[6] >> 4;
 
     float temp1_c = temp1 - 532.0f;
     float temp2_c = temp2 - 532.0f;
 
-    char const *status = "unknown";
+    uint8_t const *status = "unknown";
     if (flags == 2)
         status = "default";
     else if (flags == 7)
@@ -84,9 +84,9 @@ static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_extract_bytes(&mc, 0, 12, chk, 24);
 
     //digest is used to represent a session. This means, we get a new id if a reset or battery exchange is done.
-    int id = lfsr_digest16(chk, 3, 0x8810, 0xdd38) ^ digest;
+    int32_t id = lfsr_digest16(chk, 3, 0x8810, 0xdd38) ^ digest;
 
-    decoder_logf(decoder, 1, __func__, "pre %03x, flags %0x, t1 %d, t2 %d, digest %04x, chk_data %02x%02x%02x, digest xor'ed: %04x",
+    decoder_logf(decoder, 1, __func__, "pre %03x, flags %x, t1 %d, t2 %d, digest %04x, chk_data %02x%02x%02x, digest xor'ed: %04x",
                 pre, flags, temp1, temp2, digest, chk[0], chk[1], chk[2], id);
 
     /* clang-format off */
@@ -94,16 +94,16 @@ static int maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",                     DATA_STRING, "Maverick-ET73x",
             "id",               "Session_ID",           DATA_INT,    id,
             "status",           "Status",               DATA_STRING, status,
-            "temperature_1_C",  "TemperatureSensor1",   DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp1_c,
-            "temperature_2_C",  "TemperatureSensor2",   DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp2_c,
+            "temperature_1_C",  "TemperatureSensor1",   DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp1_c,
+            "temperature_2_C",  "TemperatureSensor2",   DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp2_c,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "status",

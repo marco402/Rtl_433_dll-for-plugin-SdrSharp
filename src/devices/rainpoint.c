@@ -44,29 +44,29 @@ Raw data:
 
 */
 
-static int rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xaa, 0xa9}; // with sync perhaps aaaa 6666 9556
 
     if (bitbuffer->num_rows != 1
-            || bitbuffer->bits_per_row[0] < 232 // 24 MC bits + some preamble
-            || bitbuffer->bits_per_row[0] > 3000) {
-        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);
+            || bitbuffer->bits_per_row[row] < 232 // 24 MC bits + some preamble
+            || bitbuffer->bits_per_row[row] > 3000) {
+        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_EARLY; // Unrecognized data
     }
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof (preamble_pattern) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (start_pos >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
-    start_pos += sizeof (preamble_pattern) * 8 - 2; // keep initial data bit
+    bit_offset += sizeof (preamble_pattern) * 8 - 2; // keep initial data bit
 
     bitbuffer_t msg = {0};
-    unsigned len = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &msg, 12 * 8);
-    if (len - start_pos != 12 * 2 * 8) {
-        decoder_logf(decoder, 2, __func__, "Manchester decode failed, got %u bits", len - start_pos);
+    uint32_t len = bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &msg, 12 * 8);
+    if (len - bit_offset != 12 * 2 * 8) {
+        decoder_logf(decoder, 2, __func__, "Manchester decode failed, got %u bits", len - bit_offset);
         return DECODE_ABORT_LENGTH;
     }
     bitbuffer_invert(&msg);
@@ -76,20 +76,20 @@ static int rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_log_bitrow(decoder, 2, __func__, b, 12 * 8, "");
 
     // Checksum, add nibbles with carry
-    int sum = add_nibbles(b, 10);
+    int32_t sum = add_nibbles(b, 10);
     if ((sum & 0xff) != b[10]) {
         decoder_logf(decoder, 2, __func__, "Checksum failed %04x vs %04x", b[10], sum);
         return DECODE_FAIL_MIC;
     }
 
-    int sync     = (b[0] << 8) | b[1]; // just a guess
-    int id       = (b[2] << 8) | b[3]; // just a guess
-    int flags    = (b[4]);             // just a guess
-    int status   = (b[5] << 8) | b[6]; // just a guess
+    int32_t sync     = (b[0] << 8) | b[1]; // just a guess
+    int32_t id       = (b[2] << 8) | b[3]; // just a guess
+    int32_t flags    = (b[4]);             // just a guess
+    int32_t status   = (b[5] << 8) | b[6]; // just a guess
     float temp_c = b[7];
-    int moisture = b[8];
-    int chan     = 0; // 9f: CH1, b1: CH2, b7: CH3
-    //int batt     = 0;
+    int32_t moisture = b[8];
+    int32_t chan     = 0; // 9f: CH1, b1: CH2, b7: CH3
+    //int32_t batt     = 0;
 
     if (flags == 0x9f)
         chan = 1;
@@ -113,11 +113,11 @@ static int rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

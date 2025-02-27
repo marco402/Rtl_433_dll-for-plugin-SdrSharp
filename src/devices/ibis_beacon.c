@@ -20,38 +20,39 @@ and various flags.
 
 #include "decoder.h"
 
-static int ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t search = 0xAB; // preamble is 0xAAB
     uint8_t msg[32];
-    unsigned len;
-    unsigned pos;
-    unsigned i;
-    int id;
-    unsigned counter;
-    int crc;
-    int crc_calculated;
-    char code_str[63];
+    uint32_t len;
+    uint32_t bit_offset;
+    uint32_t i;
+    int32_t id;
+    uint32_t counter;
+    int32_t crc;
+    int32_t crc_calculated;
+    uint8_t code_str[63];
 
     // 224 bits data + 12 bits preamble
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 232 || bitbuffer->bits_per_row[0] > 250) {
+    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 232 || bitbuffer->bits_per_row[row] > 250) {
         return DECODE_ABORT_LENGTH; // Unrecognized data
     }
 
-    pos = bitbuffer_search(bitbuffer, 0, 0, &search, 8);
-    if (pos > 26) {
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, &search, 8);
+    if (bit_offset > 26) {
         return DECODE_ABORT_EARLY; // short buffer or preamble not found
     }
-    pos += 8; // skip preamble
-    len = bitbuffer->bits_per_row[0] - pos;
+    bit_offset += 8; // skip preamble
+    len = bitbuffer->bits_per_row[row] - bit_offset;
     // we want 28 bytes (224 bits)
     if (len < 224) {
         return DECODE_ABORT_LENGTH; // short buffer
     }
     len = 224; // cut the last pulse
 
-    bitbuffer_extract_bytes(bitbuffer, 0, pos, (uint8_t *)&msg, len);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, (uint8_t *)&msg, len);
 
     crc_calculated = crc16(msg, 26, 0x8005, 0x0000);
     crc = (msg[26] << 8) | msg[27];
@@ -60,7 +61,7 @@ static int ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     id = ((msg[5]&0x0f) << 12) | (msg[6] << 4) | ((msg[7]&0xf0) >> 4);
-    counter = ((unsigned)msg[20] << 24) | (msg[21] << 16) | (msg[22] << 8) | msg[23];
+    counter = ((uint32_t)msg[20] << 24) | (msg[21] << 16) | (msg[22] << 8) | msg[23];
 
     for (i=0; i<(len+7)/8 ; ++i) {
         sprintf(&code_str[i*2], "%02x", msg[i]);
@@ -76,11 +77,11 @@ static int ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "counter",

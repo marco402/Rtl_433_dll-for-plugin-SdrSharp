@@ -46,20 +46,20 @@ Published range of device is -29.9C to 69.9C
 #define MYDEVICE_BITLEN      14
 #define MYDEVICE_MINREPEATS  3
 
-static int companion_wtr001_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t companion_wtr001_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-
     data_t *data;
-    int r; // a row index
     uint8_t b[2];
     float temperature;
-
-    r = bitbuffer_find_repeated_row(bitbuffer, MYDEVICE_MINREPEATS, MYDEVICE_BITLEN);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 14) {
+	uint32_t nbRepeat = MYDEVICE_MINREPEATS;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, MYDEVICE_BITLEN);
+    if (row < 0 || bitbuffer->bits_per_row[row] != 14) {
         return DECODE_ABORT_LENGTH;
     }
 
-    bitbuffer_extract_bytes(bitbuffer, r, 0, b, 14);
+    bitbuffer_extract_bytes(bitbuffer, row, 0, b, 14);
 
     // Invert these 14 bits, PWM with short pulse is 0, long pulse is 1
     b[0] = ~b[0];
@@ -121,13 +121,13 @@ static int companion_wtr001_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",           "Integrity",   DATA_STRING, "PARITY",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
-
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "temperature_C",
         "mic",

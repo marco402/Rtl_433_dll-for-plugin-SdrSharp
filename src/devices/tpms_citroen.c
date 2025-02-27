@@ -29,27 +29,27 @@ Packet nibbles:
 
 #include "decoder.h"
 
-static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    int state;
-    unsigned id;
-    int flags;
-    int repeat;
-    int pressure;
-    int temperature;
-    int maybe_battery;
-    int crc;
+    int32_t state;
+    uint32_t id;
+    int32_t flags;
+    int32_t repeat;
+    int32_t pressure;
+    int32_t temperature;
+    int32_t maybe_battery;
+    int32_t crc;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 88);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 88);
 
     // decoder_logf(decoder, 3, __func__, "bits %d", packet_bits.bits_per_row[0]);
-    if (packet_bits.bits_per_row[0] < 80) {
+    if (packet_bits.bits_per_row[row] < 80) {  // to see
         return DECODE_FAIL_SANITY; // sanity check failed
     }
 
-    b = packet_bits.bb[0];
+    b = packet_bits.bb[row];
 
     if (b[6] == 0 || b[7] == 0) {
         return DECODE_ABORT_EARLY; // sanity check failed
@@ -61,16 +61,16 @@ static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     }
 
     state         = b[0]; // not covered by CRC
-    id            = (unsigned)b[1] << 24 | b[2] << 16 | b[3] << 8 | b[4];
+    id            = (uint32_t)b[1] << 24 | b[2] << 16 | b[3] << 8 | b[4];
     flags         = b[5] >> 4;
     repeat        = b[5] & 0x0f;
     pressure      = b[6];
     temperature   = b[7];
     maybe_battery = b[8];
 
-    char state_str[3];
+    uint8_t state_str[3];
     snprintf(state_str, sizeof(state_str), "%02x", state);
-    char id_str[9];
+    uint8_t id_str[9];
     snprintf(id_str, sizeof(id_str), "%08x", id);
 
     /* clang-format off */
@@ -88,36 +88,38 @@ static int tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_citroen_decode() */
-static int tpms_citroen_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_citroen_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // full preamble is 55 55 55 56 (inverted: aa aa aa a9)
     uint8_t const preamble_pattern[2] = {0xaa, 0xa9}; // 16 bits
     // full trailer is 01111110
 
-    unsigned bitpos = 0;
-    int ret         = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    int32_t ret         = 0;
+    int32_t events      = 0;
 
     bitbuffer_invert(bitbuffer);
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 16)) + 178 <=
-            bitbuffer->bits_per_row[0]) {
-        ret = tpms_citroen_decode(decoder, bitbuffer, 0, bitpos + 16);
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 16)) + 178 <=
+            bitbuffer->bits_per_row[row]) {
+        ret = tpms_citroen_decode(decoder, bitbuffer, row, bit_offset + 16, startPulses, package_type);
         if (ret > 0)
             events += ret;
-        bitpos += 2;
+        bit_offset += 2;
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

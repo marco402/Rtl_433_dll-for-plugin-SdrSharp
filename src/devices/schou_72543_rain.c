@@ -50,34 +50,41 @@ Codes example: {66}50fc467b7f9a832a8, {65}a1f88cf6ff3506550, {70}a1f88cf6ff35065
 
 */
 
-static int schou_72543_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t schou_72543_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Full data is 3 rows, two are required for data validation
     if (bitbuffer->num_rows < 2) {
         return DECODE_ABORT_LENGTH;
     }
-
+	uint32_t nbRepeat = 2;
+	
+		
     // Check if the first 64 bits of at least two rows are alike
-    int row = bitbuffer_find_repeated_prefix(bitbuffer, 2, 64);
+    int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 64);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
-    // Load bitbuffer data and validate checksum
-    uint8_t *b = bitbuffer->bb[row];
-    int micsum = b[7];                    // Checksum as read
-    int calsum = add_bytes(b, 7) & 0x0FF; // Checksum as calculated, accounting for the lowest 8 bit
+	// Load bitbuffer data and validate checksum
+	uint8_t *b = bitbuffer->bb[row];
+	int32_t chk = b[7];            // Checksum as read
+	int32_t sum = add_bytes(b, 7); // Checksum as calculated
 
-    if (micsum != calsum) {
-        decoder_logf_bitrow(decoder, 1, __func__, b, 65, "Checksum error, expected: %02x calculated: %02x", micsum, calsum);
-        return DECODE_FAIL_MIC;
+	// reduce false positives
+	if (sum == 0) {
+		return DECODE_ABORT_EARLY;
+	}
+
+	if (chk != (sum & 0xff)) {
+		decoder_logf_bitrow(decoder, 1, __func__, b, 65, "Checksum error, expected: %02x calculated: %02x", chk, sum);
+		return DECODE_FAIL_MIC;
     }
 
     // Decode message
-    int device_id       = (b[0] << 8) | b[1];                  // Assuming little endian, but it not important as the value is random
-    int battery_low     = (b[2] & 0x80) > 0;                   // if one, battery is low
-    int message_repeat  = (b[2] & 0x40) > 0;                   // if one, message is a repeat (startup after batteries are replaced)
-    int message_counter = (b[2] & 0x0e) >> 1;                  // 3 bit counter (rather than 4 bit incrementing by 2 each time
+    int32_t device_id       = (b[0] << 8) | b[1];                  // Assuming little endian, but it not important as the value is random
+    int32_t battery_low     = (b[2] & 0x80) > 0;                   // if one, battery is low
+    int32_t message_repeat  = (b[2] & 0x40) > 0;                   // if one, message is a repeat (startup after batteries are replaced)
+    int32_t message_counter = (b[2] & 0x0e) >> 1;                  // 3 bit counter (rather than 4 bit incrementing by 2 each time
     float rain_mm       = ((b[4] << 8) | b[3]) * 0.1f;         //   0.0 to  6553.5  mm
     float temperature_F = (((b[6] << 8) | b[5]) - 900) * 0.1f; // -40.0 to +158     degF
 
@@ -94,11 +101,11 @@ static int schou_72543_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_F",
@@ -111,7 +118,7 @@ static char const *const output_fields[] = {
 };
 
 r_device const schou_72543_rain = {
-        .name        = "Schou 72543 Day Rain Gauge, Motonet MTX Rain, MarQuant Rain Gauge",
+        .name        = "Schou 72543 Day Rain Gauge, Motonet MTX Rain, MarQuant Rain Gauge, TFA Dostmann 30.3252.01/47.3006.01 Rain Gauge and Thermometer, ADE WS1907",
         .modulation  = OOK_PULSE_PWM,
         .short_width = 972,
         .long_width  = 2680,

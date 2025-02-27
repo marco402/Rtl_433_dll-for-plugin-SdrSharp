@@ -24,10 +24,10 @@
 #include <limits.h>
 #include "rtl_433.h"
 // _POSIX_HOST_NAME_MAX is broken in gcc-13 at least on MacOS
-#ifndef _POSIX_HOST_NAME_MAX
+//#ifndef _POSIX_HOST_NAME_MAX
 //#warning The limits.h include is missing the _POSIX_HOST_NAME_MAX define.
-#define _POSIX_HOST_NAME_MAX 255
-#endif
+//#define _POSIX_HOST_NAME_MAX 255
+//#endif
 // gethostname() needs _XOPEN_SOURCE 500 on unistd.h
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 500
@@ -51,7 +51,7 @@
     #include <netdb.h>
     #include <netinet/in.h>
 
-    #define SOCKET          int
+    #define SOCKET          int32_t
     #define INVALID_SOCKET  (-1)
     #define closesocket(x)  close(x)
 #endif
@@ -62,7 +62,7 @@
     #define _POSIX_HOST_NAME_MAX  128
     #define perror(str)           ws2_perror(str)
 
-    static void ws2_perror (const char *str)
+    static void ws2_perror (const uint8_t *str)
     {
         if (str && *str)
             fprintf(stderr, "%s: ", str);
@@ -83,13 +83,13 @@ typedef struct {
     SOCKET sock;
 } datagram_client_t;
 
-static int datagram_client_open(datagram_client_t *client, const char *host, const char *port)
+static int32_t datagram_client_open(datagram_client_t *client, const uint8_t *host, const uint8_t *port)
 {
     if (!host || !port)
         return -1;
 
     struct addrinfo hints, *res, *res0;
-    int    error;
+    int32_t    error;
     SOCKET sock;
 
     memset(&hints, 0, sizeof(hints));
@@ -118,8 +118,8 @@ static int datagram_client_open(datagram_client_t *client, const char *host, con
         return -1;
     }
 
-    //int broadcast = 1;
-    //int ret = setsockopt(client->sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+    //int32_t broadcast = 1;
+    //int32_t ret = setsockopt(client->sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
 
     return 0;
 }
@@ -139,9 +139,9 @@ static void datagram_client_close(datagram_client_t *client)
 #endif
 }
 
-static void datagram_client_send(datagram_client_t *client, const char *message, size_t message_len)
+static void datagram_client_send(datagram_client_t *client, const uint8_t *message, size_t message_len)
 {
-    int r =  sendto(client->sock, message, message_len, 0, (struct sockaddr *)&client->addr, client->addr_len);
+    int32_t r =  sendto(client->sock, message,(int32_t) message_len, 0, (struct sockaddr *)&client->addr, client->addr_len);
     if (r == -1) {
         perror("sendto");
     }
@@ -152,17 +152,17 @@ static void datagram_client_send(datagram_client_t *client, const char *message,
 typedef struct {
     struct data_output output;
     datagram_client_t client;
-    int pri;
-    char hostname[_POSIX_HOST_NAME_MAX + 1];
+    int32_t pri;
+    uint8_t hostname[_POSIX_HOST_NAME_MAX + 1];
 } data_output_syslog_t;
 
-static void R_API_CALLCONV data_output_syslog_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_syslog_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_syslog_t *syslog = (data_output_syslog_t *)output;
 
     // we expect a normal message around 500 bytes
     // full stats report would be 12k and we want a max of MTU anyway
-    char message[1024];
+    uint8_t message[1024];
     abuf_t msg = {0};
     abuf_init(&msg, message, sizeof(message));
 
@@ -174,12 +174,12 @@ static void R_API_CALLCONV data_output_syslog_print(data_output_t *output, data_
 #else
     gmtime_r(&now, &tm_info);
 #endif
-    char timestamp[21];
+    uint8_t timestamp[21];
     strftime(timestamp, 21, "%Y-%m-%dT%H:%M:%SZ", &tm_info);
 
     abuf_printf(&msg, "<%d>1 %s %s rtl_433 - - - ", syslog->pri, timestamp, syslog->hostname);
 
-    msg.tail += data_print_jsons(data, msg.tail, msg.left);
+    msg.tail += data_print_jsons(data, msg.tail, msg.left, NULL);
     if (msg.tail >= msg.head + sizeof(message))
         return; // abort on overflow, we don't actually want to send more than fits the MTU
 
@@ -199,7 +199,7 @@ static void R_API_CALLCONV data_output_syslog_free(data_output_t *output)
     free(syslog);
 }
 
-struct data_output *data_output_syslog_create(int log_level, const char *host, const char *port)
+struct data_output *data_output_syslog_create(int32_t log_level, const uint8_t *host, const uint8_t *port)
 {
     data_output_syslog_t *syslog = calloc(1, sizeof(data_output_syslog_t));
     if (!syslog) {
@@ -222,7 +222,7 @@ struct data_output *data_output_syslog_create(int log_level, const char *host, c
     // Severity 5 "Notice", Facility 20 "local use 4"
     syslog->pri = 20 * 8 + 5;
     #ifdef ESP32
-    const char* adapter_hostname = NULL;
+    const uint8_t* adapter_hostname = NULL;
     tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &adapter_hostname);
     if (adapter_hostname) {
         memcpy(syslog->hostname, adapter_hostname, _POSIX_HOST_NAME_MAX);

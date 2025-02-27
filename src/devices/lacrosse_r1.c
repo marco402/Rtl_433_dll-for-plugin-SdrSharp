@@ -99,8 +99,9 @@ Full preamble is `aaaaaaaaaaaaaa d2aa2dd4`.
     d2aa2dd4 0fb220 8a aaaaaa 000 aaa 4e 00000000000000 [weak]
 */
 
-static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // full preamble (LTV-R1) is `fff00000 aaaaaaaa d2aa2dd4`
     // full preamble (LTV-R3, LTV-W1) is `aaaaaaaaaaaaaa d2aa2dd4`
     uint8_t const preamble_pattern[] = {0xd2, 0xaa, 0x2d, 0xd4};
@@ -111,7 +112,7 @@ static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         decoder_logf(decoder, 1, __func__, "Too many rows: %d", bitbuffer->num_rows);
         return DECODE_FAIL_SANITY;
     }
-    int msg_len = bitbuffer->bits_per_row[0];
+    int32_t msg_len = bitbuffer->bits_per_row[row];
     if (msg_len < 200) { // allows shorter preamble for LTV-R3
         decoder_logf(decoder, 1, __func__, "Packet too short: %d bits", msg_len);
         return DECODE_ABORT_LENGTH;
@@ -122,19 +123,18 @@ static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         decoder_logf(decoder, 1, __func__, "packet length: %d", msg_len);
     }
 
-    int offset = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof(preamble_pattern) * 8);
+    int32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
 
-    if (offset >= msg_len) {
+    if (bit_offset >= msg_len) {
         decoder_log(decoder, 1, __func__, "Sync word not found");
         return DECODE_ABORT_EARLY;
     }
 
-    offset += sizeof(preamble_pattern) * 8;
-    bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 20 * 8);
+    bit_offset += sizeof(preamble_pattern) * 8;
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 20 * 8);
 
-    int rev = 1;
-    int chk = crc8(b, 11, 0x31, 0x00);
+    int32_t rev = 1;
+    int32_t chk = crc8(b, 11, 0x31, 0x00);
     if (chk == 0
             && b[4] == 0xaa && b[5] == 0xaa && b[6] == 0xaa
             && (b[8] & 0x0f) == 0x0a && b[9] == 0xaa) {
@@ -151,18 +151,18 @@ static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         }
     }
 
-    decoder_log_bitrow(decoder, 1, __func__, b, bitbuffer->bits_per_row[0] - offset, "");
+    decoder_log_bitrow(decoder, 1, __func__, b, bitbuffer->bits_per_row[row] - bit_offset, "");
 
     // Note that the rain zero value is 00aa00 with a known byte order of HH??LL.
     // We just prepend the middle byte and assume whitening. Let's hope we get feedback someday.
-    int id        = (b[0] << 16) | (b[1] << 8) | b[2];
-    int flags     = (b[3] & 0x31); // masks off knonw bits
-    int batt_low  = (b[3] & 0x80) >> 7;
-    int startup   = (b[3] & 0x40) >> 6;
-    int seq       = (b[3] & 0x0e) >> 1;
-    int raw_rain1 = ((b[5] ^ 0xaa) << 16) | (b[4] << 8) | (b[6]);
-    int raw_rain2 = ((b[8] ^ 0xaa) << 16) | (b[7] << 8) | (b[9]); // only LTV-R3
-    int raw_wind  = (b[7] << 4) | (b[8] >> 4); // only LTV-W1/W2
+    int32_t id        = (b[0] << 16) | (b[1] << 8) | b[2];
+    int32_t flags     = (b[3] & 0x31); // masks off knonw bits
+    int32_t batt_low  = (b[3] & 0x80) >> 7;
+    int32_t startup   = (b[3] & 0x40) >> 6;
+    int32_t seq       = (b[3] & 0x0e) >> 1;
+    int32_t raw_rain1 = ((b[5] ^ 0xaa) << 16) | (b[4] << 8) | (b[6]);
+    int32_t raw_rain2 = ((b[8] ^ 0xaa) << 16) | (b[7] << 8) | (b[9]); // only LTV-R3
+    int32_t raw_wind  = (b[7] << 4) | (b[8] >> 4); // only LTV-W1/W2
 
     // Seems rain is 0.25mm per tip, not sure what rain2 is
     float rain_mm = raw_rain1 * 0.25f;
@@ -187,11 +187,11 @@ static int lacrosse_r1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

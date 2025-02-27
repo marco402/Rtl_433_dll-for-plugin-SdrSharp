@@ -29,19 +29,20 @@ Aligning at [..] (insert 2 bits) we get:
 
 #include "decoder.h"
 
-static int ft004b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ft004b_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     uint8_t *msg;
     float temperature;
     data_t *data;
 
-    if (bitbuffer->bits_per_row[0] != 137 && bitbuffer->bits_per_row[0] != 138) {
+    if (bitbuffer->bits_per_row[row] != 137 && bitbuffer->bits_per_row[row] != 138) {
         return DECODE_ABORT_LENGTH;
     }
 
     /* take the majority of all 46 bits (pattern is sent 3 times) and reverse them */
-    msg = bitbuffer->bb[0];
-    for (int i = 0; i < (46 + 7) / 8; i++) {
+    msg = bitbuffer->bb[row];
+    for (int32_t i = 0; i < (46 + 7) / 8; i++) {
         uint8_t a = bitrow_get_byte(msg, i * 8);
         uint8_t b = bitrow_get_byte(msg, i * 8 + 46);
         uint8_t c = bitrow_get_byte(msg, i * 8 + 46 * 2);
@@ -51,7 +52,7 @@ static int ft004b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (msg[0] != 0xf4)
         return DECODE_FAIL_SANITY;
 
-    int temp_raw = ((msg[4] & 0x7) << 8) | msg[3];
+    int32_t temp_raw = ((msg[4] & 0x7) << 8) | msg[3];
     temperature  = (temp_raw * 0.05f) - 40.0f;
 
     /* clang-format off */
@@ -60,12 +61,14 @@ static int ft004b_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f", DATA_DOUBLE, temperature,
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    uint32_t bit_offset = 0;
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "temperature_C",
         NULL,

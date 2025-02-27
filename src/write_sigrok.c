@@ -26,7 +26,7 @@
 #include "fatal.h"
 #include "write_sigrok.h"
 #include "rtl_433.h"
-void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, unsigned analogs, char const *labels[])
+void write_sigrok(uint8_t const *filename, uint32_t samplerate, uint32_t probes, uint32_t analogs, uint8_t const *labels[])
 {
     // e.g. uses channels
     // U8:LOGIC:logic-1-1
@@ -67,16 +67,16 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
             "total analog=%u\n",
             samplerate / 1000, probes, analogs);
     if (labels) {
-        char const **label = labels;
-        for (unsigned i = 1; i <= probes; ++i)
+        uint8_t const **label = labels;
+        for (uint32_t i = 1; i <= probes; ++i)
             fprintf(fp, "probe%u=%s\n", i, *label++);
-        for (unsigned i = probes + 1; i <= probes + analogs; ++i)
+        for (uint32_t i = probes + 1; i <= probes + analogs; ++i)
             fprintf(fp, "analog%u=%s\n", i, *label++);
     }
     else {
-        for (unsigned i = 1; i <= probes; ++i)
+        for (uint32_t i = 1; i <= probes; ++i)
             fprintf(fp, "probe%u=L%u\n", i, i);
-        for (unsigned i = probes + 1; i <= probes + analogs; ++i)
+        for (uint32_t i = probes + 1; i <= probes + analogs; ++i)
             fprintf(fp, "analog%u=A%u\n", i, i);
     }
 
@@ -91,7 +91,7 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    char cmd_line[MAX_PATH] = "";
+    uint8_t cmd_line[MAX_PATH] = "";
     strcat_s(cmd_line, MAX_PATH, "7z.exe");
     strcat_s(cmd_line, MAX_PATH, " a");
     strcat_s(cmd_line, MAX_PATH, " -bb0 ");
@@ -105,8 +105,8 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
         strcat_s(cmd_line, MAX_PATH, " logic-1-1");
     }
 
-    char str_buf[64];
-    for (unsigned i = probes + 1; i <= probes + analogs; ++i) {
+    uint8_t str_buf[64];
+    for (uint32_t i = probes + 1; i <= probes + analogs; ++i) {
         snprintf(str_buf, sizeof(str_buf), " analog-1-%u-1", i);
         strcat_s(cmd_line, MAX_PATH, str_buf);
     }
@@ -147,10 +147,10 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
     }
 
 #else
-    char *argv[30] = {0};
-    int arg        = 0;
+    uint8_t *argv[30] = {0};
+    int32_t arg        = 0;
     argv[arg++]    = "zip";
-    argv[arg++]    = (char *)filename; // "out.sr"
+    argv[arg++]    = (uint8_t *)filename; // "out.sr"
     argv[arg++]    = "version";
     argv[arg++]    = "metadata";
 
@@ -158,12 +158,12 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
         argv[arg++] = "logic-1-1";
     }
 
-    char *argv_dups[30] = {0}; // store only dups to help the checker match the free()
-    char **argv_analog = &argv[arg];
-    char str_buf[64];
-    for (unsigned i = probes + 1; i <= probes + analogs; ++i) {
+    uint8_t *argv_dups[30] = {0}; // store only dups to help the checker match the free()
+    uint8_t **argv_analog = &argv[arg];
+    uint8_t str_buf[64];
+    for (uint32_t i = probes + 1; i <= probes + analogs; ++i) {
         snprintf(str_buf, sizeof(str_buf), "analog-1-%u-1", i);
-        char* dup = strdup(str_buf);
+        uint8_t* dup = strdup(str_buf);
         if (!dup) {
           FATAL_STRDUP("write_sigrok()");
         }
@@ -171,7 +171,7 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
         argv_dups[arg++] = dup;
     }
 
-    int status = 0;
+    int32_t status = 0;
     pid_t pid = fork();
     if (pid < 0) {
         perror("forking zip");
@@ -180,7 +180,7 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
         // child process because return value zero
         execvp(argv[0], argv);
         // execvp() returns only on error
-        for (int i = 0; i < arg; ++i) {
+        for (int32_t i = 0; i < arg; ++i) {
             fprintf(stderr, "%s ", argv[i]);
         }
         fprintf(stderr, "\n");
@@ -210,26 +210,26 @@ void write_sigrok(char const *filename, unsigned samplerate, unsigned probes, un
             perror("unlinking Sigrok \"logic-1-1\" file");
         }
     }
-    for (unsigned i = 0; i < analogs && argv_analog[i]; ++i) {
+    for (uint32_t i = 0; i < analogs && argv_analog[i]; ++i) {
         if (unlink(argv_analog[i])) {
             perror("unlinking Sigrok \"analog-1-N-1\" file");
         }
     }
-    for (int i = 0; i < arg; ++i) {
+    for (int32_t i = 0; i < arg; ++i) {
         free(argv_dups[i]);
     }
 
 #endif // !_WIN32
 }
 
-void open_pulseview(char const *filename)
+void open_pulseview(uint8_t const *filename)
 {
 #ifdef _WIN32
     fprintf(stderr, "Opening Pulseview not implemented for win32\n");
 #else
-    char *argv[9] = {0};
-    int arg       = 0;
-    char *abspath = realpath(filename, NULL);
+    uint8_t *argv[9] = {0};
+    int32_t arg       = 0;
+    uint8_t *abspath = realpath(filename, NULL);
 #ifdef __APPLE__
     argv[arg++] = "open";
     argv[arg++] = "-b";
@@ -238,7 +238,7 @@ void open_pulseview(char const *filename)
     argv[arg++] = "--new";
     argv[arg++] = "--args";
     argv[arg++] = "-i";
-    argv[arg++] = (char *)abspath;
+    argv[arg++] = (uint8_t *)abspath;
 #else
     argv[arg++] = "pulseview";
     argv[arg++] = "-i";
@@ -246,7 +246,7 @@ void open_pulseview(char const *filename)
 #endif
 
     fprintf(stderr, "Opening Pulseview...\n");
-    int status = 0;
+    int32_t status = 0;
     pid_t pid = fork();
     if (pid < 0) {
         perror("forking pulseview");
@@ -256,7 +256,7 @@ void open_pulseview(char const *filename)
         // child process because return value zero
         execvp(argv[0], argv);
         // execvp() returns only on error
-        for (int i = 0; i < arg; ++i)
+        for (int32_t i = 0; i < arg; ++i)
             fprintf(stderr, "%s ", argv[i]);
         fprintf(stderr, "\n");
         perror("execvp");

@@ -30,16 +30,17 @@ thus the decoder is disabled by default.
 // Actually 37 bits for all but last transmission which is 36 bits
 #define NUM_BITS 36
 
-static int bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int row;
-    int id, battery, rain, button, channel;
-    int temp_raw;
+    int32_t id, battery, rain, button, channel;
+    int32_t temp_raw;
     float temp_c, rainrate;
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 4, NUM_BITS);
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, NUM_BITS);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -60,7 +61,7 @@ static int bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     temp_c   = (temp_raw >> 5) * 0.1f;
 
     rain     = ((b[1] & 0x07) << 4) | b[3]; // either b[1] or the channel above bould be wrong
-    int rest = rain % 25;
+    int32_t rest = rain % 25;
     if (rest % 2)
         rain += ((rest / 2) * 2048);
     else
@@ -74,17 +75,17 @@ static int bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "channel",          "Channel",          DATA_INT,    channel,
             "battery_ok",       "Battery",          DATA_INT,    !battery,
             "transmit",         "Transmit",         DATA_STRING, button ? "MANUAL" : "AUTO", // TODO: delete this
-            "temperature_C",    "Temperature",      DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
-            "rain_rate_mm_h",   "Rain per hour",    DATA_FORMAT, "%.02f mm/h", DATA_DOUBLE, rainrate,
+            "temperature_C",    "Temperature",      DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
+            "rain_rate_mm_h",   "Rain per hour",    DATA_FORMAT, "%.2f mm/h", DATA_DOUBLE, rainrate,
             "button",           "Button",       DATA_INT, button,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

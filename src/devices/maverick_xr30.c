@@ -35,7 +35,7 @@ Payload:
 
 #include "decoder.h"
 
-static int maverick_xr30_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t maverick_xr30_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
 
@@ -58,25 +58,25 @@ static int maverick_xr30_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (b[0] != 0xaa || b[1] != 0xaa || b[2] != 0xaa || b[3] != 0xd3 || b[4] != 0x91 || b[5] != 0xd3 || b[6] != 0x91)
         return DECODE_ABORT_EARLY; // preamble/sync missing
 
-    int sync   = b[3] << 24 | b[4] << 16 | b[5] << 8 | b[6];
-    int flags  = (b[7] & 0xf0) >> 4;
-    int temp1  = (b[7] & 0x0f) << 6 | (b[8] & 0xfc) >> 2;
-    int temp2  = (b[8] & 0x03) << 8 | b[9];
-    int digest = b[10] << 8 | b[11];
+    int32_t sync   = b[3] << 24 | b[4] << 16 | b[5] << 8 | b[6];
+    int32_t flags  = (b[7] & 0xf0) >> 4;
+    int32_t temp1  = (b[7] & 0x0f) << 6 | (b[8] & 0xfc) >> 2;
+    int32_t temp2  = (b[8] & 0x03) << 8 | b[9];
+    int32_t digest = b[10] << 8 | b[11];
 
     float temp1_c = temp1 - 532.0f;
     float temp2_c = temp2 - 532.0f;
 
-    char const *status = "unknown";
+    uint8_t const *status = "unknown";
     if (flags == 0)
         status = "default";
     else if (flags == 5)
         status = "init";
 
     //digest is used to represent a session. This means, we get a new id if a reset or battery exchange is done.
-    int id = lfsr_digest16(&b[7], 3, 0x8810, 0x0d42) ^ digest;
+    int32_t id = lfsr_digest16(&b[7], 3, 0x8810, 0x0d42) ^ digest;
 
-    decoder_logf(decoder, 1, __func__, "sync %08x, flags %0x, t1 %d, t2 %d, digest %04x, chk_data %02x%02x%02x, digest xor'ed: %04x",
+    decoder_logf(decoder, 1, __func__, "sync %08x, flags %x, t1 %d, t2 %d, digest %04x, chk_data %02x%02x%02x, digest xor'ed: %04x",
                 sync, flags, temp1, temp2, digest, b[7], b[8], b[9], id);
 
     /* clang-format off */
@@ -84,16 +84,16 @@ static int maverick_xr30_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",                     DATA_STRING, "Maverick-XR30",
             "id",               "Session_ID",           DATA_INT,    id,
             "status",           "Status",               DATA_STRING, status,
-            "temperature_1_C",  "TemperatureSensor1",   DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp1_c,
-            "temperature_2_C",  "TemperatureSensor2",   DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp2_c,
+            "temperature_1_C",  "TemperatureSensor1",   DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp1_c,
+            "temperature_2_C",  "TemperatureSensor2",   DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp2_c,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "status",

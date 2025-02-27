@@ -9,21 +9,24 @@
     (at your option) any later version.
 */
 
-/**
-Funkbus / Instafunk
-used by Berker, Gira, Jung and may more
+#include "decoder.h"
+
+/** @fn int32_t funkbus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
+Funkbus / Instafunk.
+
+Used by Berker, Gira, Jung and may more
 developed by Insta GmbH.
 
 - Frequency: 433.42MHz
 - Preamble: 4000us
 - Short: 500us
 - Long: 1000us
-- Encoding: Differential Manchester Biphase–Mark (BP-M)
+- Encoding: Differential Manchester Biphase-Mark (BP-M)
 
       __ __       __    __ __    __
      |     |     |  |  |     |  |  |
     _|     |__ __|  |__|     |__|  |__.....
-     |  0  |  0  | 	1  |  0  |  1  |
+     |  0  |  0  |  1  |  0  |  1  |
 
 - Mic: parity + lfsr with 8bit mask 0x8C shifted left by 2 bit
 - Bits: 48
@@ -51,15 +54,9 @@ Data layout:
 Some details can be found by searching  "instafunk RX/TX-Modul pdf".
 */
 
-#include "decoder.h"
-#include <limits.h>
-
-#define BIT_MASK(x) \
-    ((((unsigned)x) >= sizeof(unsigned) * CHAR_BIT) ? (unsigned)-1 : (1U << (x)) - 1)
-
-static uint32_t get_bits_reflect(uint8_t const *bitrow, unsigned start, unsigned len)
+static uint32_t get_bits_reflect(uint8_t const *bitrow, uint32_t start, uint32_t len)
 {
-    unsigned end = start + len - 1;
+    uint32_t end = start + len - 1;
     uint32_t result = 0;
     uint32_t mask   = 1;
     result          = 0;
@@ -69,17 +66,17 @@ static uint32_t get_bits_reflect(uint8_t const *bitrow, unsigned start, unsigned
     return result;
 }
 
-static uint8_t calc_checksum(uint8_t const *bitrow, unsigned len)
+static uint8_t calc_checksum(uint8_t const *bitrow, uint32_t len)
 {
     const uint8_t full_bytes = len / 8;
     const uint8_t bits_left  = len % 8;
 
     uint8_t xor_byte = xor_bytes(bitrow, full_bytes);
-    if (bits_left) {
-        xor_byte ^= bitrow[full_bytes] & ~BIT_MASK(8 - bits_left);
-    }
+    // Mask out all unused lower bits from the last (partial) byte
+    uint8_t mask = 0xff << (8 - bits_left);
+    xor_byte ^= bitrow[full_bytes] & mask;
 
-    const uint8_t xor_nibble = ((xor_byte&0xF0) >> 4) ^ (xor_byte&0x0F);
+    const uint8_t xor_nibble = ((xor_byte & 0xF0) >> 4) ^ (xor_byte & 0x0F);
 
     uint8_t result = 0;
     if (xor_nibble & 0x8) {
@@ -101,37 +98,37 @@ static uint8_t calc_checksum(uint8_t const *bitrow, unsigned len)
     return result;
 }
 
-static int funkbus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t funkbus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int events = 0;
+    int32_t events = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] < 48) {
             return DECODE_ABORT_LENGTH;
         }
 
         uint8_t *b = bitbuffer->bb[row];
 
-        int typ    = get_bits_reflect(b, 0, 4);
-        int subtyp = get_bits_reflect(b, 4, 4);
+        int32_t typ    = get_bits_reflect(b, 0, 4);
+        int32_t subtyp = get_bits_reflect(b, 4, 4);
 
         // only handle packet typ for remotes
         if (typ != 0x4 || subtyp != 0x3) {
             return DECODE_ABORT_EARLY;
         }
 
-        int sn        = get_bits_reflect(b, 8, 20);
-        // int r1        = get_bits_reflect(b, 28, 2); // unknown
-        int bat       = get_bits_reflect(b, 30, 1); // 1 == battery low
-        // int r2        = get_bits_reflect(b, 31, 2); // unknown
-        int command   = get_bits_reflect(b, 33, 3); // button on the remote
-        int group     = get_bits_reflect(b, 36, 2); // remote channel group 0-2 (A-C) are switches, 3 == light scene
-        // int r3        = get_bits_reflect(b, 38, 1); // unknown
-        int action    = get_bits_reflect(b, 39, 2); // STOP, OFF, ON, SCENE
-        int repeat    = get_bits_reflect(b, 41, 1); // 1 == not first send of packet
-        int longpress = get_bits_reflect(b, 42, 1); // longpress of button for (dim up/down, scene learning)
-        int parity    = get_bits_reflect(b, 43, 1); // parity over all bits before
-        int check     = get_bits_reflect(b, 44, 4); // lfsr with 8bit mask 0x8C shifted left by 2 each bit
+        int32_t sn        = get_bits_reflect(b, 8, 20);
+        // int32_t r1        = get_bits_reflect(b, 28, 2); // unknown
+        int32_t bat       = get_bits_reflect(b, 30, 1); // 1 == battery low
+        // int32_t r2        = get_bits_reflect(b, 31, 2); // unknown
+        int32_t command   = get_bits_reflect(b, 33, 3); // button on the remote
+        int32_t group     = get_bits_reflect(b, 36, 2); // remote channel group 0-2 (A-C) are switches, 3 == light scene
+        // int32_t r3        = get_bits_reflect(b, 38, 1); // unknown
+        int32_t action    = get_bits_reflect(b, 39, 2); // STOP, OFF, ON, SCENE
+        int32_t repeat    = get_bits_reflect(b, 41, 1); // 1 == not first send of packet
+        int32_t longpress = get_bits_reflect(b, 42, 1); // longpress of button for (dim up/down, scene learning)
+        int32_t parity    = get_bits_reflect(b, 43, 1); // parity over all bits before
+        int32_t check     = get_bits_reflect(b, 44, 4); // lfsr with 8bit mask 0x8C shifted left by 2 each bit
 
         uint8_t checksum = calc_checksum(b, 43);
         if (check != reflect4(checksum & 0xF) ||
@@ -153,14 +150,14 @@ static int funkbus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         events++;
     }
 
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

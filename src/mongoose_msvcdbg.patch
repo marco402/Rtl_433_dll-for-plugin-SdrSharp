@@ -14,7 +14,7 @@ diff --git a/include/mongoose.h b/include/mongoose.h
 index 57c12af..f2b8891 100644
 --- a/include/mongoose.h
 +++ b/include/mongoose.h
-@@ -227,7 +227,7 @@ typedef int bool;
+@@ -227,7 +227,7 @@ typedef int32_t bool;
  #include <stdbool.h>
  #endif
  
@@ -31,21 +31,21 @@ index 57c12af..f2b8891 100644
 +  void (*_free)(struct mg_iface *iface);
    void (*add_conn)(struct mg_connection *nc);
    void (*remove_conn)(struct mg_connection *nc);
-   time_t (*poll)(struct mg_iface *iface, int timeout_ms);
+   time_t (*poll)(struct mg_iface *iface, int32_t timeout_ms);
 diff --git a/src/mongoose.c b/src/mongoose.c
 index 593f8c6..c68a627 100644
 --- a/src/mongoose.c
 +++ b/src/mongoose.c
 @@ -2577,7 +2577,7 @@ void mg_mgr_free(struct mg_mgr *m) {
    {
-     int i;
+     int32_t i;
      for (i = 0; i < m->num_ifaces; i++) {
 -      m->ifaces[i]->vtable->free(m->ifaces[i]);
 +      m->ifaces[i]->vtable->_free(m->ifaces[i]);
        MG_FREE(m->ifaces[i]);
      }
      MG_FREE(m->ifaces);
-@@ -4494,7 +4494,7 @@ static int mg_socks_if_create_conn(struct mg_connection *c) {
+@@ -4494,7 +4494,7 @@ static int32_t mg_socks_if_create_conn(struct mg_connection *c) {
  }
  
  static void mg_socks_if_destroy_conn(struct mg_connection *c) {

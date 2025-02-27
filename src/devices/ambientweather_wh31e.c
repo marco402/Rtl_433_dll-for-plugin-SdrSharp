@@ -158,30 +158,31 @@ Samples with 0.9V battery (last 3 samples contain 1 manual bucket tip)
 Ecowitt WS68 Anemometer protocol with LUX and UVI.
 
 Units confirmed from issue #2786 , LUX and UVI decoding as well
+Wind unit and decoding from issue #2867
 
 Data layout:
 
-    TYPE:8h ?8h ID:16h LUX:16h BATT:8h WDIR_H:4h 4h8h8h WSPEED:8h WDIR_LO:8h WGUST:8h UVI:8h CRC:8h SUM:8h ?8h4h
+    TYPE:8h ?8h ID:16h LUX:16h BATT:8d ?1b WGUST_MSB:1b WDIR_MSB:1b WSPEED_MSB:1b ?4h 8h8h WSPEED_LSB:8d WDIR_LSB:8h WGUST_LSB:8d UVI:8h CRC:8h SUM:8h ?8h4h
 
 Some payloads:
-    TT ??II II LLLL BB WDH     WS WDLWG UV CCSS ???
-    68 0000 c5 0000 4b 0f ffff 00 5a 00 00 d0af 104
-    68 0000 c5 0000 4b 0f ffff 00 b4 00 00 79b2 102
-    68 0000 c5 0000 4b 0f ffff 7e e0 94 00 75ec 102
-    68 0000 c5 0000 4b 2f ffff 00 0e 00 00 8033 208
-    68 0000 c5 000f 4b 0f ffff 00 2e 00 00 d395 108
-    68 0000 c5 0107 4b 0f ffff 00 2e 00 02 a663 100
+    TT ?? IIII LLLL BB WH f ffff WSL WDL WGL UV CC SS ???
+    68 00 00c5 0000 4b  0 f ffff  00  5a  00 00 d0 af 104
+    68 00 00c5 0000 4b  0 f ffff  00  b4  00 00 79 b2 102
+    68 00 00c5 0000 4b  0 f ffff  7e  e0  94 00 75 ec 102
+    68 00 00c5 0000 4b  2 f ffff  00  0e  00 00 80 33 208
+    68 00 00c5 000f 4b  0 f ffff  00  2e  00 00 d3 95 108
+    68 00 00c5 0107 4b  0 f ffff  00  2e  00 02 a6 63 100
 
 */
 
 #include "decoder.h"
 
-static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int events = 0;
+    int32_t events = 0;
     uint8_t b[18]; // actually only 6/9/17.5 bytes, no indication what the last 5 might be
-    int row;
-    int msg_type;
+    int32_t row;
+    int32_t msg_type;
     uint8_t const wh31e_type_code = 0x30; // 48
     uint8_t const wh31b_type_code = 0x37; // 55
 
@@ -189,7 +190,7 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
         // Validate message and reject it as fast as possible : check for preamble
-        unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
+        uint32_t start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
         // no preamble detected, move to the next row
         if (start_pos == bitbuffer->bits_per_row[row])
             continue; // DECODE_ABORT_EARLY
@@ -211,20 +212,20 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 continue; // DECODE_FAIL_MIC
             }
 
-            int id       = b[1];
-            int batt_low = ((b[2] & 0x04) >> 2);
-            int channel  = ((b[2] & 0x70) >> 4) + 1;
-            int temp_raw = ((b[2] & 0x03) << 8) | (b[3]);
+            int32_t id       = b[1];
+            int32_t batt_low = ((b[2] & 0x04) >> 2);
+            int32_t channel  = ((b[2] & 0x70) >> 4) + 1;
+            int32_t temp_raw = ((b[2] & 0x03) << 8) | (b[3]);
             float temp_c = (temp_raw - 400) * 0.1f;
-            int humidity = b[4];
-            char extra[11];
+            int32_t humidity = b[4];
+            uint8_t extra[11];
             snprintf(extra, sizeof(extra), "%02x%02x%02x%02x%02x", b[6], b[7], b[8], b[9], b[10]);
 
             /* clang-format off */
             data_t *data = data_make(
                     "model",            "",             DATA_COND, msg_type == 0x30, DATA_STRING, "AmbientWeather-WH31E",
                     "model",            "",             DATA_COND, msg_type == 0x37, DATA_STRING, "AmbientWeather-WH31B",
-                    "id" ,              "",             DATA_INT,    id,
+                    "id",               "",             DATA_INT,    id,
                     "channel",          "Channel",      DATA_INT,    channel,
                     "battery_ok",       "Battery",      DATA_INT,    !batt_low,
                     "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
@@ -233,7 +234,7 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
 
@@ -250,29 +251,29 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 continue; // DECODE_FAIL_MIC
             }
 
-            int id      = b[1];
-            int unknown = b[2];
-            int year    = ((b[3] & 0xF0) >> 4) * 10 + (b[3] & 0x0F) + 2000;
-            int month   = ((b[4] & 0x10) >> 4) * 10 + (b[4] & 0x0F);
-            int day     = ((b[5] & 0x30) >> 4) * 10 + (b[5] & 0x0F);
-            int hours   = ((b[6] & 0x30) >> 4) * 10 + (b[6] & 0x0F);
-            int minutes = ((b[7] & 0x70) >> 4) * 10 + (b[7] & 0x0F);
-            int seconds = ((b[8] & 0x70) >> 4) * 10 + (b[8] & 0x0F);
+            int32_t id      = b[1];
+            int32_t unknown = b[2];
+            int32_t year    = ((b[3] & 0xF0) >> 4) * 10 + (b[3] & 0x0F) + 2000;
+            int32_t month   = ((b[4] & 0x10) >> 4) * 10 + (b[4] & 0x0F);
+            int32_t day     = ((b[5] & 0x30) >> 4) * 10 + (b[5] & 0x0F);
+            int32_t hours   = ((b[6] & 0x30) >> 4) * 10 + (b[6] & 0x0F);
+            int32_t minutes = ((b[7] & 0x70) >> 4) * 10 + (b[7] & 0x0F);
+            int32_t seconds = ((b[8] & 0x70) >> 4) * 10 + (b[8] & 0x0F);
 
-            char clock_str[23];
+            uint8_t clock_str[23];
             snprintf(clock_str, sizeof(clock_str), "%04d-%02d-%02dT%02d:%02d:%02dZ",
                     year, month, day, hours, minutes, seconds);
 
             /* clang-format off */
             data_t *data = data_make(
                     "model",        "",             DATA_STRING,    "AmbientWeather-WH31E",
-                    "id" ,          "Station ID",   DATA_INT,       id,
+                    "id",           "Station ID",   DATA_INT,       id,
                     "data",         "Unknown",      DATA_INT,       unknown,
                     "radio_clock",  "Radio Clock",  DATA_STRING,    clock_str,
                     "mic",          "Integrity",    DATA_STRING,    "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
 
@@ -289,11 +290,11 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 continue; // DECODE_FAIL_MIC
             }
 
-            int id         = (b[2] << 8) | b[3];
-            int battery_v  = (b[4] & 0x1f);
-            int battery_lvl = battery_v <= 9 ? 0 : ((battery_v - 9) / 6 * 100); // 0.9V-1.5V is 0-100
-            int rain_raw   = (b[5] << 8) | b[6];
-            char extra[11];
+            int32_t id         = (b[2] << 8) | b[3];
+            int32_t battery_v  = (b[4] & 0x1f);
+            int32_t battery_lvl = battery_v <= 9 ? 0 : ((battery_v - 9) / 6 * 100); // 0.9V-1.5V is 0-100
+            int32_t rain_raw   = (b[5] << 8) | b[6];
+            uint8_t extra[11];
             snprintf(extra, sizeof(extra), "%02x%02x%02x%02x%02x", b[9], b[10], b[11], b[12], b[13]);
 
             if (battery_lvl > 100)
@@ -302,7 +303,7 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             /* clang-format off */
             data_t *data = data_make(
                     "model",            "",                DATA_STRING, "EcoWitt-WH40",
-                    "id" ,              "",                DATA_INT,    id,
+                    "id",               "",                DATA_INT,    id,
                     "battery_V",        "Battery Voltage", DATA_COND, battery_v != 0, DATA_FORMAT, "%f V", DATA_DOUBLE, battery_v * 0.1f,
                     "battery_ok",       "Battery",         DATA_COND, battery_v != 0, DATA_DOUBLE, battery_lvl * 0.01f,
                     "rain_mm",          "Total Rain",      DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain_raw * 0.1,
@@ -311,7 +312,7 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     NULL);
             /* clang-format on */
 
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
 
@@ -328,34 +329,34 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 continue; // DECODE_FAIL_MIC
             }
 
-            int id      = (b[2] << 8) | b[3];
-            int lux_raw = ((b[4] << 8) | b[5]);
-            int light_lux = lux_raw * 10;
-            int batt    = b[6];
-            int batt_ok = batt > 0x20; // wild guess
-            int wspeed  = b[10];
-            int wgust   = b[12];
-            int wdir    = ((b[7] & 0x20) >> 5) | b[11];
-            int uvindex = (int)b[13] * 0.1f;
-            char extra[4];
+            int32_t id      = (b[2] << 8) | b[3];
+            int32_t lux_raw = ((b[4] << 8) | b[5]);
+            int32_t light_lux = lux_raw * 10;
+            int32_t batt    = b[6];
+            int32_t batt_ok = batt > 0x20; // wild guess
+            int32_t wspeed  = ((b[7] & 0x10) << 4) | (b[10]);
+            int32_t wdir    = ((b[7] & 0x20) << 3) | (b[11]);
+            int32_t wgust   = ((b[7] & 0x40) << 2) | (b[12]);
+            int32_t uvindex = (int32_t)(b[13] * 0.1f);
+            uint8_t extra[4];
             snprintf(extra, sizeof(extra), "%02x%01x", b[16], b[17] >> 4);
 
             /* clang-format off */
             data_t *data = data_make(
                     "model",            "",             DATA_STRING, "EcoWitt-WS68",
-                    "id" ,              "",             DATA_INT,    id,
+                    "id",               "",             DATA_INT,    id,
                     "battery_raw",      "Battery Raw",  DATA_INT,    batt,
                     "battery_ok",       "Battery OK",   DATA_INT,    batt_ok,
-                    "light_lux",        "Lux",          DATA_FORMAT, "%u lux",    DATA_INT, light_lux,
-                    "wind_avg_km_h",    "Wind Speed",   DATA_FORMAT, "%.1f km/h", DATA_DOUBLE, (double)wspeed,
-                    "wind_max_km_h",    "Wind Gust",    DATA_FORMAT, "%.1f km/h", DATA_DOUBLE, (double)wgust,
+                    "light_lux",        "Lux",          DATA_FORMAT, "%u lux",   DATA_INT,    light_lux,
+                    "wind_avg_m_s",     "Wind Speed",   DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wspeed * 0.1f,
+                    "wind_max_m_s",     "Wind Gust",    DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wgust * 0.1f,
                     "uvi",              "UVI",          DATA_INT,    uvindex,
                     "wind_dir_deg",     "Wind dir",     DATA_INT,    wdir,
                     "data",             "Extra Data",   DATA_STRING, extra,
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
 
@@ -366,7 +367,7 @@ static int ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",
@@ -377,8 +378,8 @@ static char const *const output_fields[] = {
         "rain_mm",
         "uvi",
         "light_lux",
-        "wind_avg_km_h",
-        "wind_max_km_h",
+        "wind_avg_m_s",
+        "wind_max_m_s",
         "wind_dir_deg",
         "data",
         "radio_clock",

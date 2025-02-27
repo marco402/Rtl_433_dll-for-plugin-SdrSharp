@@ -109,7 +109,7 @@
    Also, when `ordering' is RETURN_IN_ORDER,
    each non-option ARGV-element is returned here.  */
 
-char *optarg;
+uint8_t *optarg;
 
 /* Index in ARGV of the next element to be scanned.
    This is used for communication to and from the caller
@@ -124,33 +124,33 @@ char *optarg;
    how much of ARGV has been scanned so far.  */
 
 /* 1003.2 says this must be 1 before any call.  */
-int optind = 1;
+int32_t optind = 1;
 
 /* Formerly, initialization of getopt depended on optind==0, which
    causes problems with re-calling getopt as programs generally don't
    know that. */
 
-int __getopt_initialized;
+int32_t __getopt_initialized;
 
-/* The next char to be scanned in the option-element
+/* The next uint8_t to be scanned in the option-element
    in which the last option character we returned was found.
    This allows us to pick up the scan where we left off.
 
    If this is zero, or a null string, it means resume the scan
    by advancing to the next ARGV-element.  */
 
-static char *nextchar;
+static uint8_t *nextchar;
 
 /* Callers store zero here to inhibit the error message
    for unrecognized options.  */
 
-int opterr = 1;
+int32_t opterr = 1;
 
 /* Set to an option character which was unrecognized.
    This must be initialized on some systems to avoid linking in the
    system's own getopt implementation.  */
 
-int optopt = '?';
+int32_t optopt = '?';
 
 /* Describe how to deal with options that follow non-option ARGV-elements.
 
@@ -187,7 +187,7 @@ static enum
 } ordering;
 
 /* Value of POSIXLY_CORRECT environment variable.  */
-static char *posixly_correct;
+static uint8_t *posixly_correct;
 
 #ifdef	__GNU_LIBRARY__
 /* We want to avoid inclusion of string.h with non-GNU libraries
@@ -212,19 +212,19 @@ static char *posixly_correct;
 // DDK will complain if you don't use the stdlib defined getenv
 #include <stdlib.h>
 #else
-extern char *getenv ();
+extern uint8_t *getenv ();
 #endif
 #endif
 
-static char *
+static uint8_t *
 my_index (str, chr)
-     const char *str;
-     int chr;
+     const uint8_t *str;
+     int32_t chr;
 {
   while (*str)
     {
       if (*str == chr)
-	return (char *) str;
+	return (uint8_t *) str;
       str++;
     }
   return 0;
@@ -236,9 +236,9 @@ my_index (str, chr)
 /* Note that Motorola Delta 68k R3V7 comes with GCC but not stddef.h.
    That was relevant to code that was here before.  */
 # if (!defined __STDC__ || !__STDC__) && !defined strlen
-/* gcc with -traditional declares the built-in strlen to return int,
+/* gcc with -traditional declares the built-in strlen to return int32_t,
    and has done so at least since version 2.4.5. -- rms.  */
-extern int strlen (const char *);
+extern int32_t strlen (const uint8_t *);
 # endif /* not __STDC__ */
 #endif /* __GNUC__ */
 
@@ -250,32 +250,32 @@ extern int strlen (const char *);
    been skipped.  `first_nonopt' is the index in ARGV of the first of them;
    `last_nonopt' is the index after the last of them.  */
 
-static int first_nonopt;
-static int last_nonopt;
+static int32_t first_nonopt;
+static int32_t last_nonopt;
 
 #ifdef _LIBC
 /* Stored original parameters.
    XXX This is no good solution.  We should rather copy the args so
    that we can compare them later.  But we must not use malloc(3).  */
-extern int __libc_argc;
-extern char **__libc_argv;
+extern int32_t __libc_argc;
+extern uint8_t **__libc_argv;
 
 /* Bash 2.0 gives us an environment variable containing flags
    indicating ARGV elements that should not be considered arguments.  */
 
 # ifdef USE_NONOPTION_FLAGS
 /* Defined in getopt_init.c  */
-extern char *__getopt_nonoption_flags;
+extern uint8_t *__getopt_nonoption_flags;
 
-static int nonoption_flags_max_len;
-static int nonoption_flags_len;
+static int32_t nonoption_flags_max_len;
+static int32_t nonoption_flags_len;
 # endif
 
 # ifdef USE_NONOPTION_FLAGS
 #  define SWAP_FLAGS(ch1, ch2) \
   if (nonoption_flags_len > 0)						      \
     {									      \
-      char __tmp = __getopt_nonoption_flags[ch1];			      \
+      uint8_t __tmp = __getopt_nonoption_flags[ch1];			      \
       __getopt_nonoption_flags[ch1] = __getopt_nonoption_flags[ch2];	      \
       __getopt_nonoption_flags[ch2] = __tmp;				      \
     }
@@ -296,17 +296,17 @@ static int nonoption_flags_len;
    the new indices of the non-options in ARGV after they are moved.  */
 
 #if defined __STDC__ && __STDC__
-static void exchange (char **);
+static void exchange (uint8_t **);
 #endif
 
 static void
 exchange (argv)
-     char **argv;
+     uint8_t **argv;
 {
-  int bottom = first_nonopt;
-  int middle = last_nonopt;
-  int top = optind;
-  char *tem;
+  int32_t bottom = first_nonopt;
+  int32_t middle = last_nonopt;
+  int32_t top = optind;
+  uint8_t *tem;
 
   /* Exchange the shorter segment with the far end of the longer segment.
      That puts the shorter segment into the right place.
@@ -321,7 +321,7 @@ exchange (argv)
     {
       /* We must extend the array.  The user plays games with us and
 	 presents new arguments.  */
-      char *new_str = malloc (top + 1);
+      uint8_t *new_str = malloc (top + 1);
       if (new_str == NULL)
 	nonoption_flags_len = nonoption_flags_max_len = 0;
       else
@@ -340,8 +340,8 @@ exchange (argv)
       if (top - middle > middle - bottom)
 	{
 	  /* Bottom segment is the short one.  */
-	  int len = middle - bottom;
-	  register int i;
+	  int32_t len = middle - bottom;
+	  register int32_t i;
 
 	  /* Swap it with the top part of the top segment.  */
 	  for (i = 0; i < len; i++)
@@ -357,8 +357,8 @@ exchange (argv)
       else
 	{
 	  /* Top segment is the short one.  */
-	  int len = top - middle;
-	  register int i;
+	  int32_t len = top - middle;
+	  register int32_t i;
 
 	  /* Swap it with the bottom part of the bottom segment.  */
 	  for (i = 0; i < len; i++)
@@ -382,13 +382,13 @@ exchange (argv)
 /* Initialize the internal data when the first call is made.  */
 
 #if defined __STDC__ && __STDC__
-static const char *_getopt_initialize (int, char *const *, const char *);
+static const uint8_t *_getopt_initialize (int32_t, uint8_t *const *, const uint8_t *);
 #endif
-static const char *
+static const uint8_t *
 _getopt_initialize (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+     int32_t argc;
+     uint8_t *const *argv;
+     const uint8_t *optstring;
 {
   /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
@@ -428,12 +428,12 @@ _getopt_initialize (argc, argv, optstring)
 	    nonoption_flags_max_len = -1;
 	  else
 	    {
-	      const char *orig_str = __getopt_nonoption_flags;
-	      int len = nonoption_flags_max_len = strlen (orig_str);
+	      const uint8_t *orig_str = __getopt_nonoption_flags;
+	      int32_t len = nonoption_flags_max_len = strlen (orig_str);
 	      if (nonoption_flags_max_len < argc)
 		nonoption_flags_max_len = argc;
 	      __getopt_nonoption_flags =
-		(char *) malloc (nonoption_flags_max_len);
+		(uint8_t *) malloc (nonoption_flags_max_len);
 	      if (__getopt_nonoption_flags == NULL)
 		nonoption_flags_max_len = -1;
 	      else
@@ -473,7 +473,7 @@ _getopt_initialize (argc, argv, optstring)
    return '?' after printing an error message.  If you set `opterr' to
    zero, the error message is suppressed but we still return '?'.
 
-   If a char in OPTSTRING is followed by a colon, that means it wants an arg,
+   If a uint8_t in OPTSTRING is followed by a colon, that means it wants an arg,
    so the following text in the same ARGV-element, or the text of the following
    ARGV-element, is returned in `optarg'.  Two colons mean an option that
    wants an optional arg; if there is text in the current ARGV-element,
@@ -506,16 +506,16 @@ _getopt_initialize (argc, argv, optstring)
    If LONG_ONLY is nonzero, '-' as well as '--' can introduce
    long-named options.  */
 
-int
+int32_t
 _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+     int32_t argc;
+     uint8_t *const *argv;
+     const uint8_t *optstring;
      const struct option *longopts;
-     int *longind;
-     int long_only;
+     int32_t *longind;
+     int32_t long_only;
 {
-  int print_errors = opterr;
+  int32_t print_errors = opterr;
   if (optstring[0] == ':')
     print_errors = 0;
 
@@ -561,7 +561,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	     exchange them so that the options come first.  */
 
 	  if (first_nonopt != last_nonopt && last_nonopt != optind)
-	    exchange ((char **) argv);
+	    exchange ((uint8_t **) argv);
 	  else if (last_nonopt != optind)
 	    first_nonopt = optind;
 
@@ -583,7 +583,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	  optind++;
 
 	  if (first_nonopt != last_nonopt && last_nonopt != optind)
-	    exchange ((char **) argv);
+	    exchange ((uint8_t **) argv);
 	  else if (first_nonopt == last_nonopt)
 	    first_nonopt = optind;
 	  last_nonopt = argc;
@@ -640,13 +640,13 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       && (argv[optind][1] == '-'
 	  || (long_only && (argv[optind][2] || !my_index (optstring, argv[optind][1])))))
     {
-      char *nameend;
+      uint8_t *nameend;
       const struct option *p;
       const struct option *pfound = NULL;
-      int exact = 0;
-      int ambig = 0;
-      int indfound = -1;
-      int option_index;
+      int32_t exact = 0;
+      int32_t ambig = 0;
+      int32_t indfound = -1;
+      int32_t option_index;
 
       for (nameend = nextchar; *nameend && *nameend != '='; nameend++)
 	/* Do nothing.  */ ;
@@ -656,8 +656,8 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
       for (p = longopts, option_index = 0; p->name; p++, option_index++)
 	if (!strncmp (p->name, nextchar, nameend - nextchar))
 	  {
-	    if ((unsigned int) (nameend - nextchar)
-		== (unsigned int) strlen (p->name))
+	    if ((uint32_t) (nameend - nextchar)
+		== (uint32_t) strlen (p->name))
 	      {
 		/* Exact match found.  */
 		pfound = p;
@@ -766,7 +766,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 		fprintf (stderr, _("%s: unrecognized option `%c%s'\n"),
 			 argv[0], argv[optind][0], nextchar);
 	    }
-	  nextchar = (char *) "";
+	  nextchar = (uint8_t *) "";
 	  optind++;
 	  optopt = 0;
 	  return '?';
@@ -776,8 +776,8 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
   /* Look at and handle the next short option-character.  */
 
   {
-    char c = *nextchar++;
-    char *temp = my_index (optstring, c);
+    uint8_t c = *nextchar++;
+    uint8_t *temp = my_index (optstring, c);
 
     /* Increment `optind' when we start to process its last character.  */
     if (*nextchar == '\0')
@@ -801,13 +801,13 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
     /* Convenience. Treat POSIX -W foo same as long option --foo */
     if (temp[0] == 'W' && temp[1] == ';')
       {
-	char *nameend;
+	uint8_t *nameend;
 	const struct option *p;
 	const struct option *pfound = NULL;
-	int exact = 0;
-	int ambig = 0;
-	int indfound = 0;
-	int option_index;
+	int32_t exact = 0;
+	int32_t ambig = 0;
+	int32_t indfound = 0;
+	int32_t option_index;
 
 	/* This is an option that requires an argument.  */
 	if (*nextchar != '\0')
@@ -848,7 +848,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 	for (p = longopts, option_index = 0; p->name; p++, option_index++)
 	  if (!strncmp (p->name, nextchar, nameend - nextchar))
 	    {
-	      if ((unsigned int) (nameend - nextchar) == strlen (p->name))
+	      if ((uint32_t) (nameend - nextchar) == strlen (p->name))
 		{
 		  /* Exact match found.  */
 		  pfound = p;
@@ -972,15 +972,15 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
   }
 }
 
-int
+int32_t
 getopt (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+     int32_t argc;
+     uint8_t *const *argv;
+     const uint8_t *optstring;
 {
   return _getopt_internal (argc, argv, optstring,
 			   (const struct option *) 0,
-			   (int *) 0,
+			   (int32_t *) 0,
 			   0);
 }
 
@@ -991,17 +991,17 @@ getopt (argc, argv, optstring)
 /* Compile with -DTEST to make an executable for use in testing
    the above definition of `getopt'.  */
 
-int
+int32_t
 main (argc, argv)
-     int argc;
-     char **argv;
+     int32_t argc;
+     uint8_t **argv;
 {
-  int c;
-  int digit_optind = 0;
+  int32_t c;
+  int32_t digit_optind = 0;
 
   while (1)
     {
-      int this_option_optind = optind ? optind : 1;
+      int32_t this_option_optind = optind ? optind : 1;
 
       c = getopt (argc, argv, "abc:d:0123456789");
       if (c == -1)

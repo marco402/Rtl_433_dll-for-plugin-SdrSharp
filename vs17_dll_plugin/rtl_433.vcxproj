@@ -1,53 +1,37 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="debug_1788_c|Win32">
-      <Configuration>debug_1788_c</Configuration>
+    <ProjectConfiguration Include="debug_framework|Win32">
+      <Configuration>debug_framework</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="debug_1788_c|x64">
-      <Configuration>debug_1788_c</Configuration>
+    <ProjectConfiguration Include="debug_framework|x64">
+      <Configuration>debug_framework</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug_light_1811|Win32">
-      <Configuration>Debug_light_1811</Configuration>
+    <ProjectConfiguration Include="debug_V1602|Win32">
+      <Configuration>debug_V1602</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug_light_1811|x64">
-      <Configuration>Debug_light_1811</Configuration>
+    <ProjectConfiguration Include="debug_V1602|x64">
+      <Configuration>debug_V1602</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
+    <ProjectConfiguration Include="Debug_x64|x64">
+      <Configuration>Debug_x64</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_x64|x64">
+      <Configuration>Release_x64</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_x32|Win32">
+      <Configuration>Debug_x32</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release_light_1811_5.0|Win32">
-      <Configuration>Release_light_1811_5.0</Configuration>
+    <ProjectConfiguration Include="Release_x32|Win32">
+      <Configuration>Release_x32</Configuration>
       <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release_light_1811_5.0|x64">
-      <Configuration>Release_light_1811_5.0</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release_light_1811|Win32">
-      <Configuration>Release_light_1811</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release_light_1811|x64">
-      <Configuration>Release_light_1811</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -57,78 +41,43 @@
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x32|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1602|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>NotSet</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_x64|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_x32|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>NotSet</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='debug_1788_c|Win32'">
-    <PlatformToolset>v141</PlatformToolset>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='debug_1788_c|x64'">
-    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -138,122 +87,82 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x32|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1602|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_x64|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_x32|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x64-next\Plugins\RTL_433\</OutDir>
+    <TargetExt>.dll</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x32|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x86-next_7\Plugins\RTL_433\</OutDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\SDRSharp\bin\debug\</OutDir>
+    <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x86-next-8\Plugins\RTL_433\</OutDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1602|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>C:\marc\tnt\sources\SDRSharp\SDRSharp\bin\Debug\</OutDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <GenerateManifest>false</GenerateManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_x64|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetExt>.dll</TargetExt>
+    <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x64-next\Plugins\RTL_433\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\..\SDRSharp_1811\bin\</OutDir>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_x32|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x86-next_7\Plugins\RTL_433\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|x64'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|x64'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\SDRSharp\bin\release\</OutDir>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\..\SDRSharp_1811\bin\</OutDir>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\..\SDRSharp_1811\plugins\RTL_433\</OutDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_1788_c|Win32'">
-    <OutDir>C:\SDRSharp_1788</OutDir>
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>RTLSDR;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DYNAMIQUE; noDECIMATE;RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);SYNCHROGRAPH;PRINTFTOSTRUCT</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\rtl-sdr\;..\include\;..\src\;..\..\rtl-sdr\x64\;..\..\libusb\include\libusb\MS64\dll\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS64\dll;..\..\rtl-sdr\x64\</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <TargetMachine>MachineX86</TargetMachine>
+      <TargetMachine>MachineX64</TargetMachine>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|x64'">
-    <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>RTLSDR;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\libusb\MS64\dll;..\..\rtl-sdr\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <TargetMachine>MachineX86</TargetMachine>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-    </Link>
-    <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x32|Win32'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -269,7 +178,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;Netapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <GenerateMapFile>true</GenerateMapFile>
+      <GenerateMapFile>false</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <Version>
@@ -283,7 +192,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_light_1811|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|Win32'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -292,13 +201,14 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <GenerateMapFile>true</GenerateMapFile>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>false</GenerateMapFile>
       <AssemblyDebug>true</AssemblyDebug>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <Version>
@@ -312,7 +222,37 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1602|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
+      <AssemblerOutput>NoListing</AssemblerOutput>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>false</GenerateMapFile>
+      <AssemblyDebug>true</AssemblyDebug>
+      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
+      <Version>
+      </Version>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_x64|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
@@ -320,7 +260,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>RTLSDR;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -333,61 +273,11 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>RTLSDR;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\libusb\MS64\dll;..\..\rtl-sdr\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-    </Link>
-    <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>RTLSDR;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\libusb\MS64\dll;..\..\rtl-sdr\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-    </Link>
-    <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_x32|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
@@ -420,99 +310,18 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
-      <GenerateMapFile>true</GenerateMapFile>
-      <AssemblyDebug>true</AssemblyDebug>
-    </Link>
-    <PostBuildEvent>
-      <Command>
-      </Command>
-    </PostBuildEvent>
-    <ProjectReference>
-      <LinkLibraryDependencies>false</LinkLibraryDependencies>
-    </ProjectReference>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_light_1811_5.0|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
-      <GenerateMapFile>true</GenerateMapFile>
-      <AssemblyDebug>true</AssemblyDebug>
-    </Link>
-    <PostBuildEvent>
-      <Command>COPY ..\..\rtl-sdr\x64\rtlsdr.dll $(TargetDir)
-COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_1788_c|Win32'">
-    <Link>
-      <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
-      <AdditionalDependencies>ws2_32.lib;Netapi32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <GenerateMapFile>true</GenerateMapFile>
-      <AssemblyDebug>true</AssemblyDebug>
-      <SubSystem>Console</SubSystem>
-    </Link>
-    <ClCompile>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <SupportJustMyCode>true</SupportJustMyCode>
-      <Optimization>Disabled</Optimization>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\include\abuf.h" />
     <ClInclude Include="..\include\am_analyze.h" />
     <ClInclude Include="..\include\baseband.h" />
     <ClInclude Include="..\include\bitbuffer.h" />
+    <ClInclude Include="..\include\bit_util.h" />
     <ClInclude Include="..\include\compat_alarm.h" />
     <ClInclude Include="..\include\compat_paths.h" />
     <ClInclude Include="..\include\compat_pthread.h" />
     <ClInclude Include="..\include\compat_time.h" />
     <ClInclude Include="..\include\confparse.h" />
+    <ClInclude Include="..\include\c_util.h" />
     <ClInclude Include="..\include\data.h" />
     <ClInclude Include="..\include\data_tag.h" />
     <ClInclude Include="..\include\decoder.h" />
@@ -520,7 +329,6 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClInclude Include="..\include\dll_rtl_433.h" />
     <ClInclude Include="..\include\fatal.h" />
     <ClInclude Include="..\include\fileformat.h" />
-    <ClInclude Include="..\include\http_server.h" />
     <ClInclude Include="..\include\jsmn.h" />
     <ClInclude Include="..\include\list.h" />
     <ClInclude Include="..\include\logger.h" />
@@ -529,16 +337,12 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClInclude Include="..\include\output_file.h" />
     <ClInclude Include="..\include\output_influx.h" />
     <ClInclude Include="..\include\output_log.h" />
-    <ClInclude Include="..\include\output_mqtt.h" />
-    <ClInclude Include="..\include\output_rtltcp.h" />
     <ClInclude Include="..\include\output_trigger.h" />
-    <ClInclude Include="..\include\output_udp.h" />
     <ClInclude Include="..\include\pulse_analyzer.h" />
     <ClInclude Include="..\include\pulse_data.h" />
     <ClInclude Include="..\include\pulse_detect.h" />
     <ClInclude Include="..\include\pulse_detect_fsk.h" />
     <ClInclude Include="..\include\pulse_slicer.h" />
-    <ClInclude Include="..\include\raw_output.h" />
     <ClInclude Include="..\include\r_api.h" />
     <ClInclude Include="..\include\r_device.h" />
     <ClInclude Include="..\include\r_private.h" />
@@ -549,7 +353,6 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClInclude Include="..\include\samp_grab.h" />
     <ClInclude Include="..\include\sdr.h" />
     <ClInclude Include="..\include\term_ctl.h" />
-    <ClInclude Include="..\include\util.h" />
     <ClInclude Include="..\include\write_sigrok.h" />
     <ClInclude Include="..\src\getopt\getopt.h" />
   </ItemGroup>
@@ -558,6 +361,7 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\am_analyze.c" />
     <ClCompile Include="..\src\baseband.c" />
     <ClCompile Include="..\src\bitbuffer.c" />
+    <ClCompile Include="..\src\bit_util.c" />
     <ClCompile Include="..\src\compat_alarm.c" />
     <ClCompile Include="..\src\compat_paths.c" />
     <ClCompile Include="..\src\compat_time.c" />
@@ -568,7 +372,12 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\abmt.c" />
     <ClCompile Include="..\src\devices\acurite_01185m.c" />
     <ClCompile Include="..\src\devices\ant_antplus.c" />
-    <ClCompile Include="..\src\devices\atech_ws308.c" />
+    <ClCompile Include="..\src\devices\arad_ms_meter.c" />
+    <ClCompile Include="..\src\devices\arexx_ml.c" />
+    <ClCompile Include="..\src\devices\atech_ws308.c">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);noDEBUGGRAPH;SYNCHROGRAPH</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug_x64|Win32'">RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);noDEBUGGRAPH;SYNCHROGRAPH</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="..\src\devices\auriol_4ld5661.c" />
     <ClCompile Include="..\src\devices\auriol_aft77b2.c" />
     <ClCompile Include="..\src\devices\auriol_ahfl.c" />
@@ -576,17 +385,21 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\baldr_rain.c" />
     <ClCompile Include="..\src\devices\bresser_leakage.c" />
     <ClCompile Include="..\src\devices\bresser_lightning.c" />
+    <ClCompile Include="..\src\devices\bresser_st1005h.c" />
     <ClCompile Include="..\src\devices\burnhardbbq.c" />
     <ClCompile Include="..\src\devices\cavius.c" />
     <ClCompile Include="..\src\devices\ced7000.c" />
     <ClCompile Include="..\src\devices\celsia_czc1.c" />
+    <ClCompile Include="..\src\devices\chamberlain_cwpirc.c" />
     <ClCompile Include="..\src\devices\cmr113.c" />
+    <ClCompile Include="..\src\devices\deltadore_x3d.c" />
     <ClCompile Include="..\src\devices\emax.c" />
     <ClCompile Include="..\src\devices\emos_e6016.c" />
     <ClCompile Include="..\src\devices\emos_e6016_rain.c" />
     <ClCompile Include="..\src\devices\enocean_erp1.c" />
     <ClCompile Include="..\src\devices\fineoffset_wh31l.c" />
     <ClCompile Include="..\src\devices\fineoffset_wh45.c" />
+    <ClCompile Include="..\src\devices\fineoffset_wh46.c" />
     <ClCompile Include="..\src\devices\fineoffset_wh55.c" />
     <ClCompile Include="..\src\devices\fineoffset_wn34.c" />
     <ClCompile Include="..\src\devices\fineoffset_ws80.c" />
@@ -594,8 +407,10 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\flowis.c" />
     <ClCompile Include="..\src\devices\funkbus.c" />
     <ClCompile Include="..\src\devices\gasmate_ba1008.c" />
+    <ClCompile Include="..\src\devices\geevon.c" />
     <ClCompile Include="..\src\devices\geo_minim.c" />
     <ClCompile Include="..\src\devices\govee.c" />
+    <ClCompile Include="..\src\devices\gridstream.c" />
     <ClCompile Include="..\src\devices\honeywell_cm921.c" />
     <ClCompile Include="..\src\devices\inkbird_ith20r.c" />
     <ClCompile Include="..\src\devices\jasco.c" />
@@ -605,14 +420,20 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\marlec_solar.c" />
     <ClCompile Include="..\src\devices\maverick_xr30.c" />
     <ClCompile Include="..\src\devices\megacode.c" />
+    <ClCompile Include="..\src\devices\mueller_hotrod.c" />
     <ClCompile Include="..\src\devices\neptune_r900.c" />
+    <ClCompile Include="..\src\devices\new_template.c" />
     <ClCompile Include="..\src\devices\oil_smart.c" />
     <ClCompile Include="..\src\devices\oil_watchman_advanced.c" />
     <ClCompile Include="..\src\devices\proflame2.c" />
+    <ClCompile Include="..\src\devices\quinetic.c" />
     <ClCompile Include="..\src\devices\rainpoint.c" />
     <ClCompile Include="..\src\devices\regency_fan.c" />
     <ClCompile Include="..\src\devices\revolt_nc5462.c" />
+    <ClCompile Include="..\src\devices\revolt_zx7717.c" />
+    <ClCompile Include="..\src\devices\risco_agility.c" />
     <ClCompile Include="..\src\devices\rojaflex.c" />
+    <ClCompile Include="..\src\devices\rosstech_dcu706.c" />
     <ClCompile Include="..\src\devices\rubicson_pool_48942.c" />
     <ClCompile Include="..\src\devices\schou_72543_rain.c" />
     <ClCompile Include="..\src\devices\secplus_v1.c" />
@@ -623,9 +444,15 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\telldus_ft0385r.c" />
     <ClCompile Include="..\src\devices\tfa_14_1504_v2.c" />
     <ClCompile Include="..\src\devices\tfa_marbella.c" />
+    <ClCompile Include="..\src\devices\thermopro_tp28b.c" />
+    <ClCompile Include="..\src\devices\thermopro_tp82xb.c" />
     <ClCompile Include="..\src\devices\thermopro_tx2c.c" />
+    <ClCompile Include="..\src\devices\thermor.c" />
     <ClCompile Include="..\src\devices\tpms_ave.c" />
+    <ClCompile Include="..\src\devices\tpms_bmw.c" />
+    <ClCompile Include="..\src\devices\tpms_bmw_g3.c" />
     <ClCompile Include="..\src\devices\tpms_eezrv.c" />
+    <ClCompile Include="..\src\devices\tpms_gm.c" />
     <ClCompile Include="..\src\devices\tpms_hyundai_vdo.c" />
     <ClCompile Include="..\src\devices\tpms_jansite_solar.c" />
     <ClCompile Include="..\src\devices\tpms_kia.c" />
@@ -635,10 +462,11 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\tpms_truck.c" />
     <ClCompile Include="..\src\devices\tpms_tyreguard400.c" />
     <ClCompile Include="..\src\devices\vauno_en8822c.c" />
+    <ClCompile Include="..\src\devices\vevor_7in1.c" />
+    <ClCompile Include="..\src\devices\watts_thermostat.c" />
     <ClCompile Include="..\src\devices\wec2103.c" />
     <ClCompile Include="..\src\devices\yale_hsa.c" />
     <ClCompile Include="..\src\fileformat.c" />
-    <ClCompile Include="..\src\http_server.c" />
     <ClCompile Include="..\src\jsmn.c" />
     <ClCompile Include="..\src\list.c" />
     <ClCompile Include="..\src\logger.c" />
@@ -647,16 +475,12 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\output_file.c" />
     <ClCompile Include="..\src\output_influx.c" />
     <ClCompile Include="..\src\output_log.c" />
-    <ClCompile Include="..\src\output_mqtt.c" />
-    <ClCompile Include="..\src\output_rtltcp.c" />
     <ClCompile Include="..\src\output_trigger.c" />
-    <ClCompile Include="..\src\output_udp.c" />
     <ClCompile Include="..\src\pulse_analyzer.c" />
     <ClCompile Include="..\src\pulse_data.c" />
     <ClCompile Include="..\src\pulse_detect.c" />
     <ClCompile Include="..\src\pulse_detect_fsk.c" />
     <ClCompile Include="..\src\pulse_slicer.c" />
-    <ClCompile Include="..\src\raw_output.c" />
     <ClCompile Include="..\src\r_api.c" />
     <ClCompile Include="..\src\r_util.c" />
     <ClCompile Include="..\src\rfraw.c" />
@@ -664,7 +488,6 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\samp_grab.c" />
     <ClCompile Include="..\src\sdr.c" />
     <ClCompile Include="..\src\term_ctl.c" />
-    <ClCompile Include="..\src\util.c" />
     <ClCompile Include="..\src\write_sigrok.c" />
     <ClCompile Include="..\src\devices\acurite.c" />
     <ClCompile Include="..\src\devices\akhan_100F14.c" />
@@ -754,7 +577,6 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
     <ClCompile Include="..\src\devices\maverick_et73x.c" />
     <ClCompile Include="..\src\devices\mebus.c" />
     <ClCompile Include="..\src\devices\missil_ml0757.c" />
-    <ClCompile Include="..\src\devices\new_template.c" />
     <ClCompile Include="..\src\devices\newkaku.c" />
     <ClCompile Include="..\src\devices\nexa.c" />
     <ClCompile Include="..\src\devices\nexus.c" />
@@ -818,10 +640,13 @@ COPY ..\..\libusb\MS64\dll\libusb*.dll $(TargetDir)</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\mongoose_bool.patch" />
+    <None Include="..\src\mongoose_broadcast.patch" />
     <None Include="..\src\mongoose_ipv6.patch" />
     <None Include="..\src\mongoose_lenchk.patch" />
+    <None Include="..\src\mongoose_libressl.patch" />
     <None Include="..\src\mongoose_msvcdbg.patch" />
     <None Include="..\src\mongoose_pedantic.patch" />
+    <None Include="..\src\mongoose_sigpipe.patch" />
     <None Include="..\src\mongoose_warn.patch" />
     <None Include="rtl_433.def" />
   </ItemGroup>

@@ -12,16 +12,16 @@
 */
 
 #include "pulse_detect_fsk.h"
-#include "util.h"
+#include "bit_util.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // FSK adaptive frequency estimator constants
-#define FSK_DEFAULT_FM_DELTA 6000       // Default estimate for frequency delta
-#define FSK_EST_SLOW        64          // Constant for slowness of FSK estimators
-#define FSK_EST_FAST        16          // Constant for slowness of FSK estimators
+#define FSK_DEFAULT_FM_DELTA 6000 // Default estimate for frequency delta
+#define FSK_EST_SLOW 64           // Constant for slowness of FSK estimators
+#define FSK_EST_FAST 16           // Constant for slowness of FSK estimators
 
 void pulse_detect_fsk_init(pulse_detect_fsk_t *s)
 {
@@ -30,12 +30,11 @@ void pulse_detect_fsk_init(pulse_detect_fsk_t *s)
     s->var_test_min = INT16_MAX;
     s->skip_samples = 40;
 }
-
-void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses)
+void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter)
 {
-    int const fm_f1_delta = abs(fm_n - s->fm_f1_est); // Get delta from F1 frequency estimate
-    int const fm_f2_delta = abs(fm_n - s->fm_f2_est); // Get delta from F2 frequency estimate
-    s->fsk_pulse_length += 1;
+    int32_t const fm_f1_delta = abs(fm_n - s->fm_f1_est); // Get delta from F1 frequency estimate
+    int32_t const fm_f2_delta = abs(fm_n - s->fm_f2_est); // Get delta from F2 frequency estimate
+    s->fsk_pulse_length ++;
 
     switch(s->fsk_state) {
         case PD_FSK_STATE_INIT:        // Initial frequency - High or low?
@@ -52,7 +51,9 @@ void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t 
                     s->fm_f1_est = fm_n;            // Prime F1 estimate
                     fsk_pulses->pulse[0] = 0;        // Initial frequency was a gap...
                     fsk_pulses->gap[0] = s->fsk_pulse_length;        // Store gap width
-                    fsk_pulses->num_pulses += 1;
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
+                    fsk_pulses->num_pulses ++;
                     s->fsk_pulse_length = 0;
                 }
                 // Negative Frequency delta - Initial frequency was high (pulse)
@@ -60,6 +61,8 @@ void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t 
                     s->fsk_state = PD_FSK_STATE_FL;
                     s->fm_f2_est = fm_n;    // Prime F2 estimate
                     fsk_pulses->pulse[0] = s->fsk_pulse_length;    // Store pulse width
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
                     s->fsk_pulse_length = 0;
                 }
             }
@@ -75,12 +78,14 @@ void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t 
                 // Store if pulse is not too short (suppress spurious)
                 if (s->fsk_pulse_length >= PD_MIN_PULSE_SAMPLES) {
                     fsk_pulses->pulse[fsk_pulses->num_pulses] = s->fsk_pulse_length;    // Store pulse width
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
                     s->fsk_pulse_length = 0;
                 }
                 // Else rewind to last gap
                 else {
                     s->fsk_pulse_length += fsk_pulses->gap[fsk_pulses->num_pulses-1];    // Restore counter
-                    fsk_pulses->num_pulses -= 1;        // Rewind one pulse
+                    fsk_pulses->num_pulses --;        // Rewind one pulse
                     // Are we back to initial frequency? (Was initial frequency a gap?)
                     if ((fsk_pulses->num_pulses == 0) && (fsk_pulses->pulse[0] == 0)) {
                         s->fm_f1_est = s->fm_f2_est;    // Switch back estimates
@@ -104,7 +109,9 @@ void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t 
                 // Store if pulse is not too short (suppress spurious)
                 if (s->fsk_pulse_length >= PD_MIN_PULSE_SAMPLES) {
                     fsk_pulses->gap[fsk_pulses->num_pulses] = s->fsk_pulse_length;    // Store gap width
-                    fsk_pulses->num_pulses += 1;    // Go to next pulse
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
+                    fsk_pulses->num_pulses ++;    // Go to next pulse
                     s->fsk_pulse_length = 0;
                     // When pulse buffer is full go to error state
                     if (fsk_pulses->num_pulses >= PD_MAX_PULSES) {
@@ -140,22 +147,25 @@ void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t 
     } // switch(s->fsk_state)
 }
 
-void pulse_detect_fsk_wrap_up(pulse_detect_fsk_t *s, pulse_data_t *fsk_pulses)
+void pulse_detect_fsk_wrap_up(pulse_detect_fsk_t *s, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter)
 {
     if (fsk_pulses->num_pulses < PD_MAX_PULSES) { // Avoid overflow
-        s->fsk_pulse_length += 1;
+        s->fsk_pulse_length ++;
         if (s->fsk_state == PD_FSK_STATE_FH) {
             fsk_pulses->pulse[fsk_pulses->num_pulses] = s->fsk_pulse_length; // Store last pulse
+            if (!*startFsk && fsk_pulses->num_pulses == 0)
+                *startFsk = counter - s->fsk_pulse_length;
             fsk_pulses->gap[fsk_pulses->num_pulses]   = 0;                   // Zero gap at end
         }
         else {
             fsk_pulses->gap[fsk_pulses->num_pulses] = s->fsk_pulse_length; // Store last gap
+            if (!*startFsk && fsk_pulses->num_pulses == 0)
+                *startFsk = counter - s->fsk_pulse_length;
         }
-        fsk_pulses->num_pulses += 1;
+        fsk_pulses->num_pulses ++;
     }
 }
-
-void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses)
+void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter)
 {
     int16_t mid = 0;
 
@@ -173,7 +183,7 @@ void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *
             s->var_test_min += 10;
         }
 
-        s->fsk_pulse_length += 1;
+        s->fsk_pulse_length ++;
         switch(s->fsk_state) {
             case PD_FSK_STATE_INIT:
                 if (fm_n > mid) {
@@ -187,6 +197,8 @@ void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *
                 if (fm_n < mid) {
                     s->fsk_state = PD_FSK_STATE_FL;
                     fsk_pulses->pulse[fsk_pulses->num_pulses] = s->fsk_pulse_length;
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
                     s->fsk_pulse_length = 0;
                 }
                 s->fm_f2_est += fm_n / FSK_EST_SLOW - s->fm_f2_est / FSK_EST_SLOW; // Slow estimator
@@ -195,7 +207,9 @@ void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *
                 if (fm_n > mid) {
                     s->fsk_state = PD_FSK_STATE_FH;
                     fsk_pulses->gap[fsk_pulses->num_pulses] = s->fsk_pulse_length;
-                    fsk_pulses->num_pulses += 1;
+                    if (!*startFsk && fsk_pulses->num_pulses == 0)
+                        *startFsk = counter - s->fsk_pulse_length;
+                    fsk_pulses->num_pulses ++;
                     s->fsk_pulse_length = 0;
                     // When pulse buffer is full go to error state
                     if (fsk_pulses->num_pulses >= PD_MAX_PULSES) {
@@ -216,6 +230,6 @@ void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *
         }
     }
     if (s->skip_samples > 0) {
-        s->skip_samples -= 1;
+        s->skip_samples --;
     }
 }

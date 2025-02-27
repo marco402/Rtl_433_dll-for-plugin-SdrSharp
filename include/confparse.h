@@ -8,13 +8,13 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-
+#include <stdint.h>
 #ifndef INCLUDE_CONFPARSE_H_
 #define INCLUDE_CONFPARSE_H_
 
 struct conf_keywords {
-    char const *keyword;
-    int key;
+    uint8_t const *keyword;
+    int32_t key;
 };
 
 /** Check if a file exists and can be read.
@@ -22,14 +22,14 @@ struct conf_keywords {
     @param path input file name
     @return 1 if the file exists and is readable, 0 otherwise
 */
-int hasconf(char const *path);
+int32_t hasconf(uint8_t const *path);
 
 /** Open a config file, read contents to memory.
 
     @param path input file name
     @return allocated memory containing the config file
 */
-char *readconf(char const *path);
+uint8_t *readconf(uint8_t const *path);
 
 /** Return the next keyword token and set the optional argument.
 
@@ -38,6 +38,6 @@ char *readconf(char const *path);
     @param arg optional out pointer to a argument string
     @return the next keyword token, -1 otherwise.
 */
-int getconf(char **conf, struct conf_keywords const keywords[], char **arg);
+int32_t getconf(uint8_t **conf, struct conf_keywords const keywords[], uint8_t **arg);
 
 #endif /* INCLUDE_CONFPARSE_H_ */

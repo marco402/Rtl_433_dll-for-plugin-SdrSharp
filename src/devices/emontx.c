@@ -24,7 +24,7 @@ struct emontx {
 };
 #pragma pack(pop)
 
-/** @fn int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 OpenEnergyMonitor.org emonTx sensor protocol.
 
 This is the JeeLibs RF12 packet format as described at
@@ -33,26 +33,26 @@ http://jeelabs.org/2011/06/09/rf12-packet-format-and-design/
 The RFM69 chip misses out the zero bit at the end of the
 0xAA 0xAA 0xAA preamble; the receivers only use it to set
 up the bit timing, and they look for the 0x2D at the start
-of the packet. So we'll do the same — except since we're
+of the packet. So we'll do the same -- except since we're
 specifically looking for emonTx packets, we can require a
 little bit more. We look for a group of 0xD2, and we
 expect the CDA bits in the header to all be zero:
 */
-static unsigned char preamble[3] = { 0xaa, 0xaa, 0xaa };
-static unsigned char pkt_hdr_inverted[3] = { 0xd2, 0x2d, 0xc0 };
-static unsigned char pkt_hdr[3] = { 0x2d, 0xd2, 0x00 };
+static uint8_t const preamble[3] = { 0xaa, 0xaa, 0xaa };
+static uint8_t const pkt_hdr_inverted[3] = { 0xd2, 0x2d, 0xc0 };
+static uint8_t const pkt_hdr[3] = { 0x2d, 0xd2, 0x00 };
 
-static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    unsigned bitpos = 0;
-    int events = 0;
+    uint32_t bitpos = 0;
+    int32_t events = 0;
 
     // Search for only 22 bits to cope with inverted frames and
     // the missing final preamble bit with RFM69 transmissions.
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos,
                       preamble, 22)) < bitbuffer->bits_per_row[0]) {
-        int inverted = 0;
-        unsigned pkt_pos;
+        int32_t inverted = 0;
+        uint32_t pkt_pos;
         uint16_t crc;
         data_t *data;
         union {
@@ -61,7 +61,7 @@ static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         } pkt;
         uint16_t words[14];
         float vrms;
-        unsigned i;
+        uint32_t i;
 
         bitpos += 22;
 
@@ -110,7 +110,7 @@ static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         if (crc != words[13])
             continue; // DECODE_FAIL_MIC
 
-        vrms = (float)words[4] / 100.0;
+        vrms = (float)words[4] / 100.0f;
 
         /* clang-format off */
         data = data_make(
@@ -132,13 +132,13 @@ static int emontx_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",    DATA_STRING, "CRC",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         events++;
     }
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "node",
         "ct1",

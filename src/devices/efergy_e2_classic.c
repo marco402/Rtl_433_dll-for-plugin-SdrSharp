@@ -34,10 +34,11 @@ Test codes:
 
 #include "decoder.h"
 
-static int efergy_e2_classic_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t efergy_e2_classic_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    unsigned num_bits = bitbuffer->bits_per_row[0];
-    uint8_t *bytes = bitbuffer->bb[0];
+    int32_t row      = 0;
+    uint32_t num_bits = bitbuffer->bits_per_row[row];
+    uint8_t *bytes = bitbuffer->bb[row];
     data_t *data;
 
     if (num_bits < 64 || num_bits > 80) {
@@ -49,12 +50,12 @@ static int efergy_e2_classic_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // of the data. The data always starts with 0000 (or 1111 if
     // gaps/pulses are mixed up).
     while ((bytes[0] & 0xf0) != 0xf0 && (bytes[0] & 0xf0) != 0x00) {
-        num_bits -= 1;
+        num_bits --;
         if (num_bits < 64) {
             return DECODE_FAIL_SANITY;
         }
 
-        for (unsigned i = 0; i < (num_bits + 7) / 8; ++i) {
+        for (uint32_t i = 0; i < (num_bits + 7) / 8; ++i) {
             bytes[i] <<= 1;
             bytes[i] |= (bytes[i + 1] & 0x80) >> 7;
         }
@@ -63,20 +64,20 @@ static int efergy_e2_classic_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // Sometimes pulses and gaps are mixed up. If this happens, invert
     // all bytes to get correct interpretation.
     if (bytes[0] & 0xf0) {
-        for (unsigned i = 0; i < 8; ++i) {
+        for (uint32_t i = 0; i < 8; ++i) {
             bytes[i] = ~bytes[i];
         }
     }
 
-    int zero_count = 0;
-    for (int i = 0; i < 8; i++) {
+    int32_t zero_count = 0;
+    for (int32_t i = 0; i < 8; i++) {
         if (bytes[i] == 0)
             zero_count++;
     }
     if (zero_count++ > 5)
         return DECODE_FAIL_SANITY; // too many Null bytes
 
-    unsigned checksum = add_bytes(bytes, 7);
+    uint32_t checksum = add_bytes(bytes, 7);
 
     if (checksum == 0) {
         return DECODE_FAIL_SANITY; // reduce false positives
@@ -105,12 +106,13 @@ static int efergy_e2_classic_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",          "Integrity",        DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

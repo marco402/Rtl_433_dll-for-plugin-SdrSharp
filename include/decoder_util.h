@@ -27,44 +27,57 @@
 #ifndef _Printf_format_string_
 #define _Printf_format_string_
 #endif
-
+uint16_t nbLine;
 /// Create a new r_device, copy from dev_template if not NULL.
-r_device *create_device(r_device const *dev_template);
+///
+/// A user data memory of `user_data_size` bytes will be allocated if not `0`.
+r_device *decoder_create(r_device const *dev_template, uint32_t user_data_size);
 
+/// Get the user data pointer, otherwise NULL.
+///
+/// The memory can be freely used by a decoder and is of the size given to `decoder_create()`.
+void *decoder_user_data(r_device *decoder);
+
+void initDeviceToPlugin();
 /// Output data.
-void decoder_output_data(r_device *decoder, data_t *data);
+void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type);
 
 /// Output log.
-void decoder_output_log(r_device *decoder, int level, data_t *data);
+void decoder_output_log(r_device *decoder, int32_t level, data_t *data);
 
 // be terse, a maximum msg length of 60 characters is supported on the decoder_log_ functions
 // e.g. "FoobarCorp-XY3000: unexpected type code %02x"
 
+/// Get the current verbosity level for the decoder.
+///
+/// @deprecated Should not be used, consider using only `decoder_log_` functions.
+int32_t decoder_verbose(r_device *decoder);
+
 /// Output a log message.
-void decoder_log(r_device *decoder, int level, char const *func, char const *msg);
+void decoder_log(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *msg);
 
 /// Output a formatted log message.
-void decoder_logf(r_device *decoder, int level, char const *func, _Printf_format_string_ const char *format, ...)
+void decoder_logf(r_device *decoder, int32_t level, uint8_t const *func, _Printf_format_string_ const uint8_t *format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 4, 5)))
 #endif
         ;
 
 /// Output a log message with the content of the bitbuffer.
-void decoder_log_bitbuffer(r_device *decoder, int level, char const *func, const bitbuffer_t *bitbuffer, char const *msg);
+void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, uint8_t const *msg);
 
 /// Output a formatted log message with the content of the bitbuffer.
-void decoder_logf_bitbuffer(r_device *decoder, int level, char const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const char *format, ...)
+void decoder_logf_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const uint8_t *format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 5, 6)))
 #endif
         ;
 
 /// Output a log message with the content of a bit row (byte buffer).
-void decoder_log_bitrow(r_device *decoder, int level, char const *func, uint8_t const *bitrow, unsigned bit_len, char const *msg);
+void decoder_log_bitrow(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *bitrow, uint32_t bit_len, uint8_t const *msg);
 
 /// Output a formatted log message with the content of a bit row (byte buffer).
-void decoder_logf_bitrow(r_device *decoder, int level, char const *func, uint8_t const *bitrow, unsigned bit_len, _Printf_format_string_ const char *format, ...)
+void decoder_logf_bitrow(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *bitrow, uint32_t bit_len, _Printf_format_string_ const uint8_t *format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 6, 7)))
 #endif

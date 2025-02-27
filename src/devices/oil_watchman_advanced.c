@@ -44,8 +44,9 @@ Data Layout:
 - 2 byte CRC-16 poly 0x8005 init 0
 */
 
-static int oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                                   = 0;
     static uint8_t const PREAMBLE_SYNC_LENGTH_BITS = 40;
     static uint8_t const HEADER_LENGTH_BITS        = 8;
     static uint8_t const BODY_LENGTH_BITS          = 144;
@@ -53,17 +54,17 @@ static int oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffe
     // include part of preamble, sync-word, length, message identifier
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0xaa, 0x2d, 0xd4, 0x0e};
 
-    unsigned bitpos = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    int32_t events      = 0;
 
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, PREAMBLE_SYNC_LENGTH_BITS + HEADER_LENGTH_BITS)) + BODY_LENGTH_BITS <=
-            bitbuffer->bits_per_row[0]) {
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, PREAMBLE_SYNC_LENGTH_BITS + HEADER_LENGTH_BITS)) + BODY_LENGTH_BITS <=
+            bitbuffer->bits_per_row[row]) {
 
-        bitpos += PREAMBLE_SYNC_LENGTH_BITS;
+        bit_offset += PREAMBLE_SYNC_LENGTH_BITS;
         // get buffer including model ID, as we need this in CRC calculation
         uint8_t msg[19];
-        bitbuffer_extract_bytes(bitbuffer, 0, bitpos, msg, BODY_LENGTH_BITS + HEADER_LENGTH_BITS);
-        bitpos += BODY_LENGTH_BITS + HEADER_LENGTH_BITS;
+        bitbuffer_extract_bytes(bitbuffer, row, bit_offset, msg, BODY_LENGTH_BITS + HEADER_LENGTH_BITS);
+        bit_offset += BODY_LENGTH_BITS + HEADER_LENGTH_BITS;
 
         uint8_t *b = msg;
         if (crc16(b, (BODY_LENGTH_BITS + HEADER_LENGTH_BITS) / 8, 0x8005, 0) != 0) {
@@ -71,7 +72,7 @@ static int oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffe
             return DECODE_FAIL_MIC;
         }
 
-        int mcode = (b[1] << 8) | b[2];
+        int32_t mcode = (b[1] << 8) | b[2];
         if (mcode != 0x0401 && mcode != 0x0106) {
             decoder_logf(decoder, 1, __func__, "Unknown model code %04x", mcode);
             return DECODE_FAIL_SANITY;
@@ -80,7 +81,7 @@ static int oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffe
         // as printed on the side of the unit
         uint32_t serial   = (b[3] << 16) | (b[4] << 8) | b[5];
         uint8_t status    = b[6];
-        float temperature = (b[7] - 0x48) / 2; // truncate to whole number
+        float temperature = (float)((b[7] - 0x48) / 2); // truncate to whole number
         uint8_t depth     = b[10];
 
         /* clang-format off */
@@ -94,13 +95,14 @@ static int oil_watchman_advanced_decode(r_device *decoder, bitbuffer_t *bitbuffe
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         events++;
     }
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

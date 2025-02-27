@@ -48,26 +48,26 @@ Could be merged with existing TX29 decoder... or not.
 #define LACROSSE_TX34_PAYLOAD_BITS 40
 #define LACROSSE_TX34_RAIN_FACTOR 0.222f
 
-static int lacrosse_tx34_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_tx34_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // 20 bits preamble (shifted left): 1010b 0x2DD4
     uint8_t const preamble[] = {0xa2, 0xdd, 0x40};
 
     // process all rows
-    int events = 0;
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    int32_t events = 0;
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
 
         // search for preamble
-        unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 20) + 20;
-        if (start_pos + LACROSSE_TX34_PAYLOAD_BITS > bitbuffer->bits_per_row[row])
+        uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, 20) + 20;
+        if (bit_offset + LACROSSE_TX34_PAYLOAD_BITS > bitbuffer->bits_per_row[row])
             continue; // preamble not found
         decoder_log(decoder, 2, __func__, "LaCrosse IT frame detected");
         // get payload
         uint8_t b[5];
-        bitbuffer_extract_bytes(bitbuffer, row, start_pos, b, LACROSSE_TX34_PAYLOAD_BITS);
+        bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, LACROSSE_TX34_PAYLOAD_BITS);
         // verify CRC
-        int r_crc = b[4];
-        int c_crc = crc8(b, 4, 0x31, 0x00);
+        int32_t r_crc = b[4];
+        int32_t c_crc = crc8(b, 4, 0x31, 0x00);
         if (r_crc != c_crc) {
             // bad CRC: reject IT frame
             decoder_logf(decoder, 1, __func__, "LaCrosse IT frame bad CRC: calculated %02x, received %02x", c_crc, r_crc);
@@ -79,10 +79,10 @@ static int lacrosse_tx34_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             continue; // not a rain gauge...
 
         // decode payload
-        int sensor_id = ((b[0] & 0x0F) << 2) | (b[1] >> 6);
-        int new_batt  = (b[1] & 0x20) >> 5;
-        int low_batt  = (b[1] & 0x10) >> 4;
-        int rain_tick = (b[2] << 8) | b[3];
+        int32_t sensor_id = ((b[0] & 0x0F) << 2) | (b[1] >> 6);
+        int32_t new_batt  = (b[1] & 0x20) >> 5;
+        int32_t low_batt  = (b[1] & 0x10) >> 4;
+        int32_t rain_tick = (b[2] << 8) | b[3];
         float rain_mm = rain_tick * LACROSSE_TX34_RAIN_FACTOR;
 
         /* clang-format off */
@@ -97,13 +97,13 @@ static int lacrosse_tx34_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         events++;
     }
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

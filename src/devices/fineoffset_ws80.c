@@ -2,7 +2,7 @@
     Fine Offset Electronics WS80 weather station.
 
     Copyright (C) 2022 Christian W. Zuckschwerdt <zany@triq.net>
-    Protocol description by @davidefa
+    Protocol description by \@davidefa
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ Packet layout:
 
 */
 
-static int fineoffset_ws80_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_ws80_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0xaa, 0x2d, 0xd4}; // 24 bit, part of preamble and sync word
     uint8_t b[18];
@@ -54,7 +54,7 @@ static int fineoffset_ws80_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Find a data package and extract data buffer
-    unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, 24) + 24;
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, 24) + 24;
     if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // Did not find a big enough package
         decoder_logf_bitbuffer(decoder, 2, __func__, bitbuffer, "short package at %u", bit_offset);
         return DECODE_ABORT_LENGTH;
@@ -74,21 +74,21 @@ static int fineoffset_ws80_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int id          = (b[1] << 16) | (b[2] << 8) | (b[3]);
-    int light_raw   = (b[4] << 8) | (b[5]);
-    float light_lux = light_raw * 10;        // Lux
+    int32_t id          = (b[1] << 16) | (b[2] << 8) | (b[3]);
+    int32_t light_raw   = (b[4] << 8) | (b[5]);
+    float light_lux = (float)(light_raw * 10);        // Lux
     //float light_wm2 = light_raw * 0.078925f; // W/m2
-    int battery_mv  = (b[6] * 20);            // mV
-    int battery_lvl = battery_mv < 1400 ? 0 : (battery_mv - 1400) / 16; // 1.4V-3.0V is 0-100
-    int flags       = b[7]; // to find the wind msb
-    int temp_raw    = ((b[7] & 0x03) << 8) | (b[8]);
+    int32_t battery_mv  = (b[6] * 20);            // mV
+    int32_t battery_lvl = battery_mv < 1400 ? 0 : (battery_mv - 1400) / 16; // 1.4V-3.0V is 0-100
+    int32_t flags       = b[7]; // to find the wind msb
+    int32_t temp_raw    = ((b[7] & 0x03) << 8) | (b[8]);
     float temp_c    = (temp_raw - 400) * 0.1f;
-    int humidity    = (b[9]);
-    int wind_avg    = ((b[7] & 0x10) << 4) | (b[10]);
-    int wind_dir    = ((b[7] & 0x20) << 3) | (b[11]);
-    int wind_max    = ((b[7] & 0x40) << 2) | (b[12]);
-    int uv_index    = (b[13]);
-    int unknown     = (b[14] << 8) | (b[15]);
+    int32_t humidity    = (b[9]);
+    int32_t wind_avg    = ((b[7] & 0x10) << 4) | (b[10]);
+    int32_t wind_dir    = ((b[7] & 0x20) << 3) | (b[11]);
+    int32_t wind_max    = ((b[7] & 0x40) << 2) | (b[12]);
+    int32_t uv_index    = (b[13]);
+    int32_t unknown     = (b[14] << 8) | (b[15]);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -109,11 +109,11 @@ static int fineoffset_ws80_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

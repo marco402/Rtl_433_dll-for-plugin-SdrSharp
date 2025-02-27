@@ -27,9 +27,9 @@
 #define PATH_SEPARATOR '/'
 #endif
 
-char const *file_basename(char const *path)
+uint8_t const *file_basename(uint8_t const *path)
 {
-    char const *p = strrchr(path, PATH_SEPARATOR);
+    uint8_t const *p = strrchr(path, PATH_SEPARATOR);
     if (p)
         return p + 1;
     else
@@ -75,7 +75,7 @@ void file_info_check_write(file_info_t *info)
     }
 }
 
-char const *file_info_string(file_info_t *info)
+uint8_t const *file_info_string(file_info_t *info)
 {
     switch (info->format) {
     case CU8_IQ:    return "CU8 IQ (2ch uint8)";
@@ -125,16 +125,16 @@ static uint32_t file_type_guess_auto_format(uint32_t type)
     else return type;
 }
 
-static void file_type(char const *filename, file_info_t *info)
+static void file_type(uint8_t const *filename, file_info_t *info)
 {
     if (!filename || !*filename) {
         return;
     }
 
-    char const *p = filename;
+    uint8_t const *p = filename;
     while (*p) {
         if (*p >= '0' && *p <= '9') {
-            char const *n = p; // number starts here
+            uint8_t const *n = p; // number starts here
             while (*p >= '0' && *p <= '9')
                 ++p;
             if (*p == '.') {
@@ -145,7 +145,7 @@ static void file_type(char const *filename, file_info_t *info)
                 while (*p >= '0' && *p <= '9')
                     ++p;
             }
-            char const *s = p; // number ends and unit starts here
+            uint8_t const *s = p; // number ends and unit starts here
             while ((*p >= 'A' && *p <= 'Z')
                     || (*p >= 'a' && *p <= 'z'))
                 ++p;
@@ -166,16 +166,16 @@ static void file_type(char const *filename, file_info_t *info)
                 scale *= 1e9;
                 break;
             }
-            if (len == 1 && !strncasecmp("M", s, 1)) info->center_frequency = num * 1e6;
-            else if (len == 1 && !strncasecmp("k", s, 1)) info->sample_rate = num * 1e3;
-            else if (len == 2 && !strncasecmp("Hz", s, 2)) info->center_frequency = num;
-            else if (len == 3 && !strncasecmp("sps", s, 3)) info->sample_rate = num;
-            else if (len == 3 && !strncasecmp("Hz", s+1, 2) && scale > 1.0) info->center_frequency = num * scale;
-            else if (len == 4 && !strncasecmp("sps", s+1, 3) && scale > 1.0) info->sample_rate = num * scale;
+            if (len == 1 && !strncasecmp("M", s, 1)) info->center_frequency = (uint32_t)(num * 1e6);
+            else if (len == 1 && !strncasecmp("k", s, 1)) info->sample_rate = (uint32_t)(num * 1e3);
+            else if (len == 2 && !strncasecmp("Hz", s, 2)) info->center_frequency = (uint32_t)(num);
+            else if (len == 3 && !strncasecmp("sps", s, 3)) info->sample_rate = (uint32_t)(num);
+            else if (len == 3 && !strncasecmp("Hz", s+1, 2) && scale > 1.0) info->center_frequency = (uint32_t)(num * scale);
+            else if (len == 4 && !strncasecmp("sps", s+1, 3) && scale > 1.0) info->sample_rate = (uint32_t)(num * scale);
             //fprintf(stderr, "Got number %g, f is %u, s is %u\n", num, info->center_frequency, info->sample_rate);
         } else if ((*p >= 'A' && *p <= 'Z')
                 || (*p >= 'a' && *p <= 'z')) {
-            char const *t = p; // type starts here
+            uint8_t const *t = p; // type starts here
             while ((*p >= '0' && *p <= '9')
                     || (*p >= 'A' && *p <= 'Z')
                     || (*p >= 'a' && *p <= 'z'))
@@ -208,16 +208,16 @@ static void file_type(char const *filename, file_info_t *info)
             else if (len == 4 && !strncasecmp("complex", t, 7)) file_type_set_format(&info->format, F_CF32); // compat
             //else fprintf(stderr, "Skipping type (len %ld) %s\n", len, t);
         } else {
-            p++; // skip non-alphanum char otherwise
+            p++; // skip non-alphanum uint8_t otherwise
         }
     }
 }
 
 // return the last colon not followed by a backslash, otherwise NULL
-static char const *last_plain_colon(char const *p)
+static uint8_t const *last_plain_colon(uint8_t const *p)
 {
-    char const *found = NULL;
-    char const *next = strchr(p, ':');
+    uint8_t const *found = NULL;
+    uint8_t const *next = strchr(p, ':');
     while (next && next[1] != '\\') {
         found = next;
         next = strchr(next+1, ':');
@@ -249,7 +249,7 @@ overrides, e.g.: am:s16:path/filename.ext
 other styles are detected but discouraged, e.g.:
   am-s16:path/filename.ext, am.s16:path/filename.ext, path/filename.am_s16
 */
-int file_info_parse_filename(file_info_t *info, char const *filename)
+int32_t file_info_parse_filename(file_info_t *info, uint8_t const *filename)
 {
     if (!filename) {
         return 0;
@@ -257,10 +257,10 @@ int file_info_parse_filename(file_info_t *info, char const *filename)
 
     info->spec = filename;
 
-    char const *p = last_plain_colon(filename);
+    uint8_t const *p = last_plain_colon(filename);
     if (p && p - filename < 64) {
         size_t len = p - filename;
-        char forced[64];
+        uint8_t forced[64];
         memcpy(forced, filename, len);
         forced[len] = '\0';
         p++;
@@ -278,10 +278,10 @@ int file_info_parse_filename(file_info_t *info, char const *filename)
 
 // Unit testing
 #ifdef _TEST
-static void assert_file_type(int check, char const *spec)
+static void assert_file_type(int32_t check, uint8_t const *spec)
 {
     file_info_t info = {0};
-    int ret = file_info_parse_filename(&info, spec);
+    int32_t ret = file_info_parse_filename(&info, spec);
     if (check != ret) {
         fprintf(stderr, "\nTEST failed: determine_file_type(\"%s\", &foo) = %8x == %8x\n", spec, ret, check);
     } else {
@@ -289,7 +289,7 @@ static void assert_file_type(int check, char const *spec)
     }
 }
 
-static void assert_str_equal(char const *a, char const *b)
+static void assert_str_equal(uint8_t const *a, uint8_t const *b)
 {
     if (a != b && (!a || !b || strcmp(a, b))) {
         fprintf(stderr, "\nTEST failed: \"%s\" == \"%s\"\n", a, b);
@@ -298,7 +298,7 @@ static void assert_str_equal(char const *a, char const *b)
     }
 }
 
-int main(void)
+int32_t main(void)
 {
     fprintf(stderr, "Testing:\n");
 

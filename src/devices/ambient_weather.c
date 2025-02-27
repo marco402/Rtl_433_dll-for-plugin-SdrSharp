@@ -40,17 +40,17 @@ xxxxMMMM IIIIIIII BCCCTTTT TTTTTTTT HHHHHHHH MMMMMMMM
 
 #include "decoder.h"
 
-static int ambient_weather_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t ambient_weather_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset,int32_t startPulses, uint16_t package_type)
 {
     uint8_t b[6];
-    int deviceID;
-    int isBatteryLow;
-    int channel;
+    int32_t deviceID;
+    int32_t isBatteryLow;
+    int32_t channel;
     float temperature;
-    int humidity;
+    int32_t humidity;
     data_t *data;
 
-    bitbuffer_extract_bytes(bitbuffer, row, bitpos, b, 6 * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 6 * 8);
 
     uint8_t expected   = b[5];
     uint8_t calculated = lfsr_digest8(b, 5, 0x98, 0x3e) ^ 0x64;
@@ -60,11 +60,11 @@ static int ambient_weather_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
         return DECODE_FAIL_MIC;
     }
 
-    // int model_number = b[0] & 0x0F; // fixed 0x05, at least for "SwitchDoc Labs F016TH"
+    // int32_t model_number = b[0] & 0x0F; // fixed 0x05, at least for "SwitchDoc Labs F016TH"
     deviceID     = b[1];
     isBatteryLow = (b[2] & 0x80) != 0; // if not zero, battery is low
     channel      = ((b[2] & 0x70) >> 4) + 1;
-    int temp_f   = ((b[2] & 0x0f) << 8) | b[3];
+    int32_t temp_f   = ((b[2] & 0x0f) << 8) | b[3];
     temperature  = (temp_f - 400) * 0.1f;
     humidity     = b[4];
 
@@ -112,7 +112,8 @@ static int ambient_weather_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
@@ -120,7 +121,7 @@ static int ambient_weather_decode(r_device *decoder, bitbuffer_t *bitbuffer, uns
 Ambient Weather F007TH Thermo-Hygrometer.
 @sa ambient_weather_decode()
 */
-static int ambient_weather_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ambient_weather_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // three repeats without gap
     // full preamble is 0x00145 (the last bits might not be fixed, e.g. 0x00146)
@@ -128,27 +129,27 @@ static int ambient_weather_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t const preamble_pattern[2]  = {0x01, 0x45}; // 12 bits
     uint8_t const preamble_inverted[2] = {0xfd, 0x45}; // 12 bits
 
-    int row;
-    unsigned bitpos;
-    int ret = 0;
+    int32_t row=0;
+    uint32_t bit_offset;
+    int32_t ret = 0;
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        bitpos = 0;
+        bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
-        while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos, preamble_pattern, 12)) + 8 + 6 * 8 <=
+        while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 12)) + 8 + 6 * 8 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = ambient_weather_decode(decoder, bitbuffer, row, bitpos + 8);
+            ret = ambient_weather_decode(decoder, bitbuffer, row, bit_offset + 8, startPulses, package_type);
             if (ret > 0)
                 return ret; // for now, break after first successful message
-            bitpos += 16;
+            bit_offset += 16;
         }
-        bitpos = 0;
-        while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos, preamble_inverted, 12)) + 8 + 6 * 8 <=
+        bit_offset = 0;
+        while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_inverted, 12)) + 8 + 6 * 8 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = ambient_weather_decode(decoder, bitbuffer, row, bitpos + 8);
+            ret = ambient_weather_decode(decoder, bitbuffer, row, bit_offset + 8, startPulses, package_type);
             if (ret > 0)
                 return ret; // for now, break after first successful message
-            bitpos += 15;
+            bit_offset += 15;
         }
     }
 
@@ -157,7 +158,7 @@ static int ambient_weather_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

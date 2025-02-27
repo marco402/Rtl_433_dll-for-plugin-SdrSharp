@@ -34,31 +34,34 @@ Data layout:
 #define NUM_BITS_DATA (169)
 #define NUM_BITS_TOTAL (201)
 
-static int ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t decoded = { 0 };
-    int ret = 0;
-    int bitpos = 0;
+    int32_t ret = 0;
+    int32_t bit_offset = 0;
     uint8_t *b;
 
     /* Find row repeated at least twice */
-    int row = bitbuffer_find_repeated_row(bitbuffer, 2, 6*16+3*8);
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 6*16+3*8);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
     /* Search for 24 bit sync pattern */
     uint8_t const sync_pattern[3] = {0xaa, 0x4d, 0x5e};
-    bitpos = bitbuffer_search(bitbuffer, row, bitpos, sync_pattern, 24) + 24;
+    bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, sync_pattern, 24) + 24;
 
-    if (bitpos >= bitbuffer->bits_per_row[row]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY;
     }
 
     bitbuffer_invert(bitbuffer);
 
     /* Check and decode the Manchester bits */
-    ret = bitbuffer_manchester_decode(bitbuffer, row, bitpos, &decoded, NUM_BITS_DATA);
+    ret = bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &decoded, NUM_BITS_DATA);
     if (ret != NUM_BITS_TOTAL + 1) {
         decoder_log(decoder, 2, __func__, "invalid Manchester data");
         return DECODE_FAIL_MIC;
@@ -74,10 +77,10 @@ static int ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     reflect_nibbles(b, ret / 8);
 
     /* Read the values */
-    int id = (b[1] & 0xF) * 1000 + (b[1] >> 4) * 100 + (b[0] & 0xF) * 10 + (b[0] >> 4);
-    int count = (b[2] & 0xF) * 10 + (b[2] >> 4);
-    float final = (b[5] >> 4) * 100 + (b[4] & 0xF) * 10 + (b[4] >> 4) + (b[3] & 0xF) * 0.1 + (b[3] >> 4) * 0.01;
-    float split = (b[7] & 0xF) * 100 + (b[7] >> 4) * 10 + (b[6] & 0xF) + (b[6] >> 4) * 0.1 + (b[5] & 0xF) * 0.01;
+    int32_t id = (b[1] & 0xF) * 1000 + (b[1] >> 4) * 100 + (b[0] & 0xF) * 10 + (b[0] >> 4);
+    int32_t count = (b[2] & 0xF) * 10 + (b[2] >> 4);
+    float final = (float) ((b[5] >> 4) * 100 + (b[4] & 0xF) * 10 + (b[4] >> 4) + (b[3] & 0xF) * 0.1 + (b[3] >> 4) * 0.01);
+    float split =(float) ((b[7] & 0xF) * 100 + (b[7] >> 4) * 10 + (b[6] & 0xF) + (b[6] >> 4) * 0.1 + (b[5] & 0xF) * 0.01);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -89,11 +92,12 @@ static int ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "count",

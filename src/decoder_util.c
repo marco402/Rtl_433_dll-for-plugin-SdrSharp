@@ -13,44 +13,105 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "fatal.h"
-
 // create decoder functions
-
-r_device *create_device(r_device const *dev_template)
+#define OOK_EST_LOW_RATIO 1024           // Constant for slowness of OOK low level (noise) estimator (very slow)
+r_device *decoder_create(r_device const *dev_template, uint32_t user_data_size)
 {
-    r_device *r_dev = malloc(sizeof (*r_dev));
-    if (!r_dev) {
-        WARN_MALLOC("create_device()");
+	r_device *r_dev = calloc(1, sizeof(*r_dev));
+	if (!r_dev) {
+		WARN_MALLOC("decoder_create()");
+
         return NULL; // NOTE: returns NULL on alloc failure.
     }
     if (dev_template)
         *r_dev = *dev_template; // copy
-
+	if (user_data_size) {
+		r_dev->decode_ctx = calloc(1, user_data_size);
+		if (!r_dev->decode_ctx) {
+			WARN_MALLOC("decoder_create()");
+			free(r_dev);
+			return NULL; // NOTE: returns NULL on alloc failure.
+		}
+	}
     return r_dev;
 }
-
+void *decoder_user_data(r_device *decoder)
+{
+	return decoder->decode_ctx;
+}
 // output functions
 
-void decoder_output_log(r_device *decoder, int level, data_t *data)
+void decoder_output_log(r_device *decoder, int32_t level, data_t *data)
 {
     decoder->log_fn(decoder, level, data);
 }
-
-void decoder_output_data(r_device *decoder, data_t *data)
+static defDeviceToPlugin deviceToPlugin;
+void initDeviceToPlugin() 
 {
-    decoder->output_fn(decoder, data);
+	nbLine = NBLINES;
+	if (deviceToPlugin.Value_Device == NULL)
+	{
+		deviceToPlugin.Value_Device = (uint8_t **)calloc(nbLine, sizeof(intptr_t));
+		for (int32_t i = 0; i < nbLine; i++) {
+			deviceToPlugin.Value_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+		}
+		deviceToPlugin.Key_Device = (uint8_t **)calloc(nbLine, sizeof(intptr_t));
+		for (int32_t i = 0; i < nbLine; i++) {
+			deviceToPlugin.Key_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+		}
+	}
+}
+
+void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type)
+{
+    for (int32_t i = 0; i < nbLine; i++) {
+        strcpy((char *)deviceToPlugin.Key_Device[i], "");
+        strcpy((char *)deviceToPlugin.Value_Device[i], "");
+    }
+	deviceToPlugin.package_type = package_type;
+
+// ********************part display**************************
+	//display only use row
+	deviceToPlugin.lenForDisplay = bitbuffer->len_rows[row];
+	deviceToPlugin.startForDisplay = startPulses;
+	//decal startForDisplay of all row before use row
+	if (row < bitbuffer->num_rows && row > 0)
+	{
+		for (int32_t i = 0; i < row; i++)
+			deviceToPlugin.startForDisplay += bitbuffer->len_rows[i];
+	}
+// ********************part record***************************
+	//   lost first repeat with atech ---> put nbRepeat to 0 in atech  
+	deviceToPlugin.startForRecord = deviceToPlugin.startForDisplay -  OOK_EST_LOW_RATIO;  //2048  ;  replay atech - 1024 -1024 et
+	deviceToPlugin.lenForRecord = bitbuffer->len_rows[row] +  OOK_EST_LOW_RATIO;   //2048   + 1024->ajoute 1 entetes a la fin =>pb synchro(Acurite-3n1); + 1024 for atech(196) no for 3 & 138
+	//add repeat
+	if(nbRepeat>0)
+	{
+		if (bitbuffer->num_rows >= (uint16_t)(row + nbRepeat))
+		{
+			for (uint16_t r = row + 1; r < (uint16_t)(row + nbRepeat); r++)
+				deviceToPlugin.lenForRecord += bitbuffer->len_rows[r];
+		}
+	}
+ 	// *******************************************************
+	deviceToPlugin.startForDisplay *= 2;    //2 for IQ
+	deviceToPlugin.lenForDisplay *= 2;
+	deviceToPlugin.lenForRecord *= 2;
+	deviceToPlugin.startForRecord *= 2;
+
+    decoder->output_fn(decoder, data, &deviceToPlugin); //-->data_acquired_handler
 }
 
 // helper
 
-static char *bitrow_asprint_code(uint8_t const *bitrow, unsigned bit_len)
+static uint8_t *bitrow_asprint_code(uint8_t const *bitrow, uint32_t bit_len)
 {
-    char *row_code;
-    char row_bytes[BITBUF_ROWS * BITBUF_COLS * 2 + 1]; // TODO: this is a lot of stack
+    uint8_t *row_code;
+    uint8_t row_bytes[BITBUF_ROWS * BITBUF_COLS * 2 + 1]; // TODO: this is a lot of stack
 
     row_bytes[0] = '\0';
     // print byte-wide
-    for (unsigned col = 0; col < (unsigned)(bit_len + 7) / 8; ++col) {
+    for (uint32_t col = 0; col < (uint32_t)(bit_len + 7) / 8; ++col) {
         sprintf(&row_bytes[2 * col], "%02x", bitrow[col]);
     }
     // remove last nibble if needed
@@ -72,9 +133,9 @@ static char *bitrow_asprint_code(uint8_t const *bitrow, unsigned bit_len)
     return row_code;
 }
 
-static char *bitrow_asprint_bits(uint8_t const *bitrow, unsigned bit_len)
+static uint8_t *bitrow_asprint_bits(uint8_t const *bitrow, uint32_t bit_len)
 {
-    char *row_bits, *p;
+    uint8_t *row_bits, *p;
 
     p = row_bits = malloc(bit_len + bit_len / 4 + 1); // "1..\0" (1 space per nibble)
     if (!row_bits) {
@@ -83,7 +144,7 @@ static char *bitrow_asprint_bits(uint8_t const *bitrow, unsigned bit_len)
     }
 
     // print bit-wide with a space every nibble
-    for (unsigned i = 0; i < bit_len; ++i) {
+    for (uint32_t i = 0; i < bit_len; ++i) {
         if (i > 0 && i % 4 == 0) {
             *p++ = ' ';
         }
@@ -100,8 +161,11 @@ static char *bitrow_asprint_bits(uint8_t const *bitrow, unsigned bit_len)
 }
 
 // variadic output functions
-
-void decoder_log(r_device *decoder, int level, char const *func, char const *msg)
+int32_t decoder_verbose(r_device *decoder)
+{
+	return decoder->verbose;
+}
+void decoder_log(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *msg)
 {
     if (decoder->verbose >= level) {
         // note that decoder levels start at LOG_WARNING
@@ -118,136 +182,137 @@ void decoder_log(r_device *decoder, int level, char const *func, char const *msg
     }
 }
 
-void decoder_logf(r_device *decoder, int level, char const *func, _Printf_format_string_ const char *format, ...)
+void decoder_logf(r_device *decoder, int32_t level, uint8_t const *func, _Printf_format_string_ const uint8_t *format, ...)
 {
-    if (decoder->verbose >= level) {
-        char msg[60]; // fixed length limit
-        va_list ap;
-        va_start(ap, format);
-        vsnprintf(msg, sizeof(msg), format, ap);
-        va_end(ap);
+	return;
+    //if (decoder->verbose >= level) {
+    //    uint8_t msg[60]; // fixed length limit
+    //    va_list ap;
+    //    va_start(ap, format);
+    //    vsnprintf(msg, sizeof(msg), format, ap);
+    //    va_end(ap);
 
-        decoder_log(decoder, level, func, msg);
-    }
+    //    decoder_log(decoder, level, func, msg);
+    //}
 }
 
-void decoder_log_bitbuffer(r_device *decoder, int level, char const *func, const bitbuffer_t *bitbuffer, char const *msg)
+void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, uint8_t const *msg)
 {
-    if (decoder->verbose >= level) {
-        // note that decoder levels start at LOG_WARNING
-        level += 4;
+	return;
+   // if (decoder->verbose >= level) {
+   //     // note that decoder levels start at LOG_WARNING
+   //     level += 4;
 
-        char *row_codes[BITBUF_ROWS] = {0};
-        char *row_bits[BITBUF_ROWS] = {0};
+   //     uint8_t *row_codes[BITBUF_ROWS] = {0};
+   //     uint8_t *row_bits[BITBUF_ROWS]  = {0};
 
-        unsigned num_rows = bitbuffer->num_rows;
-        for (unsigned i = 0; i < num_rows; i++) {
-            row_codes[i] = bitrow_asprint_code(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+   //     uint32_t num_rows = bitbuffer->num_rows;
+   //     for (uint32_t i = 0; i < num_rows; i++) {
+   //         row_codes[i] = bitrow_asprint_code(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
 
-            if (decoder->verbose_bits) {
-                row_bits[i] = bitrow_asprint_bits(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
-            }
-        }
+   //         if (decoder->verbose_bits) {
+   //             row_bits[i] = bitrow_asprint_bits(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
+   //         }
+   //     }
 
-        /* clang-format off */
-        data_t *data = data_make(
-                "src",     "",     DATA_STRING, func,
-                "lvl",      "",     DATA_INT,    level,
-                "msg",      "",     DATA_STRING, msg,
-                "num_rows", "",     DATA_INT, num_rows,
-                "codes",    "",     DATA_ARRAY, data_array(num_rows, DATA_STRING, row_codes),
-                NULL);
-        /* clang-format on */
+   //     /* clang-format off */
+   //     data_t *data = data_make(
+   //             "src",     "",     DATA_STRING, func,
+   //             "lvl",      "",     DATA_INT,    level,
+   //             "msg",      "",     DATA_STRING, msg,
+   //             "num_rows", "",     DATA_INT, num_rows,
+   //             "codes",    "",     DATA_ARRAY, data_array(num_rows, DATA_STRING, row_codes),
+   //             NULL);
+   //     /* clang-format on */
 
-        if (decoder->verbose_bits) {
-            data_append(data,
-                    "bits", "", DATA_ARRAY, data_array(num_rows, DATA_STRING, row_bits),
-                    NULL);
-        }
+   //     if (decoder->verbose_bits) {
+			//data = data_ary(data, "bits", "", NULL, data_array(num_rows, DATA_STRING, row_bits));
+   //     }
 
-        decoder_output_log(decoder, level, data);
+   //     decoder_output_log(decoder, level, data);
 
-        for (unsigned i = 0; i < num_rows; i++) {
-            free(row_codes[i]);
-            free(row_bits[i]);
-        }
-    }
+   //     for (uint32_t i = 0; i < num_rows; i++) {
+   //         free(row_codes[i]);
+   //         free(row_bits[i]);
+   //     }
+   // }
 }
 
-void decoder_logf_bitbuffer(r_device *decoder, int level, char const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const char *format, ...)
+void decoder_logf_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const uint8_t *format, ...)
 {
-    // TODO: pass to interested outputs
-    if (decoder->verbose >= level) {
-        char msg[60]; // fixed length limit
-        va_list ap;
-        va_start(ap, format);
-        vsnprintf(msg, sizeof(msg), format, ap);
-        va_end(ap);
+	return;
+    //// TODO: pass to interested outputs
+    //if (decoder->verbose >= level) {
+    //    uint8_t msg[60]; // fixed length limit
+    //    va_list ap;
+    //    va_start(ap, format);
+    //    vsnprintf(msg, sizeof(msg), format, ap);
+    //    va_end(ap);
 
-        decoder_log_bitbuffer(decoder, level, func, bitbuffer, msg);
-    }
+    //    decoder_log_bitbuffer(decoder, level, func, bitbuffer, msg);
+    //}
 }
 
-void decoder_log_bitrow(r_device *decoder, int level, char const *func, uint8_t const *bitrow, unsigned bit_len, char const *msg)
+void decoder_log_bitrow(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *bitrow, uint32_t bit_len, uint8_t const *msg)
 {
-    if (decoder->verbose >= level) {
-        // note that decoder levels start at LOG_WARNING
-        level += 4;
+	return;
+   // if (decoder->verbose >= level) {
+   //     // note that decoder levels start at LOG_WARNING
+   //     level += 4;
 
-        char *row_code;
-        char *row_bits = NULL;
+   //     uint8_t *row_code;
+   //     uint8_t *row_bits = NULL;
 
-        row_code = bitrow_asprint_code(bitrow, bit_len);
+   //     row_code = bitrow_asprint_code(bitrow, bit_len);
 
-        /* clang-format off */
-        data_t *data = data_make(
-                "src",     "",     DATA_STRING, func,
-                "lvl",      "",     DATA_INT,    level,
-                "msg",      "",     DATA_STRING, msg,
-                "codes",    "",     DATA_STRING, row_code,
-                NULL);
-        /* clang-format on */
+   //     /* clang-format off */
+   //     data_t *data = data_make(
+   //             "src",     "",     DATA_STRING, func,
+   //             "lvl",      "",     DATA_INT,    level,
+   //             "msg",      "",     DATA_STRING, msg,
+   //             "codes",    "",     DATA_STRING, row_code,
+   //             NULL);
+   //     /* clang-format on */
 
-        if (decoder->verbose_bits) {
-            row_bits = bitrow_asprint_bits(bitrow, bit_len);
-            data_append(data,
-                    "bits", "", DATA_STRING, row_bits,
-                    NULL);
-        }
+   //     if (decoder->verbose_bits) {
+   //         row_bits = bitrow_asprint_bits(bitrow, bit_len);
+			//data = data_str(data, "bits", "", NULL, row_bits);
+   //     }
 
-        decoder_output_log(decoder, level, data);
+   //     decoder_output_log(decoder, level, data);
 
-        free(row_code);
-        free(row_bits);
-    }
+   //     free(row_code);
+   //     free(row_bits);
+    //}
 }
 
-void decoder_logf_bitrow(r_device *decoder, int level, char const *func, uint8_t const *bitrow, unsigned bit_len, _Printf_format_string_ const char *format, ...)
+void decoder_logf_bitrow(r_device *decoder, int32_t level, uint8_t const *func, uint8_t const *bitrow, uint32_t bit_len, _Printf_format_string_ const uint8_t *format, ...)
 {
-    if (decoder->verbose >= level) {
-        char msg[60]; // fixed length limit
-        va_list ap;
-        va_start(ap, format);
-        vsnprintf(msg, sizeof(msg), format, ap);
-        va_end(ap);
+	return;
+    //if (decoder->verbose >= level) {
+    //    uint8_t msg[60]; // fixed length limit
+    //    va_list ap;
+    //    va_start(ap, format);
+    //    vsnprintf(msg, sizeof(msg), format, ap);
+    //    va_end(ap);
 
-        decoder_log_bitrow(decoder, level, func, bitrow, bit_len, msg);
-    }
+    //    decoder_log_bitrow(decoder, level, func, bitrow, bit_len, msg);
+    //}
 }
 
 /* TODO: maybe use as decoder_log function
-void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuffer, char const *msg)
+void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuffer, uint8_t const *msg)
 {
     data_t *data;
     data_t *row_data[BITBUF_ROWS];
-    char *row_codes[BITBUF_ROWS];
-    char row_bytes[BITBUF_ROWS * BITBUF_COLS * 2 + 1]; // TODO: this is a lot of stack
-    unsigned i;
+    uint8_t *row_codes[BITBUF_ROWS];
+    uint8_t row_bytes[BITBUF_ROWS * BITBUF_COLS * 2 + 1]; // TODO: this is a lot of stack
+    uint32_t i;
 
     for (i = 0; i < bitbuffer->num_rows; i++) {
         row_bytes[0] = '\0';
         // print byte-wide
-        for (unsigned col = 0; col < (unsigned)(bitbuffer->bits_per_row[i] + 7) / 8; ++col) {
+        for (uint32_t col = 0; col < (uint32_t)(bitbuffer->bits_per_row[i] + 7) / 8; ++col) {
             sprintf(&row_bytes[2 * col], "%02x", bitbuffer->bb[i][col]);
         }
         // remove last nibble if needed
@@ -268,7 +333,7 @@ void decoder_output_bitbuffer_array(r_device *decoder, bitbuffer_t const *bitbuf
             "rows", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_DATA, row_data),
             "codes", "", DATA_ARRAY, data_array(bitbuffer->num_rows, DATA_STRING, row_codes),
             NULL);
-    decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, &infosToPlugin); 
 
     for (i = 0; i < bitbuffer->num_rows; i++) {
         free(row_codes[i]);

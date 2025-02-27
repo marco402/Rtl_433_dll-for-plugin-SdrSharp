@@ -12,7 +12,7 @@
 #include <windows.h>
 #include <process.h>
 #define THREAD_CALL                     __stdcall
-#define THREAD_RETURN                   unsigned int
+#define THREAD_RETURN                   uint32_t
 typedef HANDLE                          pthread_t;
 #define pthread_create(tp, x, p, d)     ((*tp=(HANDLE)_beginthreadex(NULL, 0, p, d, 0, NULL)) == NULL ? -1 : 0)
 #define pthread_cancel(th)              (!TerminateThread(th, 0))

@@ -16,9 +16,9 @@
 #include <stdbool.h>
 
 /// Check if a given string is in RfRaw format.
-bool rfraw_check(char const *p);
+bool rfraw_check(uint8_t const *p);
 
 /// Decode RfRaw string to pulse data.
-bool rfraw_parse(pulse_data_t *data, char const *p);
+bool rfraw_parse(pulse_data_t *data, uint8_t const *p);
 
 #endif /* INCLUDE_RFRAW_H_ */

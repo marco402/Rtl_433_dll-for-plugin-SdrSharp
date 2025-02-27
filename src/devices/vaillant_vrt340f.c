@@ -27,18 +27,18 @@ All bytes are sent with least significant bit FIRST (1000 0111 = 0xE1)
 - Htg.   ... Heating: 0x00=OFF, 0xB4=ON (2-point), 0x01-0x7F=target heating water temp
              (bit 8 indicates 2-point heating mode, bits 1-7 the heating water temp)
 - Btr.   ... Battery: 0x00=OK, 0x01=LOW
-- Checksm... Checksum (2-byte signed int): = -sum(bytes 4-12)
+- Checksm... Checksum (2-byte signed int32_t): = -sum(bytes 4-12)
 
 */
 
 #include "decoder.h"
 
-static int validate_checksum(r_device *decoder, uint8_t *b, int from, int to, int cs_from, int cs_to)
+static int32_t validate_checksum(r_device *decoder, uint8_t *b, int32_t from, int32_t to, int32_t cs_from, int32_t cs_to)
 {
-    // Fields cs_from and cs_to hold the 2-byte checksum as signed int
-    int expected   = (b[cs_from] << 8) | b[cs_to];
-    int calculated = add_bytes(&b[from], to - from + 1);
-    int chk        = (calculated + expected) & 0xffff;
+    // Fields cs_from and cs_to hold the 2-byte checksum as signed int32_t
+    int32_t expected   = (b[cs_from] << 8) | b[cs_to];
+    int32_t calculated = add_bytes(&b[from], to - from + 1);
+    int32_t chk        = (calculated + expected) & 0xffff;
 
     if (chk) {
         decoder_logf(decoder, 1, __func__, "Checksum error in Vaillant VRT340f.  Expected: %04x  Calculated: %04x", expected, calculated);
@@ -47,22 +47,23 @@ static int validate_checksum(r_device *decoder, uint8_t *b, int from, int to, in
     return !chk;
 }
 
-static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     uint8_t *b = bitbuffer->bb[0];
 
     // TODO: Use repeat signal for error checking / correction!
 
     // each row needs to have at least 128 bits (plus a few more due to bit stuffing)
-    if (bitbuffer->bits_per_row[0] < 128)
+    if (bitbuffer->bits_per_row[row] < 128)
         return DECODE_ABORT_LENGTH;
 
     // The protocol uses bit-stuffing => remove 0 bit after five consecutive 1 bits
     // Also, each byte is represented with least significant bit first -> swap them!
     bitbuffer_t bits = {0};
-    int ones = 0;
-    for (uint16_t k = 0; k < bitbuffer->bits_per_row[0]; k++) {
-        int bit = bitrow_get_bit(b, k);
+    int32_t ones = 0;
+    for (uint16_t k = 0; k < bitbuffer->bits_per_row[row]; k++) {
+        int32_t bit = bitrow_get_bit(b, k);
         if (bit == 1) {
             bitbuffer_add_bit(&bits, 1);
             ones++;
@@ -74,8 +75,8 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
     }
 
-    b = bits.bb[0];
-    uint16_t bitcount = bits.bits_per_row[0];
+    b = bits.bb[row];
+    uint16_t bitcount = bits.bits_per_row[row];
 
     // Change to least-significant-bit last (protocol uses least-significant-bit first)
     reflect_bytes(b, (bitcount - 1) / 8);
@@ -92,11 +93,11 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // Device ID starts at byte 4:
-        int device_id          = (b[3] << 8) | b[4];
-        int heating_mode       = (b[10] >> 7);    // highest bit indicates automatic (2-point) / analogue mode
-        int target_temperature = (b[10] & 0x7f);  // highest bit indicates auto(2-point) / analogue mode
-        int water_preheated    = (b[9] & 8) == 0; // bit 4 indicates water: 1=Pre-heat, 0=no pre-heated water
-        int battery_low        = b[11] != 0;      // if not zero, battery is low
+        int32_t device_id          = (b[3] << 8) | b[4];
+        int32_t heating_mode       = (b[10] >> 7);    // highest bit indicates automatic (2-point) / analogue mode
+        int32_t target_temperature = (b[10] & 0x7f);  // highest bit indicates auto(2-point) / analogue mode
+        int32_t water_preheated    = (b[9] & 8) == 0; // bit 4 indicates water: 1=Pre-heat, 0=no pre-heated water
+        int32_t battery_low        = b[11] != 0;      // if not zero, battery is low
 
         /* clang-format off */
         data_t *data = data_make(
@@ -108,7 +109,9 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "battery_ok",   "Battery",              DATA_INT,    !battery_low,
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        uint32_t bit_offset = 0;
+
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
         return 1;
     }
@@ -121,7 +124,7 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // Device ID starts at byte 12:
-        int device_id = (b[11] << 8) | b[12];
+        int32_t device_id = (b[11] << 8) | b[12];
 
         /* clang-format off */
         data_t *data = data_make(
@@ -129,7 +132,9 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "id",           "Device ID",            DATA_INT,    device_id,
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        uint32_t bit_offset = 0;
+
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
         return 1;
     }
@@ -137,7 +142,7 @@ static int vaillant_vrt340_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return DECODE_FAIL_SANITY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "heating",

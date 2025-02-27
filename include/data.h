@@ -22,24 +22,26 @@
 #define INCLUDE_DATA_H_
 
 #if defined _WIN32 || defined __CYGWIN__
-    #if defined data_EXPORTS
-        #define R_API __stdcall __declspec(dllexport) // Note: actually gcc seems to also supports this syntax.
-    #elif defined data_IMPORTS
-        #define R_API __stdcall __declspec(dllimport) // Note: actually gcc seems to also supports this syntax.
-    #else
-        #define R_API // for static linking
-    #endif
-    #define R_API_CALLCONV __stdcall
+#if defined data_EXPORTS
+#define R_API __stdcall __declspec(dllexport) // Note: actually gcc seems to also supports this syntax.
+#elif defined data_IMPORTS
+#define R_API __stdcall __declspec(dllimport) // Note: actually gcc seems to also supports this syntax.
 #else
-    #if __GNUC__ >= 4
-        #define R_API __attribute__((visibility ("default")))
-    #else
-        #define R_API
-    #endif
-    #define R_API_CALLCONV
+#define R_API // for static linking
+#endif
+#define R_API_CALLCONV __stdcall
+#else
+#if __GNUC__ >= 4
+#define R_API __attribute__((visibility("default")))
+#else
+#define R_API
+#endif
+#define R_API_CALLCONV
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
+#include "r_device.h"
 
 typedef enum {
     DATA_DATA,   /**< pointer to data is stored */
@@ -53,27 +55,27 @@ typedef enum {
 } data_type_t;
 
 typedef struct data_array {
-    int         num_values;
+    int32_t num_values;
     data_type_t type;
-    void        *values;
+    void *values;
 } data_array_t;
 
 // Note: Do not unwrap a packed array to data_value_t,
 // on 32-bit the union has different size/alignment than a pointer.
 typedef union data_value {
-    int         v_int;  /**< A data value of type int, 4 bytes size/alignment */
-    double      v_dbl;  /**< A data value of type double, 8 bytes size/alignment */
-    void        *v_ptr; /**< A data value pointer, 4/8 bytes size/alignment */
+    int32_t v_int;    /**< A data value of type int32_t, 4 bytes size/alignment */
+    double v_dbl; /**< A data value of type double, 8 bytes size/alignment */
+    void *v_ptr;  /**< A data value pointer, 4/8 bytes size/alignment */
 } data_value_t;
 
 typedef struct data {
     struct data *next; /**< chaining to the next element in the linked list; NULL indicates end-of-list */
-    char        *key;
-    char        *pretty_key; /**< the name used for displaying data to user in with a nicer name */
-    char        *format; /**< if not null, contains special formatting string */
+    uint8_t *key;
+    uint8_t *pretty_key; /**< the name used for displaying data to user in with a nicer name */
+    uint8_t *format;     /**< if not null, contains special formatting string */
     data_value_t value;
     data_type_t type;
-    unsigned    retain; /**< incremented on data_retain, data_free only frees if this is zero */
+    uint32_t retain; /**< incremented on data_retain, data_free only frees if this is zero */
 } data_t;
 
 /** Constructs a structured data object.
@@ -82,7 +84,7 @@ typedef struct data {
     data_make(
             "key",      "Pretty key",   DATA_INT, 42,
             "others",   "More data",    DATA_DATA, data_make("foo", DATA_DOUBLE, 42.0, NULL),
-            "zoom",     NULL,           data_array(2, DATA_STRING, (char*[]){"hello", "World"}),
+            "zoom",     NULL,           data_array(2, DATA_STRING, (uint8_t*[]){"hello", "World"}),
             "double",   "Double",       DATA_DOUBLE, 10.0/3,
             NULL);
 
@@ -107,19 +109,52 @@ typedef struct data {
 
     @return A constructed data_t* object or NULL if there was a memory allocation error.
 */
-R_API data_t *data_make(const char *key, const char *pretty_key, ...);
-
-/** Adds to a structured data object, by appending data.
-
-    @see data_make()
-*/
-R_API data_t *data_append(data_t *first, const char *key, const char *pretty_key, ...);
+R_API data_t *data_make(const uint8_t *key, const uint8_t *pretty_key, ...);
 
 /** Adds to a structured data object, by prepending data.
 
     @see data_make()
 */
-R_API data_t *data_prepend(data_t *first, const char *key, const char *pretty_key, ...);
+R_API data_t *data_prepend(data_t *first, const uint8_t *key, const uint8_t *pretty_key, ...);
+
+/** Adds to a structured data object, by appending `int32_t` data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+*/
+R_API data_t *data_int(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, int32_t val);
+
+/** Adds to a structured data object, by appending `double` data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+*/
+R_API data_t *data_dbl(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, double val);
+
+/** Adds to a structured data object, by appending string data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+*/
+R_API data_t *data_str(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, uint8_t const *val);
+
+/** Adds to a structured data object, by appending `data_array_t` data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+*/
+R_API data_t *data_ary(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, data_array_t *val);
+
+/** Adds to a structured data object, by appending `data_t` data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+*/
+R_API data_t *data_dat(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, data_t *val);
+
+/** Adds to a structured data object, by appending hex string data.
+
+	Type-safe alternative to `data_make()` and `data_append()`.
+
+	Caller needs to provide a sufficiently sized buffer.
+*/
+R_API data_t *data_hex(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf);
+
 
 /** Constructs an array from given data of the given uniform type.
 
@@ -130,7 +165,7 @@ R_API data_t *data_prepend(data_t *first, const char *key, const char *pretty_ke
     @return The constructed data array object, typically placed inside a data_t or NULL
             if there was a memory allocation error.
 */
-R_API data_array_t *data_array(int num_values, data_type_t type, void const *ptr);
+R_API data_array_t *data_array(int32_t num_values, data_type_t type, void const *ptr);
 
 /** Releases a data array. */
 R_API void data_array_free(data_array_t *array);
@@ -144,15 +179,15 @@ R_API void data_free(data_t *data);
 struct data_output;
 
 typedef struct data_output {
-    void (R_API_CALLCONV *print_data)(struct data_output *output, data_t *data, char const *format);
-    void (R_API_CALLCONV *print_array)(struct data_output *output, data_array_t *data, char const *format);
-    void (R_API_CALLCONV *print_string)(struct data_output *output, const char *data, char const *format);
-    void (R_API_CALLCONV *print_double)(struct data_output *output, double data, char const *format);
-    void (R_API_CALLCONV *print_int)(struct data_output *output, int data, char const *format);
-    void (R_API_CALLCONV *output_start)(struct data_output *output, char const *const *fields, int num_fields);
-    void (R_API_CALLCONV *output_print)(struct data_output *output, data_t *data);
-    void (R_API_CALLCONV *output_free)(struct data_output *output);
-    int log_level; ///< the maximum log level (verbosity) allowed, more verbose messages must be ignored.
+    void(R_API_CALLCONV *print_data)(struct data_output *output, data_t *data, uint8_t const *format, defDeviceToPlugin *_ptrDeviceToPlugin); //r_deviceToPlugin necessary here
+    void(R_API_CALLCONV *print_array)(struct data_output *output, data_array_t *data, uint8_t const *format, defDeviceToPlugin *_ptrDeviceToPlugin);
+    void(R_API_CALLCONV *print_string)(struct data_output *output, const uint8_t *data, uint8_t const *format, defDeviceToPlugin *_ptrDeviceToPlugin);
+    void(R_API_CALLCONV *print_double)(struct data_output *output, double data, uint8_t const *format, defDeviceToPlugin *_ptrDeviceToPlugin);
+    void(R_API_CALLCONV *print_int)(struct data_output *output, int32_t data, uint8_t const *format, defDeviceToPlugin *_ptrDeviceToPlugin);
+    void(R_API_CALLCONV *output_start)(struct data_output *output, uint8_t const *const *fields, int32_t num_fields);
+    void(R_API_CALLCONV *output_print)(struct data_output *output, data_t *data, defDeviceToPlugin *_ptrDeviceToPlugin);
+    void(R_API_CALLCONV *output_free)(struct data_output *output);
+    int32_t log_level; ///< the maximum log level (verbosity) allowed, more verbose messages must be ignored.
 } data_output_t;
 
 /** Setup known field keys and start output, used by CSV only.
@@ -162,19 +197,20 @@ typedef struct data_output {
                   strings not. The list may contain duplicates and they are eliminated.
     @param num_fields number of fields
 */
-R_API void data_output_start(struct data_output *output, char const *const *fields, int num_fields);
-
+R_API void data_output_start(struct data_output *output, uint8_t const *const *fields, int32_t num_fields);
+///** Prints a structured data object, flushes the output if applicable. */
+///* data output helpers */
 /** Prints a structured data object, flushes the output if applicable. */
-R_API void data_output_print(struct data_output *output, data_t *data);
+R_API void data_output_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin);
 
-R_API void data_output_free(struct data_output *output);
+R_API void data_output_free(data_output_t *output);
 
-/* data output helpers */
+R_API void print_value(data_output_t *output, data_type_t type, data_value_t value, uint8_t const *format);
 
-R_API void print_value(data_output_t *output, data_type_t type, data_value_t value, char const *format);
+R_API void print_array_value(data_output_t *output, data_array_t *array, uint8_t const *format, int32_t idx);
 
-R_API void print_array_value(data_output_t *output, data_array_t *array, char const *format, int idx);
+R_API size_t data_print_jsons(data_t *data, uint8_t *dst, size_t len, defDeviceToPlugin *ptrDeviceToPlugin);
 
-R_API size_t data_print_jsons(data_t *data, char *dst, size_t len);
+R_API uint8_t *traitementValue(data_type_t type, data_value_t value, uint8_t const *format, uint8_t *cara);
 
 #endif // INCLUDE_DATA_H_

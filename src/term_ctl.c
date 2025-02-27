@@ -147,59 +147,60 @@ static BOOL _term_has_color(console_t *console)
 
 static void *_term_init(FILE *fp)
 {
-    console_t *console = calloc(1, sizeof(*console));
-    if (!console) {
-        fprintf(stderr, "term_init failed\n");
-        return NULL; // NOTE: return NULL on alloc failure.
-    }
+	return NULL;;          //for x64
+    //console_t *console = calloc(1, sizeof(*console));
+    //if (!console) {
+    //    fprintf(stderr, "term_init failed\n");
+    //    return NULL; // NOTE: return NULL on alloc failure.
+    //}
 
-    int fd = fileno(fp);
-    if (fd == STDOUT_FILENO) {
-        console->hnd = GetStdHandle(STD_OUTPUT_HANDLE);
-        console->file = fp;
-    }
-    else if (fd == STDERR_FILENO) {
-        console->hnd = GetStdHandle(STD_ERROR_HANDLE);
-        console->file = fp;
-    }
-    console->redirected = (console->hnd == INVALID_HANDLE_VALUE) ||
-                         (!GetConsoleScreenBufferInfo(console->hnd, &console->info)) ||
-                         (GetFileType(console->hnd) != FILE_TYPE_CHAR);
+    //int32_t fd = _fileno(fp);
+    //if (fd == STDOUT_FILENO) {
+    //    console->hnd = GetStdHandle(STD_OUTPUT_HANDLE);
+    //    console->file = fp;
+    //}
+    //else if (fd == STDERR_FILENO) {
+    //    console->hnd = GetStdHandle(STD_ERROR_HANDLE);
+    //    console->file = fp;
+    //}
+    //console->redirected = (console->hnd == INVALID_HANDLE_VALUE) ||
+    //                     (!GetConsoleScreenBufferInfo(console->hnd, &console->info)) ||
+    //                     (GetFileType(console->hnd) != FILE_TYPE_CHAR);
 
-    // Test for Windows 10 to enable ANSI output, needs netapi32.dll
-    LPWKSTA_INFO_100 pBuf = NULL;
-    NET_API_STATUS nStatus;
-    nStatus = NetWkstaGetInfo(NULL, 100, (LPBYTE *)&pBuf);
-    if (nStatus == NERR_Success) {
-        console->ansi = (pBuf->wki100_platform_id == 500) && (pBuf->wki100_ver_major >= 10);
-    }
-    if (pBuf != NULL) {
-        NetApiBufferFree(pBuf);
-    }
+    //// Test for Windows 10 to enable ANSI output, needs netapi32.dll
+    //LPWKSTA_INFO_100 pBuf = NULL;
+    //NET_API_STATUS nStatus;
+    //nStatus = NetWkstaGetInfo(NULL, 100, (LPBYTE *)&pBuf);
+    //if (nStatus == NERR_Success) {
+    //    console->ansi = (pBuf->wki100_platform_id == 500) && (pBuf->wki100_ver_major >= 10);
+    //}
+    //if (pBuf != NULL) {
+    //    NetApiBufferFree(pBuf);
+    //}
 
-    // Windows 10 version 1511 added ANSI filters to cmd and terminal.
-    // To use ANSI colors in Windows versions 1511 to 1903 requires setting VirtualTerminalLevel
-    // by calling the SetConsoleMode API with the ENABLE_VIRTUAL_TERMINAL_PROCESSING flag.
-    // ANSI colors are available by default in Windows version 1909 or newer
-    if (console->ansi) {
-        DWORD dwMode = 0;
-        GetConsoleMode(console->hnd, &dwMode);
-        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        SetConsoleMode(console->hnd, dwMode);
-        // Check if it worked, it will fail for Legacy console-mode
-        GetConsoleMode (console->hnd, &dwMode);
-        if (!(dwMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
-            console->ansi = 0;
-        }
-    }
+    //// Windows 10 version 1511 added ANSI filters to cmd and terminal.
+    //// To use ANSI colors in Windows versions 1511 to 1903 requires setting VirtualTerminalLevel
+    //// by calling the SetConsoleMode API with the ENABLE_VIRTUAL_TERMINAL_PROCESSING flag.
+    //// ANSI colors are available by default in Windows version 1909 or newer
+    //if (console->ansi) {
+    //    DWORD dwMode = 0;
+    //    GetConsoleMode(console->hnd, &dwMode);
+    //    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    //    SetConsoleMode(console->hnd, dwMode);
+    //    // Check if it worked, it will fail for Legacy console-mode
+    //    GetConsoleMode (console->hnd, &dwMode);
+    //    if (!(dwMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+    //        console->ansi = 0;
+    //    }
+    //}
 
-    _term_set_color(console, FALSE, TERM_COLOR_RESET); /* Set 'console->fg' and 'console->bg' */
+    //_term_set_color(console, FALSE, TERM_COLOR_RESET); /* Set 'console->fg' and 'console->bg' */
 
-    return console;
+    //return console;
 }
 #endif /* _WIN32 */
 
-int term_get_columns(void *ctx)
+int32_t term_get_columns(void *ctx)
 {
 #ifdef _WIN32
     console_t *console = (console_t *)ctx;
@@ -223,7 +224,7 @@ int term_get_columns(void *ctx)
 #endif
 }
 
-int term_has_color(void *ctx)
+int32_t term_has_color(void *ctx)
 {
 #ifdef _WIN32
     return _term_has_color(ctx);
@@ -318,7 +319,7 @@ void term_set_bg(void *ctx, term_color_t bg, term_color_t fg)
         fprintf(fp, "\033[%dm", fg);
 }
 
-#define DIM(array) (int) (sizeof(array) / sizeof(array[0]))
+#define DIM(array) (int32_t) (sizeof(array) / sizeof(array[0]))
 
 static term_color_t color_map[] = {
                     TERM_COLOR_RESET,     /* "~0" */
@@ -332,7 +333,7 @@ static term_color_t color_map[] = {
                     TERM_COLOR_RED,       /* "~8" */
                   };
 
-int term_set_color_map(int ascii_idx, term_color_t color)
+int32_t term_set_color_map(int32_t ascii_idx, term_color_t color)
 {
     ascii_idx -= '0';
     if (ascii_idx < 0 || ascii_idx >= DIM(color_map))
@@ -341,21 +342,21 @@ int term_set_color_map(int ascii_idx, term_color_t color)
     return ascii_idx;
 }
 
-int term_get_color_map(int ascii_idx)
+int32_t term_get_color_map(int32_t ascii_idx)
 {
-    int i;
+    int32_t i;
 
     ascii_idx -= '0';
     for (i = 0; ascii_idx >= 0 && i < DIM(color_map); i++)
         if (i == ascii_idx)
-           return (int)color_map[i];
+           return (int32_t)color_map[i];
     return -1;
 }
 
-int term_puts(void *ctx, char const *buf)
+int32_t term_puts(void *ctx, uint8_t const *buf)
 {
-    char const *p = buf;
-    int i, len, buf_len, color;
+    uint8_t const *p = buf;
+    int32_t i, len, buf_len, color;
     FILE *fp;
 
     if (!ctx)
@@ -371,7 +372,7 @@ int term_puts(void *ctx, char const *buf)
     if (!fp)
         fp = stderr;
 
-    buf_len = (int)strlen(buf);
+    buf_len = (int32_t)strlen(buf);
     for (i = len = 0; *p && i < buf_len; i++, p++) {
         if (*p == '~') {
             p++;
@@ -387,11 +388,11 @@ int term_puts(void *ctx, char const *buf)
     return len;
 }
 
-int term_printf(void *ctx, _Printf_format_string_ char const *format, ...)
+int32_t term_printf(void *ctx, _Printf_format_string_ uint8_t const *format, ...)
 {
-    int len;
+    int32_t len;
     va_list args;
-    char buf[4000];
+    uint8_t buf[4000];
 
     va_start(args, format);
 
@@ -403,10 +404,10 @@ int term_printf(void *ctx, _Printf_format_string_ char const *format, ...)
     return len;
 }
 
-int term_help_fputs(void *ctx, char const *buf, FILE *fp)
+int32_t term_help_fputs(void *ctx, uint8_t const *buf, FILE *fp)
 {
-    char const *p = buf;
-    int i, len, buf_len, color, state = 0, set_color = -1, next_color = -1;
+    uint8_t const *p = buf;
+    int32_t i, len, buf_len, color, state = 0, set_color = -1, next_color = -1;
     if (!fp) {
         fp = stderr;
     }
@@ -422,7 +423,7 @@ int term_help_fputs(void *ctx, char const *buf, FILE *fp)
     fp = (FILE *)ctx;
 #endif
 
-    buf_len = (int)strlen(buf);
+    buf_len = (int32_t)strlen(buf);
     for (i = len = 0; *p && i < buf_len; i++, p++) {
         if (*p == '~') {
             p++;
@@ -477,7 +478,7 @@ int term_help_fputs(void *ctx, char const *buf, FILE *fp)
         }
 
         if (set_color >= 0) {
-            color = ctx ? (int)color_map[set_color] : -1;
+            color = ctx ? (int32_t)color_map[set_color] : -1;
             if (color >= 0)
                 term_set_fg(ctx, (term_color_t)color);
         }
@@ -490,11 +491,11 @@ int term_help_fputs(void *ctx, char const *buf, FILE *fp)
     return len;
 }
 
-int term_help_fprintf(FILE *fp, _Printf_format_string_ char const *format, ...)
+int32_t term_help_fprintf(FILE *fp, _Printf_format_string_ uint8_t const *format, ...)
 {
-    int len;
+    int32_t len;
     va_list args;
-    char buf[4000];
+    uint8_t buf[4000];
 
     va_start(args, format);
 

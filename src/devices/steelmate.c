@@ -33,10 +33,10 @@ Bytes 2 to 9 are inverted Manchester with swapped MSB/LSB:
 
 #include "decoder.h"
 
-static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     //Loop through each row of data
-    for (int row = 0; row < bitbuffer->num_rows; row++)
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++)
     {
         //Payload is inverted Manchester encoded, and reversed MSB/LSB order
         uint8_t *b = bitbuffer->bb[row];
@@ -71,11 +71,11 @@ static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         if (payload_checksum != calculated_checksum)
             continue; // DECODE_FAIL_MIC
 
-        int sensor_id      = (id1 << 8) | id2;
+        int32_t sensor_id      = (id1 << 8) | id2;
         float pressure_psi = p1 * 0.5f;
-        int battery_mV     = tmpbattery_mV * 2;
+        int32_t battery_mV     = tmpbattery_mV * 2;
 
-        char sensor_idhex[7];
+        uint8_t sensor_idhex[7];
         snprintf(sensor_idhex, sizeof(sensor_idhex), "0x%04x", sensor_id);
 
         /* clang-format off */
@@ -89,8 +89,9 @@ static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         return 1;
     }
 
@@ -99,7 +100,7 @@ static int steelmate_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return DECODE_FAIL_SANITY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "type",
         "model",
         "id",

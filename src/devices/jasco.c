@@ -19,42 +19,43 @@ Packets are 32 bit, 24 bit data and 8 bit XOR checksum.
 
 #include "decoder.h"
 
-static int jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row             = 0;
     uint8_t const preamble[] = {0xfc, 0x0c}; // length 16
 
-    if (bitbuffer->bits_per_row[0] < 80
-            || bitbuffer->bits_per_row[0] > 87) {
-        if (bitbuffer->bits_per_row[0] > 0) {
-            decoder_logf(decoder, 2, __func__, "invalid bit count %d", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->bits_per_row[row] < 80
+            || bitbuffer->bits_per_row[row] > 87) {
+        if (bitbuffer->bits_per_row[row] > 0) {
+            decoder_logf(decoder, 2, __func__, "invalid bit count %d", bitbuffer->bits_per_row[row]);
         }
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0, preamble, 16) + 16;
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, 16) + 16;
 
-    if (start_pos + 64 > bitbuffer->bits_per_row[0]) {
+    if (bit_offset + 64 > bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
 
     bitbuffer_t packet_bits = {0};
-    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet_bits, 32);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 32);
 
-    if (packet_bits.bits_per_row[0] < 32) {
+    if (packet_bits.bits_per_row[row] < 32) {
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[row];
 
-    int chk = b[0] ^ b[1] ^ b[2] ^ b[3];
+    int32_t chk = b[0] ^ b[1] ^ b[2] ^ b[3];
     if (chk) {
         return DECODE_FAIL_MIC;
     }
 
-    int sensor_id = (b[0] << 8) | b[1];
+    int32_t sensor_id = (b[0] << 8) | b[1];
 
-    int s_closed = ((b[2] & 0xef) == 0xef);
-    // int battery = 0;
+    int32_t s_closed = ((b[2] & 0xef) == 0xef);
+    // int32_t battery = 0;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -65,11 +66,12 @@ static int jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "status",

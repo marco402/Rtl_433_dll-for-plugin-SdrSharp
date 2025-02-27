@@ -41,19 +41,19 @@ NOTE: You may need to use the "-s 1000000" option of rtl_433 in order to get a c
 
 #include "decoder.h"
 
-static int tpms_kia_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_kia_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    unsigned id;
+    uint32_t id;
     uint8_t unknown1;
     uint8_t unknown2;
     uint8_t pressure;
 
     uint8_t temperature;
     uint8_t crc;
-    unsigned int start_pos;
-    const unsigned int preamble_length = 16;
+    uint32_t start_pos;
+    const uint32_t preamble_length = 16;
 
     start_pos = bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 154 - preamble_length);
     if (start_pos - bitpos < 154 - preamble_length) {
@@ -75,17 +75,17 @@ static int tpms_kia_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
         return DECODE_FAIL_MIC;
     }
 
-    char id_str[9 + 1];
+    uint8_t id_str[9 + 1];
     snprintf(id_str, sizeof(id_str), "%08x", id);
-    char unknown1_str[2 + 1];
+    uint8_t unknown1_str[2 + 1];
     snprintf(unknown1_str, sizeof(unknown1_str), "%02x", unknown1);
-    char unknown2_str[3 + 1];
+    uint8_t unknown2_str[3 + 1];
     snprintf(unknown2_str, sizeof(unknown2_str), "%03x", unknown2);
-    char raw[9 * 2 + 1]; // 9 bytes in hex notation
+    uint8_t raw[9 * 2 + 1]; // 9 bytes in hex notation
     snprintf(raw, sizeof(raw), "%02x%02x%02x%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8]);
 
-    float pressure_float    = pressure / 5.0;
-    float temperature_float = temperature - 50.0;
+    float pressure_float    = pressure / 5.0f;
+    float temperature_float = temperature - 50.0f;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -101,7 +101,7 @@ static int tpms_kia_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -109,18 +109,18 @@ static int tpms_kia_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
 Wrapper for the Kia tpms.
 @sa tpms_kia_decode()
 */
-static int tpms_kia_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_kia_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble_pattern[2] = {0xed, 0x71};
-    const int preamble_length         = 16;
+    const int32_t preamble_length         = 16;
 
-    unsigned bitpos = 0;
-    int ret         = 0;
-    int events      = 0;
+    uint32_t bitpos = 0;
+    int32_t ret         = 0;
+    int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, preamble_length)) + 154 <= bitbuffer->bits_per_row[0]) {
-        ret = tpms_kia_decode(decoder, bitbuffer, 0, bitpos + preamble_length);
+        ret = tpms_kia_decode(decoder, bitbuffer, 0, bitpos + preamble_length, startPulses,package_type);
         if (ret > 0) {
             events += ret;
         }
@@ -130,7 +130,7 @@ static int tpms_kia_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

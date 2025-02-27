@@ -11,25 +11,25 @@
 
 #ifndef INCLUDE_TAGS_H_
 #define INCLUDE_TAGS_H_
-
+#include <stdint.h>
 struct gpsd_client;
 struct mg_mgr;
 struct data;
 
 typedef struct data_tag {
-    char const *key;
-    char const *val;
-    char const **includes;
+    uint8_t const *key;
+    uint8_t const *val;
+    uint8_t const **includes;
     struct gpsd_client *gpsd_client;
 } data_tag_t;
 
 /// Create a data tag. Might fail and return NULL.
-data_tag_t *data_tag_create(char *params, struct mg_mgr *mgr);
+data_tag_t *data_tag_create(uint8_t *params, struct mg_mgr *mgr);
 
 /// Free a data tag.
 void data_tag_free(data_tag_t *tag);
 
 /// Apply a data tag.
-struct data *data_tag_apply(data_tag_t *tag, struct data *data, char const *filename);
+struct data *data_tag_apply(data_tag_t *tag, struct data *data, uint8_t const *filename);
 
 #endif /* INCLUDE_TAGS_H_ */

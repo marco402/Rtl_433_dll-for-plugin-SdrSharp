@@ -24,10 +24,13 @@ Example code: 37f62a6c80
 
 #include "decoder.h"
 
-static int elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // 33 bits expected, 5 minimum packet repetitions (14 expected)
-    int row = bitbuffer_find_repeated_row(bitbuffer, 5, 33);
+	uint32_t nbRepeat = 5;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 33);
 
     if (row < 0 || bitbuffer->bits_per_row[row] != 33)
         return DECODE_ABORT_LENGTH;
@@ -35,7 +38,7 @@ static int elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t *b = bitbuffer->bb[row];
 
     // 32 bits, trailing bit is dropped
-    char id_str[4 * 2 + 1];
+    uint8_t id_str[4 * 2 + 1];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x%02x", b[0], b[1], b[2], b[3]);
 
     /* clang-format off */
@@ -44,12 +47,13 @@ static int elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",       "ID",      DATA_STRING, id_str,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         NULL,

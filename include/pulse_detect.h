@@ -18,6 +18,7 @@
 #include "pulse_data.h"
 #include "data.h"
 #include "rtl_433.h"
+
 /// Package types.
 enum package_types {
     PULSE_DATA_OOK = 1,
@@ -46,7 +47,7 @@ void pulse_detect_free(pulse_detect_t *pulse_detect);
 /// @param min_high_level Minimum high level, default is -12 dB
 /// @param high_low_ratio Minimum signal noise ratio, default is 9 dB
 /// @param verbosity Debug output verbosity, 0=None, 1=Levels, 2=Histograms
-void pulse_detect_set_levels(pulse_detect_t *pulse_detect, int use_mag_est, float fixed_high_level, float min_high_level, float high_low_ratio, int verbosity);
+void pulse_detect_set_levels(pulse_detect_t *pulse_detect, int32_t use_mag_est, float fixed_high_level, float min_high_level, float high_low_ratio, int32_t verbosity);
 
 /// Demodulate On/Off Keying (OOK) and Frequency Shift Keying (FSK) from an envelope signal.
 ///
@@ -65,6 +66,5 @@ void pulse_detect_set_levels(pulse_detect_t *pulse_detect, int use_mag_est, floa
 /// @retval 0 all input sample data is processed
 /// @retval 1 OOK package is detected (but all sample data is still not completely processed)
 /// @retval 2 FSK package is detected (but all sample data is still not completely processed)
-int pulse_detect_package(pulse_detect_t *pulse_detect, int16_t const *envelope_data, int16_t const *fm_data, int len, uint32_t samp_rate, uint64_t sample_offset, pulse_data_t *pulses, pulse_data_t *fsk_pulses, unsigned fpdm);
-
+	__declspec(dllexport) int32_t __stdcall pulse_detect_package(pulse_detect_t *pulse_detect, int16_t const *envelope_data, int16_t const *fm_data, int32_t len, uint32_t samp_rate, uint64_t sample_offset, pulse_data_t *pulses, pulse_data_t *fsk_pulses, uint32_t fpdm, int32_t *start, int32_t *startFsk);
 #endif /* INCLUDE_PULSE_DETECT_H_ */

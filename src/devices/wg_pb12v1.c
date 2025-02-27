@@ -48,7 +48,7 @@ device, see fineoffset.c.
 
 #include "decoder.h"
 
-static int wg_pb12v1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t wg_pb12v1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Validate package
     uint8_t *b = bitbuffer->bb[0];
@@ -64,26 +64,26 @@ static int wg_pb12v1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_OTHER;
 
     // Nibble 7,8 contains id
-    int id = b[3] & 0x1F;
+    int32_t id = b[3] & 0x1F;
 
     // Nibble 5,6,7 contains 12 bits of temperature
     // Temperature, scaled by 10, offset by -40 C.
-    int temp_raw = ((b[1] & 0x0F) << 8) | b[2];
+    int32_t temp_raw = ((b[1] & 0x0F) << 8) | b[2];
     float temp_c = (temp_raw - 400) * 0.1f;
 
     /* clang-format off */
     data_t *data = data_make(
             "model",            "",             DATA_STRING, "WG-PB12V1",
             "id",               "ID",           DATA_INT,    id,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

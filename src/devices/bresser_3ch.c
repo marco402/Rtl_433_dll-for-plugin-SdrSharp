@@ -14,6 +14,8 @@ Bresser sensor protocol.
 
 The protocol is for the wireless Temperature/Humidity sensor
 - Bresser Thermo-/Hygro-Sensor 3CH
+  Another sensor sold under the same generic name is handled by
+  bresser_st1005h.c.
 - also works for Renkforce DM-7511
 
 The sensor sends 15 identical packages of 40 bits each ~60s.
@@ -30,27 +32,29 @@ The data is grouped in 5 bytes / 10 nibbles
 
 - id is an 8 bit random id that is generated when the sensor starts
 - flags are 4 bits battery low indicator, test button press and channel
-- temp is 12 bit unsigned fahrenheit offset by 90 and scaled by 10
+- temp is 12 bit uint32_t fahrenheit offset by 90 and scaled by 10
 - humi is 8 bit relative humidity percentage
 - chk is the sum of the four data bytes
 */
 #include "decoder.h"
 
-static int bresser_3ch_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t bresser_3ch_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
 
-    int id, battery_low, channel, temp_raw, humidity;
-    // int status, test;
+    int32_t id, battery_low, channel, temp_raw, humidity;
+    // int32_t status, test;
     float temp_f;
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 40);
-    if (r < 0 || bitbuffer->bits_per_row[r] > 42) {
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
+    if (row < 0 || bitbuffer->bits_per_row[row] > 42) {
         return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
     b[0] = ~b[0];
     b[1] = ~b[1];
     b[2] = ~b[2];
@@ -90,12 +94,13 @@ static int bresser_3ch_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",           "Integrity",   DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

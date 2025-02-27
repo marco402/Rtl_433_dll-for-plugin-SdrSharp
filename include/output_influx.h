@@ -18,6 +18,6 @@
 
 struct mg_mgr;
 
-struct data_output *data_output_influx_create(struct mg_mgr *mgr, char *opts);
+//struct data_output *data_output_influx_create(struct mg_mgr *mgr, uint8_t *opts);
 
 #endif /* INCLUDE_OUTPUT_INFLUX_H_ */

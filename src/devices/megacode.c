@@ -39,20 +39,23 @@ Example:
 
 #include "decoder.h"
 
-static int megacode_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t megacode_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row = bitbuffer_find_repeated_row(bitbuffer, 1, 144);
+	uint32_t nbRepeat = 1;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 144);
     if (row < 0)
         return DECODE_ABORT_LENGTH;
-    int l = bitbuffer->bits_per_row[row];
+    int32_t l = bitbuffer->bits_per_row[row];
     if (l < 136 || l > 148)
         return DECODE_ABORT_LENGTH;
 
     uint32_t raw      = 0;
-    int frame_counter = 0;
+    int32_t frame_counter = 0;
     uint8_t *b        = bitbuffer->bb[row];
 
-    for (int i = 0; i < l; i++) {
+    for (int32_t i = 0; i < l; i++) {
         if ((b[i / 8] << (i % 8)) & 0x80) {
             if ((i + 4) % 6 > 2)
                 raw |= 0x800000 >> ((i + 4) / 6);
@@ -63,9 +66,9 @@ static int megacode_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (frame_counter != 24)
         return DECODE_FAIL_SANITY;
 
-    int facility = (raw >> 19) & 0xf;
-    int id       = (raw >> 3) & 0xffff;
-    int button   = raw & 0x7;
+    int32_t facility = (raw >> 19) & 0xf;
+    int32_t id       = (raw >> 3) & 0xffff;
+    int32_t button   = raw & 0x7;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -76,12 +79,13 @@ static int megacode_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "button",   "Button",         DATA_INT,    button,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "raw",

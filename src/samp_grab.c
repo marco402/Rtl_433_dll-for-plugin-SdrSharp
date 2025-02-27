@@ -27,7 +27,7 @@
 #include "samp_grab.h"
 #include "fatal.h"
 
-samp_grab_t *samp_grab_create(unsigned size)
+samp_grab_t *samp_grab_create(uint32_t size)
 {
     samp_grab_t *g;
     g = calloc(1, sizeof(*g));
@@ -55,10 +55,10 @@ void samp_grab_free(samp_grab_t *g)
         free(g->sg_buf);
     free(g);
 }
-
-void samp_grab_push(samp_grab_t *g, unsigned char *iq_buf, uint32_t len)
+//int32_t kk = 0;
+void samp_grab_push(samp_grab_t *g, uint8_t *iq_buf, uint32_t len)
 {
-    //fprintf(stderr, "sg_index %d + len %d (size %d ", g->sg_index, len, g->sg_len);
+    //fprintf(stderr, "IN samp_grab_push: sg_index %d + len %d (size %d)\n", g->sg_index, len, g->sg_len);
 
     g->sg_len += len;
     if (g->sg_len > g->sg_size)
@@ -67,7 +67,7 @@ void samp_grab_push(samp_grab_t *g, unsigned char *iq_buf, uint32_t len)
     //fprintf(stderr, "-> %d)\n", g->sg_len);
 
     while (len) {
-        unsigned chunk_len = len;
+        uint32_t chunk_len = len;
         if (g->sg_index + chunk_len > g->sg_size)
             chunk_len = g->sg_size - g->sg_index;
 
@@ -88,22 +88,22 @@ void samp_grab_reset(samp_grab_t *g)
 
 #define BLOCK_SIZE (128 * 1024) /* bytes */
 
-void samp_grab_write(samp_grab_t *g, unsigned grab_len, unsigned grab_end)
+void samp_grab_write(samp_grab_t *g, uint32_t grab_len, uint32_t grab_end)
 {
     if (!g->sg_buf)
         return;
 
-    unsigned end_pos, start_pos, signal_bsize, wlen, wrest;
-    char f_name[64] = {0};
+    uint32_t end_pos, start_pos, signal_bsize, wlen, wrest;
+    uint8_t f_name[64] = {0};
     FILE *fp;
 
-    char *format = *g->sample_size == 2 ? "cu8" : "cs16";
+    uint8_t *format = *g->sample_size == 2 ? "cu8" : "cs16";
     double freq_mhz = *g->frequency / 1000000.0;
     double rate_khz = *g->samp_rate / 1000.0;
     while (1) {
         snprintf(f_name, sizeof(f_name), "g%03u_%gM_%gk.%s", g->sg_counter, freq_mhz, rate_khz, format);
         g->sg_counter++;
-        if (access(f_name, F_OK) == -1) {
+        if (_access(f_name, F_OK) == -1) {
             break;
         }
     }
@@ -130,7 +130,7 @@ void samp_grab_write(samp_grab_t *g, unsigned grab_len, unsigned grab_end)
         start_pos = g->sg_size - signal_bsize + end_pos;
 
     //fprintf(stderr, "signal_bsize = %d  -      sg_index = %d\n", signal_bsize, g->sg_index);
-    //fprintf(stderr, "start_pos    = %d  -   buffer_size = %d\n", start_pos, g->sg_size);
+    //fprintf(stderr, "bit_offset    = %d  -   buffer_size = %d\n", bit_offset, g->sg_size);
 
     fprintf(stderr, "*** Saving signal to file %s (%u samples, %u bytes)\n", f_name, grab_len, signal_bsize);
     fp = fopen(f_name, "wb");
@@ -145,11 +145,9 @@ void samp_grab_write(samp_grab_t *g, unsigned grab_len, unsigned grab_end)
         wlen  = g->sg_size - start_pos;
         wrest = signal_bsize - wlen;
     }
-    //fprintf(stderr, "*** Writing data from %d, len %d\n", start_pos, wlen);
     fwrite(&g->sg_buf[start_pos], 1, wlen, fp);
 
     if (wrest) {
-        //fprintf(stderr, "*** Writing data from %d, len %d\n", 0, wrest);
         fwrite(&g->sg_buf[0], 1, wrest, fp);
     }
 

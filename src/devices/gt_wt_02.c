@@ -44,7 +44,7 @@ A Lidl AURIO (from 12/2018) with PCB marking YJ-T12 V02 has two extra bits in fr
 
 #include "decoder.h"
 
-static int gt_wt_02_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int row)
+static int32_t gt_wt_02_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[row];
@@ -61,31 +61,31 @@ static int gt_wt_02_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int r
         return 0; // DECODE_ABORT_EARLY
 
     // sum 8 nibbles (use 31 bits, the last one fill with 0 on 32nd bit)
-    int sum_nibbles =
+    int32_t sum_nibbles =
           (b[0] >> 4) + (b[0] & 0xF)
         + (b[1] >> 4) + (b[1] & 0xF)
         + (b[2] >> 4) + (b[2] & 0xF)
         + (b[3] >> 4) + (b[3] & 0xe);
 
     // put last 6 bits into a number
-    int checksum = ((b[3] & 1) << 5) + (b[4] >> 3);
+    int32_t checksum = ((b[3] & 1) << 5) + (b[4] >> 3);
 
     // accept only correct checksums, (sum of nibbles modulo 64)
     if ((sum_nibbles & 0x3F) != checksum)
         return 0; // DECODE_FAIL_MIC
 
     // humidity: see above the note about working range
-    int humidity = (b[3] >> 1); // extract bits for humidity
+    int32_t humidity = (b[3] >> 1); // extract bits for humidity
     if (humidity <= 10) // actually the sensors sends 10 below working range of 20%
         humidity = 0;
     else if (humidity > 90) // actually the sensors sends 110 above working range of 90%
         humidity = 100;
 
-    int sensor_id      = (b[0]);          // 8 bits
-    int battery_low    = (b[1] >> 7 & 1); // 1 bits
-    int button_pressed = (b[1] >> 6 & 1); // 1 bits
-    int channel        = (b[1] >> 4 & 3); // 2 bits
-    int temp_raw       = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
+    int32_t sensor_id      = (b[0]);          // 8 bits
+    int32_t battery_low    = (b[1] >> 7 & 1); // 1 bits
+    int32_t button_pressed = (b[1] >> 6 & 1); // 1 bits
+    int32_t channel        = (b[1] >> 4 & 3); // 2 bits
+    int32_t temp_raw       = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
     float temp_c       = (temp_raw >> 4) * 0.1F;
 
     /* clang-format off */
@@ -94,28 +94,28 @@ static int gt_wt_02_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int r
             "id",               "ID Code",      DATA_INT,    sensor_id,
             "channel",          "Channel",      DATA_INT,    channel + 1,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "humidity",         "Humidity",     DATA_FORMAT, "%.0f %%", DATA_DOUBLE, (double)humidity,
             "button",           "Button ",      DATA_INT,    button_pressed,
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
 /** @sa gt_wt_02_process_row() */
-static int gt_wt_02_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t gt_wt_02_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int counter = 0;
+    int32_t counter = 0;
     // iterate through all rows, return on first successful
-    for (int row = 0; row < bitbuffer->num_rows && !counter; ++row)
-        counter += gt_wt_02_process_row(decoder, bitbuffer, row);
+    for (int32_t row = 0; row < bitbuffer->num_rows && !counter; ++row)
+        counter += gt_wt_02_process_row(decoder, bitbuffer, row, startPulses,package_type);
     return counter;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

@@ -21,10 +21,10 @@ https://github.com/xkonni/raspberry-remote
 
 #include "decoder.h"
 
-static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int row)
+static int32_t brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const *b = bitbuffer->bb[row];
-    int const length = bitbuffer->bits_per_row[row];
+    int32_t const length = bitbuffer->bits_per_row[row];
     data_t *data;
 
     /* Test bit pattern for every second bit being 1 */
@@ -46,7 +46,7 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
      */
 
     /* extract bits for system code */
-    int system_code =
+    int32_t system_code =
             (b[0] & 0x40) >> 2
             | (b[0] & 0x10) >> 1
             | (b[0] & 0x04)
@@ -54,7 +54,7 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
             | (b[1] & 0x40) >> 6;
 
     /* extract bits for pressed key row */
-    int control_key =
+    int32_t control_key =
             (b[1] & 0x10)
             | (b[1] & 0x04) << 1
             | (b[1] & 0x01) << 2
@@ -67,7 +67,7 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
      * so we can use it for validation of the message:
      * ONLY ONE KEY AT A TIME IS ACCEPTED.
      */
-    char const *key = NULL;
+    uint8_t const *key = NULL;
     if (control_key == 0x10)
         key = "A";
     else if (control_key == 0x08)
@@ -85,7 +85,7 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
      */
 
     /* extract on/off bits (first or second key column on the remote) */
-    int on_off = (b[2] & 0x04) >> 1 | (b[2] & 0x01);
+    int32_t on_off = (b[2] & 0x04) >> 1 | (b[2] & 0x01);
 
     if (on_off != 0x02 && on_off != 0x01)
         return 0; /* Pressing simultaneously ON and OFF key is not useful either */
@@ -98,22 +98,23 @@ static int brennenstuhl_rcs_2044_process_row(r_device *decoder, bitbuffer_t *bit
             "state",    "state",    DATA_STRING, (on_off == 0x02 ? "ON" : "OFF"),
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa brennenstuhl_rcs_2044_process_row() */
-static int brennenstuhl_rcs_2044_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t brennenstuhl_rcs_2044_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int counter = 0;
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
-        counter += brennenstuhl_rcs_2044_process_row(decoder, bitbuffer, row);
+    int32_t counter = 0;
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
+        counter += brennenstuhl_rcs_2044_process_row(decoder, bitbuffer, row, startPulses, package_type);
     }
     return counter;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "key",

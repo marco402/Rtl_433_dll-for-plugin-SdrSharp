@@ -2,7 +2,7 @@
     Fine Offset / Ecowitt WH55 water leak sensor.
 
     Copyright (C) 2023 Christian W. Zuckschwerdt <zany@triq.net>
-    Protocol analysis by @cdavis289, test data by @AhrBee
+    Protocol analysis by \@cdavis289, test data by \@AhrBee
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ Format string:
 
 */
 
-static int fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4, 0x55}; // part of preamble, sync word, and message type
 
@@ -51,7 +51,7 @@ static int fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY; // We expect a single row
     }
 
-    unsigned bitpos = bitbuffer_search(bitbuffer, 0, 0, preamble, 32);
+    uint32_t bitpos = bitbuffer_search(bitbuffer, 0, 0, preamble, 32);
     bitpos += 24; // Start at message type
     if (bitpos + 9 * 8 > bitbuffer->bits_per_row[0]) {
         return DECODE_ABORT_EARLY; // No full message found
@@ -67,17 +67,17 @@ static int fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_log_bitrow(decoder, 1, __func__, b, 12*8, "Message data");
 
     // GETTING MESSAGE TYPE
-    // int msg_type  = b[0];
-    // int flags     = (b[1] & 0xf);
-    int channel   = (b[1] >> 4) + 1;
-    int device_id = (b[2] << 8) | b[3];
+    // int32_t msg_type  = b[0];
+    // int32_t flags     = (b[1] & 0xf);
+    int32_t channel   = (b[1] >> 4) + 1;
+    int32_t device_id = (b[2] << 8) | b[3];
     float battery = b[4] * 0.2f; // 0x01 = 20%, 0x02 = 40%, 0x03 = 60%, 0x04 = 80%, 0x05 = 100%
-    int raw_value = (b[5] << 8) | b[6];
+    int32_t raw_value = (b[5] << 8) | b[6];
 
     // Left bit, 1 = High Sensitivity, 0 = Low Sensitivity, Right Bit: 1 = Alarm On, 0 = Alarm Off
-    // int settings = (b[7] >> 4);
-    int sensitivity = (b[7] >> 7) & 1;
-    int alarm = (b[7] >> 6) & 1;
+    // int32_t settings = (b[7] >> 4);
+    int32_t sensitivity = (b[7] >> 7) & 1;
+    int32_t alarm = (b[7] >> 6) & 1;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -92,11 +92,11 @@ static int fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

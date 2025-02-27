@@ -16,29 +16,35 @@ Data layout (bits):
 - I: 8 bit a random id that is generated when the sensor starts
 
 S.a. http://www.osengr.org/WxShield/Downloads/OregonScientific-RF-Protocols-II.pdf
+
+The device "Bresser Thermo-/Hygro-Sensor Explore Scientific ST1005H" works
+with the same row length, but a completely different interpretation.
+As such, if the bits align both decoders can misdetect data from the
+other sensor as valid from their sensor with "plausable" but usually
+completely wrong values.
 */
 
 #include "decoder.h"
 
-static int oregon_scientific_sl109h_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t oregon_scientific_sl109h_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t *msg;
     uint8_t b[5];
 
     uint8_t sum, chk;
-    int channel;
+    int32_t channel;
     uint8_t humidity;
-    int temp_raw;
+    int32_t temp_raw;
     float temp_c;
-    int status;
+    int32_t status;
     uint8_t id;
-
-    for (int row_index = 0; row_index < bitbuffer->num_rows; row_index++) {
-        if (bitbuffer->bits_per_row[row_index] != 38) // expected length is 38 bit
+    for (row = 0; row < bitbuffer->num_rows; row++) {
+        if (bitbuffer->bits_per_row[row] != 38) // expected length is 38 bit
             continue; // DECODE_ABORT_LENGTH
 
-        msg = bitbuffer->bb[row_index];
+        msg = bitbuffer->bb[row];
 
         // No need to decode/extract values for simple test
         // check id channel temperature humidity value not zero
@@ -50,7 +56,7 @@ static int oregon_scientific_sl109h_callback(r_device *decoder, bitbuffer_t *bit
         chk = msg[0] >> 4;
 
         // align the channel "half nibble"
-        bitbuffer_extract_bytes(bitbuffer, row_index, 2, b, 36);
+        bitbuffer_extract_bytes(bitbuffer, row, 2, b, 36);
         b[0] &= 0x3f;
 
         // Prevent false positives from 'allzero'
@@ -96,15 +102,16 @@ static int oregon_scientific_sl109h_callback(r_device *decoder, bitbuffer_t *bit
                 "mic",              "Integrity",                            DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

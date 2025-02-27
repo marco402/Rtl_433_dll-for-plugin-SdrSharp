@@ -24,24 +24,24 @@
 #endif
 
 #include <stddef.h>
-
+#include <stdint.h>
 typedef struct abuf {
-    char *head;
-    char *tail;
+    uint8_t *head;
+    uint8_t *tail;
     size_t left;
 } abuf_t;
 
-void abuf_init(abuf_t *buf, char *dst, size_t len);
+void abuf_init(abuf_t *buf, uint8_t *dst, size_t len);
 
 void abuf_setnull(abuf_t *buf);
 
-char *abuf_push(abuf_t *buf);
+uint8_t *abuf_push(abuf_t *buf);
 
-void abuf_pop(abuf_t *buf, char *end);
+void abuf_pop(abuf_t *buf, uint8_t *end);
 
-void abuf_cat(abuf_t *buf, const char *str);
+void abuf_cat(abuf_t *buf, const uint8_t *str);
 
-int abuf_printf(abuf_t *buf, _Printf_format_string_ char const *restrict format, ...)
+int32_t abuf_printf(abuf_t *buf, _Printf_format_string_ uint8_t const *restrict format, ...)
 #if defined(__GNUC__) || defined(__clang__)
         __attribute__((format(printf, 2, 3)))
 #endif

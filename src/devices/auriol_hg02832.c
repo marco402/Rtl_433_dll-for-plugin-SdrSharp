@@ -37,22 +37,22 @@ Data layout:
 
 #include "decoder.h"
 
-static int auriol_hg02832_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t auriol_hg02832_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int id, humidity, batt_low, button, channel;
-    int temp_raw;
+    int32_t id, humidity, batt_low, button, channel;
+    int32_t temp_raw;
     float temp_c;
-
+	int32_t row = 1;
     if (bitbuffer->num_rows != 2)
         return DECODE_ABORT_EARLY;
-    if (bitbuffer->bits_per_row[0] != 1 || bitbuffer->bits_per_row[1] != 40)
+    if (bitbuffer->bits_per_row[0] != 1 || bitbuffer->bits_per_row[row] != 40)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_invert(bitbuffer);
 
-    b = bitbuffer->bb[1];
+    b = bitbuffer->bb[row];
 
     // They tried to implement CRC-8 poly 0x31, but (accidentally?) reset the key every new byte.
     // (equivalent key stream is 7a 3d 86 43 b9 c4 62 31 repeated 4 times.)
@@ -78,18 +78,17 @@ static int auriol_hg02832_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",               "",             DATA_INT,    id,
             "channel",          "",             DATA_INT,    channel + 1,
             "battery_ok",       "Battery",      DATA_INT,    !batt_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "humidity",         "Humidity",     DATA_FORMAT, "%.0f %%", DATA_DOUBLE, (float)humidity,
             "button",           "Button",       DATA_INT,    button,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

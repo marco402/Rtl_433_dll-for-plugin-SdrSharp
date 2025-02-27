@@ -13,14 +13,13 @@
 TFA Dostmann Marbella (30.3238.06).
 
 Main display cat no: 3066.01
-￼
-￼External links
-￼
-￼https://www.tfa-dostmann.de/produkt/funk-poolthermometer-marbella-30-3066/
-￼￼https://clientmedia.trade-server.net/1768_tfadost/media/3/52/21352.pdf
+
+External links:
+- https://www.tfa-dostmann.de/produkt/funk-poolthermometer-marbella-30-3066/
+- https://clientmedia.trade-server.net/1768_tfadost/media/3/52/21352.pdf
 
 The Marbella sensor operates at 868MHz frequency band.
-￼
+
 FSK_PCM with 105 us long high durations
 
 AA 2D D4 68 3F 16 0A 31 9A AA XX
@@ -40,14 +39,14 @@ L - lsfr, byte reflected reverse galois with 0x31 key and generator
 
 #include "decoder.h"
 
-static int tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    unsigned bitpos = 0;
+    uint32_t bitpos = 0;
     uint8_t msg[11];
 
     uint8_t const preamble_pattern[] = {0xaa, 0x2d, 0xd4};
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
+    uint32_t start_pos = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof (preamble_pattern) * 8);
 
     if (bitpos == bitbuffer->bits_per_row[0])
@@ -66,12 +65,12 @@ static int tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
 
-    int temp_raw = (msg[7] << 4) | (msg[8] >> 4);
+    int32_t temp_raw = (msg[7] << 4) | (msg[8] >> 4);
     float temp_c = (temp_raw - 400) * 0.1f;
-    int counter  = (msg[6] & 0xF) >> 1;
-    int serialnr = msg[3] << 16 | msg[4] << 8 | msg[5];
+    int32_t counter  = (msg[6] & 0xF) >> 1;
+    int32_t serialnr = msg[3] << 16 | msg[4] << 8 | msg[5];
 
-    char serialnr_str[6 * 2 + 1];
+    uint8_t serialnr_str[6 * 2 + 1];
     snprintf(serialnr_str, sizeof(serialnr_str), "%06x", serialnr);
 
     /* clang-format off */
@@ -84,11 +83,11 @@ static int tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "counter",

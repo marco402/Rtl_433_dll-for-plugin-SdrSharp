@@ -15,6 +15,8 @@ Largely the same as esperanza_ews, kedsum.
 
 Also NC-5849-913 from Pearl (for FWS-310 station).
 
+Also ST389 sensor for ORIA WA50 Wireless Digital Freezer Thermometer (no humidity)
+
 Transmit Interval: every ~50s.
 Message Format: 40 bits (10 nibbles).
 
@@ -38,11 +40,11 @@ Example data:
 
 Temperature:
 - Sensor sends data in °F, lowest supported value is -90°F
-- 12 bit unsigned and scaled by 10 (Nibbles: 6,5,4)
+- 12 bit uint32_t and scaled by 10 (Nibbles: 6,5,4)
 - in this case `011001100101` =  1637/10 - 90 = 73.7 °F (23.17 °C)
 
 Humidity:
-- 8 bit unsigned (Nibbles 8,7)
+- 8 bit uint32_t (Nibbles 8,7)
 - in this case `00101110` = 46
 
 Channel number: (Bits 10,11) + 1
@@ -57,7 +59,7 @@ Random Code / Device ID: (Nibble 1)
 
 #include "decoder.h"
 
-static int s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t b[5];
     data_t *data;
@@ -68,12 +70,15 @@ static int s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // the signal should have 6 repeats with a sync pulse between
     // require at least 4 received repeats
-    int r = bitbuffer_find_repeated_row(bitbuffer, 4, 42);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 42)
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 42);
+    if (row < 0 || bitbuffer->bits_per_row[row] != 42)
         return DECODE_ABORT_LENGTH;
 
     // remove the two leading 0-bits and align the data
-    bitbuffer_extract_bytes(bitbuffer, r, 2, b, 40);
+    bitbuffer_extract_bytes(bitbuffer, row, 2, b, 40);
 
     // No need to decode/extract values for simple test
     // check id channel temperature humidity value not zero
@@ -83,17 +88,17 @@ static int s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // CRC-4 poly 0x3, init 0x0 over 32 bits then XOR the next 4 bits
-    int crc = crc4(b, 4, 0x3, 0x0) ^ (b[4] >> 4);
+    int32_t crc = crc4(b, 4, 0x3, 0x0) ^ (b[4] >> 4);
     if (crc != (b[4] & 0xf))
         return DECODE_FAIL_MIC;
 
-    int id          = b[0];
-    int channel     = ((b[1] & 0x30) >> 4) + 1;
-    int temp_raw    = ((b[2] & 0x0f) << 8) | (b[2] & 0xf0) | (b[1] & 0x0f);
+    int32_t id          = b[0];
+    int32_t channel     = ((b[1] & 0x30) >> 4) + 1;
+    int32_t temp_raw    = ((b[2] & 0x0f) << 8) | (b[2] & 0xf0) | (b[1] & 0x0f);
     float temp_f    = (temp_raw - 900) * 0.1f;
-    int humidity    = ((b[3] & 0x0f) << 4) | ((b[3] & 0xf0) >> 4);
-    int button      = b[4] >> 7;
-    int battery_low = (b[4] & 0x40) >> 6;
+    int32_t humidity    = ((b[3] & 0x0f) << 4) | ((b[3] & 0xf0) >> 4);
+    int32_t button      = b[4] >> 7;
+    int32_t battery_low = (b[4] & 0x40) >> 6;
 
     /* clang-format off */
     data = data_make(
@@ -101,18 +106,18 @@ static int s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",               "ID",           DATA_INT,    id,
             "channel",          "Channel",      DATA_INT,    channel,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_F",    "Temperature",  DATA_FORMAT, "%.02f F", DATA_DOUBLE, temp_f,
-            "humidity",         "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, humidity,
+            "temperature_F",    "Temperature",  DATA_FORMAT, "%.2f F", DATA_DOUBLE, temp_f,
+            "humidity",         "Humidity",     DATA_COND,   humidity != 0, DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "button",           "Button",       DATA_INT,    button,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",
@@ -125,7 +130,7 @@ static char const *const output_fields[] = {
 };
 
 r_device const s3318p = {
-        .name        = "Conrad S3318P, FreeTec NC-5849-913 temperature humidity sensor",
+        .name        = "Conrad S3318P, FreeTec NC-5849-913 temperature humidity sensor, ORIA WA50 ST389 temperature sensor",
         .modulation  = OOK_PULSE_PPM,
         .short_width = 1900,
         .long_width  = 3800,

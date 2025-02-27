@@ -63,42 +63,43 @@ Sequence# 0,1,3,4,5 & 7
 
 #include "decoder.h"
 
-static int lacrosse_th_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_th_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xd2, 0xaa, 0x2d, 0xd4};
 
     data_t *data;
     uint8_t b[11];
     uint32_t id;
-    int flags, seq, offset, chk3, chk2, model_num;
-    int raw_temp, humidity;
+    int32_t flags, seq, chk3, chk2, model_num;
+    uint32_t bit_offset = 0;
+    int32_t raw_temp, humidity;
     float temp_c;
 
     // bit length is specified as 104us for the TH3 (~256 bits per packet)
     // but the TH2 bit length is actually 107us leading the bitbuffer to
     // report the packet length as ~286 bits long.  We'll use this fact
     // to identify which of the two models actually sent the data.
-    if (bitbuffer->bits_per_row[0] < 156) {
-        decoder_logf(decoder, 1, __func__, "Packet too short: %d bits", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->bits_per_row[row] < 156) {
+        decoder_logf(decoder, 1, __func__, "Packet too short: %d bits", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
-    } else if (bitbuffer->bits_per_row[0] > 290) {
-        decoder_logf(decoder, 1, __func__, "Packet too long: %d bits", bitbuffer->bits_per_row[0]);
+    } else if (bitbuffer->bits_per_row[row] > 290) {
+        decoder_logf(decoder, 1, __func__, "Packet too long: %d bits", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
     } else {
-        decoder_logf(decoder, 1, __func__, "packet length: %d", bitbuffer->bits_per_row[0]);
-        model_num = (bitbuffer->bits_per_row[0] < 280) ? 3 : 2;
+        decoder_logf(decoder, 1, __func__, "packet length: %d", bitbuffer->bits_per_row[row]);
+        model_num = (bitbuffer->bits_per_row[row] < 280) ? 3 : 2;
     }
 
-    offset = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof(preamble_pattern) * 8);
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
 
-    if (offset >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         decoder_log(decoder, 1, __func__, "Sync word not found");
         return DECODE_ABORT_EARLY;
     }
 
-    offset += sizeof(preamble_pattern) * 8;
-    bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 8 * 8);
+    bit_offset += sizeof(preamble_pattern) * 8;
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 8 * 8);
 
     // failing the CRC checks indicates the packet is corrupt <OR>
     // this is not a LTV-TH3 or LTV-TH2 sensor
@@ -133,11 +134,11 @@ static int lacrosse_th_decode(r_device *decoder, bitbuffer_t *bitbuffer)
          NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "seq",

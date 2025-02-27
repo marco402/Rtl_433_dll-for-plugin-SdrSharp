@@ -68,12 +68,12 @@ Once the above has been run twice the two are merged
 
 */
 
-static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_p)
+static int32_t secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8_t roll_array[], bitbuffer_t *fixed_p)
 {
     uint8_t invert = 0;
     uint8_t order  = 0;
     uint32_t x    = 0;
-    unsigned int start_pos = 2; //
+    uint32_t start_pos = 2; //
     uint8_t buffy[10];
 
     uint8_t part_id = (bits->bb[0][0] >> 6);
@@ -91,9 +91,9 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
     // bitrow_debug(&invert, 8);
 
     bitbuffer_extract_bytes(bits, 0, start_pos, buffy, 30);
-    start_pos += 30;
+    // start_pos += 30;
 
-    // copy 30 bits of data into 32bit int then shift >> 2
+    // copy 30 bits of data into 32bit int32_t then shift >> 2
     // memcpy(&dat, buffy, 4);
     x = ((uint32_t)buffy[0] << 24) | (buffy[1] << 16) | (buffy[2] << 8) | (buffy[3]);
 
@@ -103,7 +103,7 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
     uint16_t p0 = 0, p1 = 0, p2 = 0;
 
     // sort 30 bits of interleaved data into three 10 bit buffers
-    for (int i = 0; i < 10; i++) {
+    for (int32_t i = 0; i < 10; i++) {
         p2 ^= (x & 0x00000001) << i; // 9-
         x >>= 1;
         p1 ^= (x & 0x00000001) << i;
@@ -198,8 +198,8 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
 
     bitbuffer_extract_bytes(bits, 0, 4, buffy, 8);
     x     = buffy[0];
-    int k = 0;
-    for (int i = 6; i >= 0; i -= 2) {
+    int32_t k = 0;
+    for (int32_t i = 6; i >= 0; i -= 2) {
         roll_array[k++] = (x >> i) & 0x03;
     }
 
@@ -207,7 +207,7 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
 
     // assemble binary bits into trinary
     x = p2;
-    for (int i = 8; i >= 0; i -= 2) {
+    for (int32_t i = 8; i >= 0; i -= 2) {
         roll_array[k++] = (x >> i) & 0x03;
     }
 
@@ -216,7 +216,7 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
                 roll_array[4], roll_array[5], roll_array[6], roll_array[7], roll_array[8]);
 
     // SANITY check trinary values, 00/01/10 are valid,  11 is not
-    for (int i = 0; i < 9; i++) {
+    for (int32_t i = 0; i < 9; i++) {
         if (roll_array[i] == 3) {
             decoder_log(decoder, 0, __func__, "roll_array val FAIL");
             return 1; // DECODE_FAIL_SANITY;
@@ -224,10 +224,10 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
     }
 
     // fixed_p = p0 + p1
-    for (int i = 9; i >= 0; i--) {
+    for (int32_t i = 9; i >= 0; i--) {
         bitbuffer_add_bit(fixed_p, (p0 >> i) & 0x01);
     }
-    for (int i = 9; i >= 0; i--) {
+    for (int32_t i = 9; i >= 0; i--) {
         bitbuffer_add_bit(fixed_p, (p1 >> i) & 0x01);
     }
 
@@ -235,17 +235,17 @@ static int secplus_v2_decode_v2_half(r_device *decoder, bitbuffer_t *bits, uint8
 }
 
 static const uint8_t _preamble[] = {0xaa, 0xaa, 0x95, 0x60};
-unsigned _preamble_len           = 28;
+uint32_t _preamble_len           = 28;
 
 /**
 Security+ 2.0 rolling code.
 @sa secplus_v2_decode_v2_half()
 */
-static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    unsigned search_index = 0;
+    uint32_t search_index = 0;
     bitbuffer_t bits = {0};
-    // int i            = 0;
+    // int32_t i            = 0;
 
     //bitbuffer_t bits_1    = {0};
     bitbuffer_t fixed_1   = {0};
@@ -254,8 +254,8 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     //bitbuffer_t bits_2    = {0};
     bitbuffer_t fixed_2   = {0};
     uint8_t rolling_2[16] = {0};
-
-    for (uint16_t row = 0; row < bitbuffer->num_rows; ++row) {
+	int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
         if (bitbuffer->bits_per_row[row] < 110) {
             continue;
         }
@@ -268,7 +268,7 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
         bitbuffer_clear(&bits);
         bitbuffer_manchester_decode(bitbuffer, row, search_index + 26, &bits, 80);
-        search_index += 20;
+        // search_index += 20;
         if (bits.bits_per_row[0] < 42) {
             continue; // DECODE_ABORT_LENGTH;
         }
@@ -309,17 +309,17 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     r    = rolling_digits;
     *r++ = rolling_2[8];
     *r++ = rolling_1[8];
-    for (int i = 4; i < 8; i++) {
+    for (int32_t i = 4; i < 8; i++) {
         *r++ = rolling_2[i];
     }
-    for (int i = 4; i < 8; i++) {
+    for (int32_t i = 4; i < 8; i++) {
         *r++ = rolling_1[i];
     }
 
-    for (int i = 0; i < 4; i++) {
+    for (int32_t i = 0; i < 4; i++) {
         *r++ = rolling_2[i];
     }
-    for (int i = 0; i < 4; i++) {
+    for (int32_t i = 0; i < 4; i++) {
         *r++ = rolling_1[i];
     }
 
@@ -327,7 +327,7 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint32_t rolling_total = 0;
     uint32_t rolling_temp  = 0;
 
-    for (int i = 0; i < 18; i++) {
+    for (int32_t i = 0; i < 18; i++) {
         rolling_temp = (rolling_temp * 3) + rolling_digits[i];
     }
 
@@ -353,14 +353,14 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     fixed_total ^= ((uint64_t)bb[1]) << 4;
     fixed_total ^= (bb[2] >> 4) & 0x0f;
 
-    // int button    = fixed_total >> 32;
-    // int remote_id = fixed_total & 0xffffffff;
-    char fixed_str[16];
-    char rolling_str[16];
+    // int32_t button    = fixed_total >> 32;
+    // int32_t remote_id = fixed_total & 0xffffffff;
+    uint8_t fixed_str[16];
+    uint8_t rolling_str[16];
 
-    // rolling_total is a 28 bit unsigned number
+    // rolling_total is a 28 bit uint32_t number
     // fixed_totals is 40 bit in a uint64_t
-    snprintf(fixed_str, sizeof(fixed_str), "%llu", (long long unsigned)fixed_total);
+    snprintf(fixed_str, sizeof(fixed_str), "%llu", (uint64_t)fixed_total);
     snprintf(rolling_str, sizeof(rolling_str), "%u", rolling_total);
 
     /* clang-format off */
@@ -376,11 +376,11 @@ static int secplus_v2_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         // Common fields
         "model",
         "id",

@@ -36,19 +36,22 @@ Sample Data:
 
     [00] {42} af 0f a2 7c 01 c0 : 10101111 00001111 10100010 01111100 00000001 11
 
-- Sensor ID	= 175 = 0xaf
-- Channel		= 0
-- temp		= -93 = 0x111110100010
-- TemperatureC	= -9.3
-- hum    = 62% = 0x0111110
+- Sensor ID = 175 = 0xaf
+- Channel = 0
+- temp = -93 = 0x111110100010
+- TemperatureC = -9.3
+- hum = 62% = 0x0111110
 
 */
 
 #include "decoder.h"
 
-static int vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row = bitbuffer_find_repeated_prefix(bitbuffer, 4, 42);
+	uint32_t nbRepeat = 4;
+	
+		
+    int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 42);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
@@ -56,8 +59,8 @@ static int vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t *b = bitbuffer->bb[row];
 
     // checksum is addition
-    int chk = ((b[4] & 0x0f) << 2) | (b[5] >> 6);
-    int sum = add_nibbles(b, 4) + (b[4] >> 4);
+    int32_t chk = ((b[4] & 0x0f) << 2) | (b[5] >> 6);
+    int32_t sum = add_nibbles(b, 4) + (b[4] >> 4);
     if (sum == 0) {
         return DECODE_ABORT_EARLY; // reject all-zeros
     }
@@ -65,12 +68,12 @@ static int vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int device_id = b[0];
-    int channel   = ((b[1] & 0x30) >> 4) + 1;
-    int battery_low = (b[4] & 0x10) >> 4;
-    int temp_raw = (int16_t)(((b[1] & 0x0f) << 12) | ((b[2] & 0xff) << 4));
+    int32_t device_id = b[0];
+    int32_t channel   = ((b[1] & 0x30) >> 4) + 1;
+    int32_t battery_low = (b[4] & 0x10) >> 4;
+    int32_t temp_raw = (int16_t)(((b[1] & 0x0f) << 12) | ((b[2] & 0xff) << 4));
     float temp_c  = (temp_raw >> 4) * 0.1f;
-    int humidity  = (b[3] >> 1);
+    int32_t humidity  = (b[3] >> 1);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -84,11 +87,11 @@ static int vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

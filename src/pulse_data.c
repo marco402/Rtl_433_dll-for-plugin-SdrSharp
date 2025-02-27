@@ -25,7 +25,7 @@ void pulse_data_clear(pulse_data_t *data)
 
 void pulse_data_shift(pulse_data_t *data)
 {
-    int offs = PD_MAX_PULSES / 2; // shift out half the data
+    int32_t offs = PD_MAX_PULSES / 2; // shift out half the data
     memmove(data->pulse, &data->pulse[offs], (PD_MAX_PULSES - offs) * sizeof(*data->pulse));
     memmove(data->gap, &data->gap[offs], (PD_MAX_PULSES - offs) * sizeof(*data->gap));
     data->num_pulses -= offs;
@@ -35,12 +35,12 @@ void pulse_data_shift(pulse_data_t *data)
 void pulse_data_print(pulse_data_t const *data)
 {
     fprintf(stderr, "Pulse data: %u pulses\n", data->num_pulses);
-    for (unsigned n = 0; n < data->num_pulses; ++n) {
+    for (uint32_t n = 0; n < data->num_pulses; ++n) {
         fprintf(stderr, "[%3u] Pulse: %4d, Gap: %4d, Period: %4d\n", n, data->pulse[n], data->gap[n], data->pulse[n] + data->gap[n]);
     }
 }
 
-static void *bounded_memset(void *b, int c, int64_t size, int64_t offset, int64_t len)
+static void *bounded_memset(void *b, int32_t c, int64_t size, int64_t offset, int64_t len)
 {
     if (offset < 0) {
         len += offset; // reduce len by negative offset
@@ -50,14 +50,14 @@ static void *bounded_memset(void *b, int c, int64_t size, int64_t offset, int64_
         len = size - offset; // clip excessive len
     }
     if (len > 0)
-        memset((char *)b + offset, c, (size_t)len);
+        memset((uint8_t *)b + offset, c, (size_t)len);
     return b;
 }
 
-void pulse_data_dump_raw(uint8_t *buf, unsigned len, uint64_t buf_offset, pulse_data_t const *data, uint8_t bits)
+void pulse_data_dump_raw(uint8_t *buf, uint32_t len, uint64_t buf_offset, pulse_data_t const *data, uint8_t bits)
 {
     int64_t pos = data->offset - buf_offset;
-    for (unsigned n = 0; n < data->num_pulses; ++n) {
+    for (uint32_t n = 0; n < data->num_pulses; ++n) {
         bounded_memset(buf, 0x01 | bits, len, pos, data->pulse[n]);
         pos += data->pulse[n];
         bounded_memset(buf, 0x01, len, pos, data->gap[n]);
@@ -65,7 +65,7 @@ void pulse_data_dump_raw(uint8_t *buf, unsigned len, uint64_t buf_offset, pulse_
     }
 }
 
-static inline void chk_ret(int ret)
+static inline void chk_ret(int32_t ret)
 {
     if (ret < 0) {
         perror("File output error");
@@ -79,8 +79,8 @@ void pulse_data_print_vcd_header(FILE *file, uint32_t sample_rate)
         FATAL("Invalid stream in pulse_data_print_vcd_header()");
     }
 
-    char time_str[LOCAL_TIME_BUFLEN];
-    char *timescale;
+    uint8_t time_str[LOCAL_TIME_BUFLEN];
+    uint8_t *timescale;
     if (sample_rate <= 500000)
         timescale = "1 us";
     else
@@ -98,15 +98,15 @@ void pulse_data_print_vcd_header(FILE *file, uint32_t sample_rate)
     chk_ret(fprintf(file, "#0 0/ 0' 0\"\n"));
 }
 
-void pulse_data_print_vcd(FILE *file, pulse_data_t const *data, int ch_id)
+void pulse_data_print_vcd(FILE *file, pulse_data_t const *data, int32_t ch_id)
 {
     float scale;
     if (data->sample_rate <= 500000)
-        scale = 1000000 / data->sample_rate; // unit: 1 us
+        scale = (float)(1000000 / data->sample_rate); // unit: 1 us
     else
-        scale = 10000000 / data->sample_rate; // unit: 100 ns
+        scale = (float)(10000000 / data->sample_rate); // unit: 100 ns
     uint64_t pos = data->offset;
-    for (unsigned n = 0; n < data->num_pulses; ++n) {
+    for (uint32_t n = 0; n < data->num_pulses; ++n) {
         if (n == 0)
             chk_ret(fprintf(file, "#%.f 1/ 1%c\n", pos * scale, ch_id));
         else
@@ -121,9 +121,9 @@ void pulse_data_print_vcd(FILE *file, pulse_data_t const *data, int ch_id)
 
 void pulse_data_load(FILE *file, pulse_data_t *data, uint32_t sample_rate)
 {
-    char s[1024];
-    int i    = 0;
-    int size = sizeof(data->pulse) / sizeof(*data->pulse);
+    uint8_t s[1024];
+    int32_t i    = 0;
+    int32_t size = sizeof(data->pulse) / sizeof(*data->pulse);
 
     pulse_data_clear(data);
     data->sample_rate = sample_rate;
@@ -132,10 +132,10 @@ void pulse_data_load(FILE *file, pulse_data_t *data, uint32_t sample_rate)
     while (i < size && fgets(s, sizeof(s), file)) {
         // TODO: we should parse sample rate and timescale
         if (!strncmp(s, ";freq1", 6)) {
-            data->freq1_hz = strtol(s + 6, NULL, 10);
+            data->freq1_hz = (float)(strtol(s + 6, NULL, 10));
         }
         if (!strncmp(s, ";freq2", 6)) {
-            data->freq2_hz = strtol(s + 6, NULL, 10);
+            data->freq2_hz = (float)(strtol(s + 6, NULL, 10));
         }
         if (*s == ';') {
             if (i) {
@@ -151,14 +151,14 @@ void pulse_data_load(FILE *file, pulse_data_t *data, uint32_t sample_rate)
             continue;
         }
         // parse two ints.
-        char *p = s;
-        char *endptr;
+        uint8_t *p = s;
+        uint8_t *endptr;
         long mark  = strtol(p, &endptr, 10);
         p          = endptr + 1;
         long space = strtol(p, &endptr, 10);
         // fprintf(stderr, "read: mark %ld space %ld\n", mark, space);
-        data->pulse[i] = (int)(to_sample * mark);
-        data->gap[i++] = (int)(to_sample * space);
+        data->pulse[i] = (int32_t)(to_sample * mark);
+        data->gap[i++] = (int32_t)(to_sample * space);
     }
     // fprintf(stderr, "read %d pulses\n", i);
     data->num_pulses = i;
@@ -170,7 +170,7 @@ void pulse_data_print_pulse_header(FILE *file)
         FATAL("Invalid stream in pulse_data_print_pulse_header()");
     }
 
-    char time_str[LOCAL_TIME_BUFLEN];
+    uint8_t time_str[LOCAL_TIME_BUFLEN];
 
     chk_ret(fprintf(file, ";pulse data\n"));
     chk_ret(fprintf(file, ";version 1\n"));
@@ -185,7 +185,7 @@ void pulse_data_dump(FILE *file, pulse_data_t const *data)
         FATAL("Invalid stream in pulse_data_dump()");
     }
 
-    char time_str[LOCAL_TIME_BUFLEN];
+    uint8_t time_str[LOCAL_TIME_BUFLEN];
 
     chk_ret(fprintf(file, ";received %s\n", format_time_str(time_str, NULL, 1, 0)));
     if (data->fsk_f2_est) {
@@ -206,7 +206,7 @@ void pulse_data_dump(FILE *file, pulse_data_t const *data)
     chk_ret(fprintf(file, ";noise %.1f dB\n", data->noise_db));
 
     double to_us = 1e6 / data->sample_rate;
-    for (unsigned i = 0; i < data->num_pulses; ++i) {
+    for (uint32_t i = 0; i < data->num_pulses; ++i) {
         chk_ret(fprintf(file, "%.0f %.0f\n", data->pulse[i] * to_us, data->gap[i] * to_us));
     }
     chk_ret(fprintf(file, ";end\n"));
@@ -214,11 +214,11 @@ void pulse_data_dump(FILE *file, pulse_data_t const *data)
 
 data_t *pulse_data_print_data(pulse_data_t const *data)
 {
-    int pulses[2 * PD_MAX_PULSES];
+    int32_t pulses[2 * PD_MAX_PULSES];
     double to_us = 1e6 / data->sample_rate;
-    for (unsigned i = 0; i < data->num_pulses; ++i) {
-        pulses[i * 2 + 0] = data->pulse[i] * to_us;
-        pulses[i * 2 + 1] = data->gap[i] * to_us;
+    for (uint32_t i = 0; i < data->num_pulses; ++i) {
+        pulses[i * 2 + 0] = (int32_t)(data->pulse[i] * to_us);
+        pulses[i * 2 + 1] = (int32_t)(data->gap[i] * to_us);
     }
 
     /* clang-format off */
@@ -226,9 +226,9 @@ data_t *pulse_data_print_data(pulse_data_t const *data)
             "mod",              "", DATA_STRING, (data->fsk_f2_est) ? "FSK" : "OOK",
             "count",            "", DATA_INT,    data->num_pulses,
             "pulses",           "", DATA_ARRAY,  data_array(2 * data->num_pulses, DATA_INT, pulses),
-            "freq1_Hz",         "", DATA_FORMAT, "%u Hz", DATA_INT, (unsigned)data->freq1_hz,
-            "freq2_Hz",         "", DATA_COND,   data->fsk_f2_est, DATA_FORMAT, "%u Hz", DATA_INT, (unsigned)data->freq2_hz,
-            "freq_Hz",          "", DATA_INT,    (unsigned)data->centerfreq_hz,
+            "freq1_Hz",         "", DATA_FORMAT, "%u Hz", DATA_INT, (uint32_t)data->freq1_hz,
+            "freq2_Hz",         "", DATA_COND,   data->fsk_f2_est, DATA_FORMAT, "%u Hz", DATA_INT, (uint32_t)data->freq2_hz,
+            "freq_Hz",          "", DATA_INT,    (uint32_t)data->centerfreq_hz,
             "rate_Hz",          "", DATA_INT,    data->sample_rate,
             "depth_bits",       "", DATA_INT,    data->depth_bits,
             "range_dB",         "", DATA_FORMAT, "%.1f dB", DATA_DOUBLE, data->range_db,

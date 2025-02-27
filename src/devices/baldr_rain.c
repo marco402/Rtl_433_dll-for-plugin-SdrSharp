@@ -12,7 +12,7 @@
 
 #include "decoder.h"
 
-/** @fn int baldr_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/**
 Baldr / RainPoint Rain Gauge protocol.
 
 For Baldr Wireless Weather Station with Rain Gauge.
@@ -45,32 +45,31 @@ The data is grouped in 9 nibbles:
 
 */
 
-// NOTE: this should really not be here
-int rubicson_crc_check(uint8_t *b);
-
-static int baldr_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t baldr_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 36);
-    if (r < 0)
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
 
     // we expect 36 bits but there might be a trailing 0 bit
-    if (bitbuffer->bits_per_row[r] > 37)
+    if (bitbuffer->bits_per_row[row] > 37)
         return DECODE_ABORT_LENGTH;
 
     // The baldr_rain protocol will trigger on rubicson data, so calculate the rubicson crc and make sure
     // it doesn't match. By guesstimate it should generate a correct crc 1/255% of the times.
     // So less then 0.5% which should be acceptable.
     if ((b[0] == 0 && b[2] == 0 && b[3] == 0)
-            || (b[0] == 0xff &&  b[2] == 0xff && b[3] == 0xff)
-            || rubicson_crc_check(b))
+            || (b[0] == 0xff &&  b[2] == 0xff && b[3] == 0xff))
         return DECODE_ABORT_EARLY;
 
-    int id      = (b[0] << 4) | (b[1] >> 4);
-    int flags   = (b[1] & 0x0f);
-    int rain_in = (b[2] << 12) | (b[3] << 4) | (b[4] >> 4);
+    int32_t id      = (b[0] << 4) | (b[1] >> 4);
+    int32_t flags   = (b[1] & 0x0f);
+    int32_t rain_in = (b[2] << 12) | (b[3] << 4) | (b[4] >> 4);
 
     /* clang-format off */
     data_t *data = data_make(
@@ -80,12 +79,13 @@ static int baldr_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "rain_in",      "Rain",     DATA_FORMAT, "%.3f in", DATA_DOUBLE, rain_in * 0.001,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "flags",
@@ -101,6 +101,7 @@ r_device const baldr_rain = {
         .gap_limit   = 3000,
         .reset_limit = 5000,
         .decode_fn   = &baldr_rain_decode,
+		.priority = 10, // Eliminate false positives by letting Rubicson-Temperature go earlier
         .fields      = output_fields,
         .disabled    = 1, // no validity, no checksum
 };

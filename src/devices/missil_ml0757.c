@@ -54,24 +54,26 @@ All packets begin with an empty row in addition to the 9 rows of repeated data.
 #define MISSIL_ML0757_FLAG_RWP  0x04 // Rain+Wind packet flag
 #define MISSIL_ML0757_FLAG_BAT  0x80 // Battery low flag
 
-static int missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int id, flags, f12bit, f8bit;
+    int32_t id, flags, f12bit, f8bit;
     float temp_c, rainfall, wind_kph;
-    int flag_bat, flag_rwp;
-
-    int r = bitbuffer_find_repeated_row(bitbuffer, 5, 40);
-    if (r < 0)
+    int32_t flag_bat, flag_rwp;
+	uint32_t nbRepeat = 5;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     if (bitbuffer->bits_per_row[0] > 0)
         return DECODE_ABORT_EARLY; // First row must be 0-length
 
-    if (bitbuffer->bits_per_row[r] > 40)
+    if (bitbuffer->bits_per_row[row] > 40)
         return DECODE_ABORT_LENGTH; // Message too long
 
     if ((b[4] & 0x0F) != 0x0F)
@@ -110,8 +112,8 @@ static int missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "model",            "",             DATA_STRING, "Missil-ML0757",
                 "id",               "ID",           DATA_INT,    id,
                 "battery_ok",       "Battery",      DATA_INT,    !flag_bat,
-                "rain_mm",          "Total rain",   DATA_FORMAT, "%.02f mm", DATA_DOUBLE, rainfall,
-                "wind_avg_km_h",    "Wind speed",   DATA_FORMAT, "%.02f km/h", DATA_DOUBLE, wind_kph,
+                "rain_mm",          "Total rain",   DATA_FORMAT, "%.2f mm", DATA_DOUBLE, rainfall,
+                "wind_avg_km_h",    "Wind speed",   DATA_FORMAT, "%.2f km/h", DATA_DOUBLE, wind_kph,
                 NULL);
         /* clang-format on */
     }
@@ -121,16 +123,16 @@ static int missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "model",            "",             DATA_STRING, "Missil-ML0757",
                 "id",               "ID",           DATA_INT,    id,
                 "battery_ok",       "Battery",      DATA_INT,    !flag_bat,
-                "temperature_C",    "Temperature",  DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp_c,
+                "temperature_C",    "Temperature",  DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
                 NULL);
         /* clang-format on */
     }
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

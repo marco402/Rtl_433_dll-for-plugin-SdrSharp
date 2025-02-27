@@ -36,11 +36,11 @@ Data layout:
 
 #include "decoder.h"
 
-static int ts_ft002_decoder(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ts_ft002_decoder(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t b[9];
-    int id, type, depth, transmit, temp_raw, batt_low;
+    int32_t id, type, depth, transmit, temp_raw, batt_low;
     float temp_c;
 
     if (bitbuffer->bits_per_row[0] == 72) {
@@ -57,7 +57,7 @@ static int ts_ft002_decoder(r_device *decoder, bitbuffer_t *bitbuffer)
     else
         return DECODE_ABORT_LENGTH;
 
-    int chk = xor_bytes(b, 9);
+    int32_t chk = xor_bytes(b, 9);
     if (chk)
         return DECODE_FAIL_MIC;
 
@@ -91,19 +91,19 @@ static int ts_ft002_decoder(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",                     DATA_STRING, "TS-FT002",
             "id",               "Id",                   DATA_INT,    id,
             "depth_cm",         "Depth",                DATA_INT,    depth,
-            "temperature_C",    "Temperature",          DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",          DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "transmit_s",       "Transmit Interval",    DATA_INT,    transmit,
             //"battery_ok",       "Battery",              DATA_INT,    batt_low,
             "flags",            "Battery Flag?",        DATA_INT,    batt_low,
             "mic",              "Integrity",            DATA_STRING, "CHECKSUM",
             NULL);
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     /* clang-format on */
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "depth_cm",

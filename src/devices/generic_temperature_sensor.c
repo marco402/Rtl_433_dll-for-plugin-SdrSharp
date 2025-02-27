@@ -22,11 +22,11 @@ Generic temperature sensor 1.
 
 #include "decoder.h"
 
-static int generic_temperature_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t generic_temperature_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[1];
-    int i, device, battery, temp_raw;
+    int32_t i, device, battery, temp_raw;
     float temp_f;
 
     for (i = 1; i < 10; i++) {
@@ -52,15 +52,15 @@ static int generic_temperature_sensor_callback(r_device *decoder, bitbuffer_t *b
             "model",            "",             DATA_STRING,    "Generic-Temperature",
             "id",               "Id",           DATA_INT,       device,
             "battery_ok",       "Battery?",     DATA_INT,       battery,
-            "temperature_C",    "Temperature",  DATA_FORMAT,    "%.02f C",  DATA_DOUBLE,    temp_f,
+            "temperature_C",    "Temperature",  DATA_FORMAT,    "%.2f C",  DATA_DOUBLE,    temp_f,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

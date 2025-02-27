@@ -49,19 +49,22 @@ Decoded example:
 
 */
 
-static int emos_e6016_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t emos_e6016_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 72);
+ 	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 72);
 
-    if (r < 0) {
+    if (row < 0) {
         decoder_log(decoder, 2, __func__, "Repeated row fail");
         return DECODE_ABORT_EARLY;
     }
-    decoder_logf(decoder, 2, __func__, "Found row: %d", r);
+    decoder_logf(decoder, 2, __func__, "Found row: %d", row);
 
-    uint8_t *b = bitbuffer->bb[r];
+    uint8_t *b = bitbuffer->bb[row];
     // we expect 73 bits
-    if (bitbuffer->bits_per_row[r] < 72 || bitbuffer->bits_per_row[r] > 73) {
+    if (bitbuffer->bits_per_row[row] < 72 || bitbuffer->bits_per_row[row] > 73) {
         decoder_log(decoder, 2, __func__, "Length check fail");
         return DECODE_ABORT_LENGTH;
     }
@@ -80,9 +83,9 @@ static int emos_e6016_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int id        = (b[3]);
-    int battery   = (b[4] >> 6);
-    int rain_raw  = (b[6] & 0x0f) << 8 | b[7];
+    int32_t id        = (b[3]);
+    int32_t battery   = (b[4] >> 6);
+    int32_t rain_raw  = (b[6] & 0x0f) << 8 | b[7];
     float rain_mm = rain_raw * 0.7f;
 
     /* clang-format off */
@@ -94,12 +97,13 @@ static int emos_e6016_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

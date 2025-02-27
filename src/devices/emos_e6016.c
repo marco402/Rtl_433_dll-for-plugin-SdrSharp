@@ -55,9 +55,12 @@ Decoded example:
 
 */
 
-static int emos_e6016_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t emos_e6016_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row = bitbuffer_find_repeated_prefix(bitbuffer, 3, 120 - 8); // ignores the repeat byte
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 120 - 8); // ignores the repeat byte
     if (row < 0) {
         decoder_log(decoder, 2, __func__, "Repeated row fail");
         return DECODE_ABORT_EARLY;
@@ -85,24 +88,24 @@ static int emos_e6016_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int id         = b[3];
-    int battery    = ((b[12] >> 2) & 0x1);
-    unsigned dcf77 = ((b[4] & 0x3f) << 26) | (b[5] << 18) | (b[6] << 10) | (b[7] << 2) | (b[8] >> 6);
-    int dcf77_sec  = ((dcf77 >> 0) & 0x3f);
-    int dcf77_min  = ((dcf77 >> 6) & 0x3f);
-    int dcf77_hour = ((dcf77 >> 12) & 0x1f);
-    int dcf77_day  = ((dcf77 >> 17) & 0x1f);
-    int dcf77_mth  = ((dcf77 >> 22) & 0x0f);
-    int dcf77_year = ((dcf77 >> 26) & 0x3f);
-    int channel    = ((b[8] >> 4) & 0x3) + 1;
-    int temp_raw   = (int16_t)(((b[8] & 0x0f) << 12) | (b[9] << 4)); // use sign extend
+    int32_t id         = b[3];
+    int32_t battery    = ((b[12] >> 2) & 0x1);
+    uint32_t dcf77 = ((b[4] & 0x3f) << 26) | (b[5] << 18) | (b[6] << 10) | (b[7] << 2) | (b[8] >> 6);
+    int32_t dcf77_sec  = ((dcf77 >> 0) & 0x3f);
+    int32_t dcf77_min  = ((dcf77 >> 6) & 0x3f);
+    int32_t dcf77_hour = ((dcf77 >> 12) & 0x1f);
+    int32_t dcf77_day  = ((dcf77 >> 17) & 0x1f);
+    int32_t dcf77_mth  = ((dcf77 >> 22) & 0x0f);
+    int32_t dcf77_year = ((dcf77 >> 26) & 0x3f);
+    int32_t channel    = ((b[8] >> 4) & 0x3) + 1;
+    int32_t temp_raw   = (int16_t)(((b[8] & 0x0f) << 12) | (b[9] << 4)); // use sign extend
     float temp_c   = (temp_raw >> 4) * 0.1f;
-    int humidity   = b[10];
-    float speed_ms = b[11] * 0.295;
-    int dir_raw    = (((b[12] & 0xf0) >> 4));
+    int32_t humidity   = b[10];
+    float speed_ms = b[11] * 0.295f;
+    int32_t dir_raw    = (((b[12] & 0xf0) >> 4));
     float dir_deg  = dir_raw * 22.5f;
 
-    char dcf77_str[20]; // "2064-16-32T32:64:64"
+    uint8_t dcf77_str[20]; // "2064-16-32T32:64:64"
     snprintf(dcf77_str, sizeof(dcf77_str), "%4d-%02d-%02dT%02d:%02d:%02d", dcf77_year + 2000, dcf77_mth, dcf77_day, dcf77_hour, dcf77_min, dcf77_sec);
 
     /* clang-format off */
@@ -120,11 +123,11 @@ static int emos_e6016_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

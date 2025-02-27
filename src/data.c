@@ -22,17 +22,18 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "rtl_433.h"
+#include "r_device.h"
 // Macro to prevent unused variables (passed into a function)
 // from generating a warning.
 #define UNUSED(x) (void)(x)
 
-typedef void* (*array_elementwise_import_fn)(void*);
-typedef void (*array_element_release_fn)(void*);
-typedef void (*value_release_fn)(void*);
+typedef void *(*array_elementwise_import_fn)(void *);
+typedef void (*array_element_release_fn)(void *);
+typedef void (*value_release_fn)(void *);
 
 typedef struct {
     /* what is the element size when put inside an array? */
-    int array_element_size;
+    int32_t array_element_size;
 
     /* is the element boxed (ie. behind a pointer) when inside an array?
        if it's not boxed ("unboxed"), json dumping function needs to make
@@ -55,61 +56,63 @@ typedef struct {
 } data_meta_type_t;
 
 static data_meta_type_t dmt[DATA_COUNT] = {
-    //  DATA_DATA
-    { .array_element_size       = sizeof(data_t*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = NULL,
-      .array_element_release    = (array_element_release_fn) data_free,
-      .value_release            = (value_release_fn) data_free },
+        //  DATA_DATA
+        {.array_element_size              = sizeof(data_t *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = NULL,
+                .array_element_release    = (array_element_release_fn)data_free,
+                .value_release            = (value_release_fn)data_free},
 
-    //  DATA_INT
-    { .array_element_size       = sizeof(int),
-      .array_is_boxed           = false,
-      .array_elementwise_import = NULL,
-      .array_element_release    = NULL,
-      .value_release            = NULL },
+        //  DATA_INT
+        {.array_element_size              = sizeof(int32_t),
+                .array_is_boxed           = false,
+                .array_elementwise_import = NULL,
+                .array_element_release    = NULL,
+                .value_release            = NULL},
 
-    //  DATA_DOUBLE
-    { .array_element_size       = sizeof(double),
-      .array_is_boxed           = false,
-      .array_elementwise_import = NULL,
-      .array_element_release    = NULL,
-      .value_release            = NULL },
+        //  DATA_DOUBLE
+        {.array_element_size              = sizeof(double),
+                .array_is_boxed           = false,
+                .array_elementwise_import = NULL,
+                .array_element_release    = NULL,
+                .value_release            = NULL},
 
-    //  DATA_STRING
-    { .array_element_size       = sizeof(char*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = (array_elementwise_import_fn) strdup,
-      .array_element_release    = (array_element_release_fn) free,
-      .value_release            = (value_release_fn) free },
+        //  DATA_STRING
+        {.array_element_size              = sizeof(uint8_t *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = (array_elementwise_import_fn)_strdup,
+                .array_element_release    = (array_element_release_fn)free,
+                .value_release            = (value_release_fn)free},
 
-    //  DATA_ARRAY
-    { .array_element_size       = sizeof(data_array_t*),
-      .array_is_boxed           = true,
-      .array_elementwise_import = NULL,
-      .array_element_release    = (array_element_release_fn) data_array_free ,
-      .value_release            = (value_release_fn) data_array_free },
+        //  DATA_ARRAY
+        {.array_element_size              = sizeof(data_array_t *),
+                .array_is_boxed           = true,
+                .array_elementwise_import = NULL,
+                .array_element_release    = (array_element_release_fn)data_array_free,
+                .value_release            = (value_release_fn)data_array_free},
 };
 
-static bool import_values(void *dst, void const *src, int num_values, data_type_t type)
+static bool import_values(void *dst, void const *src, int32_t num_values, data_type_t type)
 {
-    int element_size = dmt[type].array_element_size;
+    int32_t element_size                   = dmt[type].array_element_size;
     array_elementwise_import_fn import = dmt[type].array_elementwise_import;
     if (import) {
-        for (int i = 0; i < num_values; ++i) {
-            void *copy = import(*(void **)((char *)src + element_size * i));
+        for (int32_t i = 0; i < num_values; ++i) {
+            void *copy = import(*(void **)((uint8_t *)src + element_size * i));
             if (!copy) {
                 --i;
                 while (i >= 0) {
-                    free(*(void **)((char *)dst + element_size * i));
+                    free(*(void **)((uint8_t *)dst + element_size * i));
                     --i;
                 }
                 return false;
-            } else {
-                *((char **)dst + i) = copy;
+            }
+            else {
+                *((uint8_t **)dst + i) = copy;
             }
         }
-    } else {
+    }
+    else {
         memcpy(dst, src, (size_t)element_size * num_values);
     }
     return true; // error is returned early
@@ -117,10 +120,10 @@ static bool import_values(void *dst, void const *src, int num_values, data_type_
 
 /* data */
 
-R_API data_array_t *data_array(int num_values, data_type_t type, void const *values)
+R_API data_array_t *data_array(int32_t num_values, data_type_t type, void const *values)
 {
     if (num_values < 0) {
-      return NULL;
+        return NULL;
     }
     data_array_t *array = calloc(1, sizeof(data_array_t));
     if (!array) {
@@ -128,7 +131,7 @@ R_API data_array_t *data_array(int num_values, data_type_t type, void const *val
         return NULL; // NOTE: returns NULL on alloc failure.
     }
 
-    int element_size = dmt[type].array_element_size;
+    int32_t element_size = dmt[type].array_element_size;
     if (num_values > 0) { // don't alloc empty arrays
         array->values = calloc(num_values, element_size);
         if (!array->values) {
@@ -152,18 +155,19 @@ alloc_error:
 }
 
 // the static analyzer can't prove the allocs to be correct
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+//#pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
 
-static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key, va_list ap)
+static data_t *vdata_make(data_t *first, const uint8_t *key, const uint8_t *pretty_key, va_list ap)
 {
     data_type_t type;
     data_t *prev = first;
     while (prev && prev->next)
         prev = prev->next;
-    char *format = NULL;
-    int skip = 0; // skip the data item if this is set
-    type = va_arg(ap, data_type_t);
+    uint8_t *format = NULL;
+    int32_t skip     = 0; // skip the data item if this is set
+    type         = va_arg(ap, data_type_t);
     do {
         data_t *current;
         data_value_t value = {0};
@@ -172,7 +176,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
 
         switch (type) {
         case DATA_COND:
-            skip |= !va_arg(ap, int);
+            skip |= !va_arg(ap, int32_t);
             type = va_arg(ap, data_type_t);
             continue;
         case DATA_FORMAT:
@@ -180,11 +184,14 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
                 fprintf(stderr, "vdata_make() format type used twice\n");
                 goto alloc_error;
             }
-            format = strdup(va_arg(ap, char *));
-            if (!format) {
-                WARN_STRDUP("vdata_make()");
-                goto alloc_error;
-            }
+			format = va_arg(ap, uint8_t *);
+			if (format) {
+				format = _strdup(format);
+				if (!format) {
+					WARN_STRDUP("vdata_make()");
+					goto alloc_error;
+				}
+			}
             type = va_arg(ap, data_type_t);
             continue;
         case DATA_COUNT:
@@ -192,23 +199,23 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             break;
         case DATA_DATA:
             value_release = (value_release_fn)data_free; // appease CSA checker
-            value.v_ptr = va_arg(ap, data_t *);
+            value.v_ptr   = va_arg(ap, data_t *);
             break;
         case DATA_INT:
-            value.v_int = va_arg(ap, int);
+            value.v_int = va_arg(ap, int32_t);
             break;
         case DATA_DOUBLE:
             value.v_dbl = va_arg(ap, double);
             break;
         case DATA_STRING:
             value_release = (value_release_fn)free; // appease CSA checker
-            value.v_ptr = strdup(va_arg(ap, char *));
+			value.v_ptr = _strdup(va_arg(ap, uint8_t const *));
             if (!value.v_ptr)
                 WARN_STRDUP("vdata_make()");
             break;
         case DATA_ARRAY:
             value_release = (value_release_fn)data_array_free; // appease CSA checker
-            value.v_ptr = va_arg(ap, data_array_t *);
+            value.v_ptr   = va_arg(ap, data_array_t *);
             break;
         default:
             fprintf(stderr, "vdata_make() bad data type (%d)\n", type);
@@ -220,7 +227,7 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
                 value_release(value.v_ptr);
             free(format);
             format = NULL;
-            skip = 0;
+            skip   = 0;
         }
         else {
             current = calloc(1, sizeof(*current));
@@ -242,12 +249,12 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
             if (!first)
                 first = current;
 
-            current->key = strdup(key);
+            current->key = _strdup(key);
             if (!current->key) {
                 WARN_STRDUP("vdata_make()");
                 goto alloc_error;
             }
-            current->pretty_key = strdup(pretty_key ? pretty_key : key);
+            current->pretty_key = _strdup(pretty_key ? pretty_key : key);
             if (!current->pretty_key) {
                 WARN_STRDUP("vdata_make()");
                 goto alloc_error;
@@ -255,10 +262,10 @@ static data_t *vdata_make(data_t *first, const char *key, const char *pretty_key
         }
 
         // next args
-        key = va_arg(ap, const char *);
+        key = va_arg(ap, const uint8_t *);
         if (key) {
-            pretty_key = va_arg(ap, const char *);
-            type = va_arg(ap, data_type_t);
+            pretty_key = va_arg(ap, const uint8_t *);
+            type       = va_arg(ap, data_type_t);
         }
     } while (key);
     if (format) {
@@ -274,7 +281,7 @@ alloc_error:
     return NULL;
 }
 
-R_API data_t *data_make(const char *key, const char *pretty_key, ...)
+R_API data_t *data_make(const uint8_t *key, const uint8_t *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -283,7 +290,7 @@ R_API data_t *data_make(const char *key, const char *pretty_key, ...)
     return result;
 }
 
-R_API data_t *data_append(data_t *first, const char *key, const char *pretty_key, ...)
+static data_t *data_append(data_t *first, const uint8_t *key, const uint8_t *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -292,7 +299,7 @@ R_API data_t *data_append(data_t *first, const char *key, const char *pretty_key
     return result;
 }
 
-R_API data_t *data_prepend(data_t *first, const char *key, const char *pretty_key, ...)
+R_API data_t *data_prepend(data_t *first, const uint8_t *key, const uint8_t *pretty_key, ...)
 {
     va_list ap;
     va_start(ap, pretty_key);
@@ -310,13 +317,49 @@ R_API data_t *data_prepend(data_t *first, const char *key, const char *pretty_ke
     return result;
 }
 
+// Wrappers for now, should be refactored.
+R_API data_t *data_int(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, int32_t val)
+{
+	return data_append(first, key, pretty_key, DATA_FORMAT, format, DATA_INT, val, NULL);
+}
+R_API data_t *data_dbl(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, double val)
+{
+	return data_append(first, key, pretty_key, DATA_FORMAT, format, DATA_DOUBLE, val, NULL);
+}
+R_API data_t *data_str(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, uint8_t const *val)
+{
+	return data_append(first, key, pretty_key, DATA_FORMAT, format, DATA_STRING, val, NULL);
+}
+R_API data_t *data_ary(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, data_array_t *val)
+{
+	return data_append(first, key, pretty_key, DATA_FORMAT, format, DATA_ARRAY, val, NULL);
+}
+R_API data_t *data_dat(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, data_t *val)
+{
+	return data_append(first, key, pretty_key, DATA_FORMAT, format, DATA_DATA, val, NULL);
+}
+R_API data_t *data_hex(data_t *first, uint8_t const *key, uint8_t const *pretty_key, uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf)
+{
+	if (!format || !*format) {
+		format = "%02x";
+	}
+
+	uint8_t *p = buf;
+	for (uint32_t i = 0; i < len; i ++) {
+		p += sprintf(p, format, val[i]);
+	}
+	*p = '\0';
+
+	return data_append(first, key, pretty_key, DATA_FORMAT, NULL, DATA_STRING, buf, NULL);
+}
+
 R_API void data_array_free(data_array_t *array)
 {
     array_element_release_fn release = dmt[array->type].array_element_release;
     if (release) {
-        int element_size = dmt[array->type].array_element_size;
-        for (int i = 0; i < array->num_values; ++i)
-            release(*(void **)((char *)array->values + element_size * i));
+        int32_t element_size = dmt[array->type].array_element_size;
+        for (int32_t i = 0; i < array->num_values; ++i)
+            release(*(void **)((uint8_t *)array->values + element_size * i));
     }
     free(array->values);
     free(array);
@@ -330,10 +373,11 @@ R_API data_t *data_retain(data_t *data)
 }
 
 #if defined(__clang__)
-    // ignore "call to function _free through pointer to incorrect function type"
-    __attribute__((no_sanitize("undefined")))
+// ignore "call to function _free through pointer to incorrect function type"
+__attribute__((no_sanitize("undefined")))
 #endif
-R_API void data_free(data_t *data)
+R_API void
+data_free(data_t *data)
 {
     if (data && data->retain) {
         --data->retain;
@@ -351,23 +395,23 @@ R_API void data_free(data_t *data)
     }
 }
 
-#pragma GCC diagnostic pop
+//#pragma GCC diagnostic pop
 
 /* data output */
 
-R_API void data_output_print(data_output_t *output, data_t *data)
+R_API void data_output_print(data_output_t *output, data_t *data, defDeviceToPlugin *_ptrDeviceToPlugin)
 {
     if (!output)
         return;
     if (output->output_print) {
-        output->output_print(output, data);
+        output->output_print(output, data, _ptrDeviceToPlugin);
     }
     else {
-        output->print_data(output, data, NULL);
+        output->print_data(output, data, NULL, _ptrDeviceToPlugin);
     }
 }
 
-R_API void data_output_start(struct data_output *output, char const *const *fields, int num_fields)
+R_API void data_output_start(struct data_output *output, uint8_t const *const *fields, int32_t num_fields)
 {
     if (!output || !output->output_start)
         return;
@@ -381,9 +425,7 @@ R_API void data_output_free(data_output_t *output)
     output->output_free(output);
 }
 
-/* output helpers */
-
-R_API void print_value(data_output_t *output, data_type_t type, data_value_t value, char const *format)
+R_API void print_value(data_output_t *output, data_type_t type, data_value_t value, uint8_t const *format)
 {
     switch (type) {
     case DATA_FORMAT:
@@ -392,34 +434,68 @@ R_API void print_value(data_output_t *output, data_type_t type, data_value_t val
         assert(0);
         break;
     case DATA_DATA:
-        output->print_data(output, value.v_ptr, format);
+        output->print_data(output, value.v_ptr, format, NULL);
         break;
     case DATA_INT:
-        output->print_int(output, value.v_int, format);
+        output->print_int(output, value.v_int, format, NULL);
         break;
     case DATA_DOUBLE:
-        output->print_double(output, value.v_dbl, format);
+        output->print_double(output, value.v_dbl, format, NULL);
         break;
     case DATA_STRING:
-        output->print_string(output, value.v_ptr, format);
+        output->print_string(output, value.v_ptr, format, NULL);
         break;
     case DATA_ARRAY:
-        output->print_array(output, value.v_ptr, format);
+        output->print_array(output, value.v_ptr, format, NULL);
         break;
     }
+    return;
 }
 
-R_API void print_array_value(data_output_t *output, data_array_t *array, char const *format, int idx)
+/* output helpers */
+
+R_API uint8_t *traitementValue(data_type_t type, data_value_t value, uint8_t const *format, uint8_t *cara)
 {
-    int element_size = dmt[array->type].array_element_size;
+    switch (type) {
+    case DATA_FORMAT:
+    case DATA_COUNT:
+    case DATA_COND:
+        assert(0);
+        break;
+    case DATA_DATA:
+        //output->print_data(output, value.v_ptr, format);
+        break;
+    case DATA_INT:
+		snprintf(cara, LENLINES, format ? format : "%d", value.v_int);
+        return cara;
+        break;
+    case DATA_DOUBLE:
+		snprintf(cara, LENLINES, format ? format : "%.3f", value.v_dbl);
+        return cara;
+        break;
+    case DATA_STRING:
+		snprintf(cara, LENLINES , format ? format : "%s", value.v_ptr);
+        return cara;
+        break;
+    case DATA_ARRAY:
+        //output->print_array(output, value.v_ptr, format);
+        break;
+    }
+    return NULL;
+}
+
+R_API void print_array_value(data_output_t *output, data_array_t *array, uint8_t const *format, int32_t idx)
+{
+    int32_t element_size   = dmt[array->type].array_element_size;
     data_value_t value = {0};
 
     if (!dmt[array->type].array_is_boxed) {
-        memcpy(&value, (char *)array->values + element_size * idx, element_size);
+        memcpy(&value, (uint8_t *)array->values + element_size * idx, element_size);
         print_value(output, array->type, value, format);
-    } else {
+    }
+    else {
         // Note: on 32-bit data_value_t has different size/alignment than a pointer!
-        value.v_ptr = *(void **)((char *)array->values + element_size * idx);
+        value.v_ptr = *(void **)((uint8_t *)array->values + element_size * idx);
         print_value(output, array->type, value, format);
     }
 }
@@ -431,12 +507,12 @@ typedef struct {
     abuf_t msg;
 } data_print_jsons_t;
 
-static void R_API_CALLCONV format_jsons_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV format_jsons_array(struct data_output *output, data_array_t *array, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
 
     abuf_cat(&jsons->msg, "[");
-    for (int c = 0; c < array->num_values; ++c) {
+    for (int32_t c = 0; c < array->num_values; ++c) {
         if (c)
             abuf_cat(&jsons->msg, ",");
         print_array_value(output, array, format, c);
@@ -444,7 +520,7 @@ static void R_API_CALLCONV format_jsons_array(data_output_t *output, data_array_
     abuf_cat(&jsons->msg, "]");
 }
 
-static void R_API_CALLCONV format_jsons_object(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV format_jsons_object(struct data_output *output, data_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
@@ -454,7 +530,7 @@ static void R_API_CALLCONV format_jsons_object(data_output_t *output, data_t *da
     while (data) {
         if (separator)
             abuf_cat(&jsons->msg, ",");
-        output->print_string(output, data->key, NULL);
+        output->print_string(output, data->key, NULL, NULL);
         abuf_cat(&jsons->msg, ":");
         print_value(output, data->type, data->value, data->format);
         separator = true;
@@ -463,12 +539,12 @@ static void R_API_CALLCONV format_jsons_object(data_output_t *output, data_t *da
     abuf_cat(&jsons->msg, "}");
 }
 
-static void R_API_CALLCONV format_jsons_string(data_output_t *output, const char *str, char const *format)
+static void R_API_CALLCONV format_jsons_string(struct data_output *output, const uint8_t *str, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
 
-    char *buf   = jsons->msg.tail;
+    uint8_t *buf   = jsons->msg.tail;
     size_t size = jsons->msg.left;
 
     size_t str_len = strlen(str);
@@ -523,7 +599,7 @@ static void R_API_CALLCONV format_jsons_string(data_output_t *output, const char
     jsons->msg.left = size;
 }
 
-static void R_API_CALLCONV format_jsons_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV format_jsons_double(struct data_output *output, double data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
@@ -542,14 +618,14 @@ static void R_API_CALLCONV format_jsons_double(data_output_t *output, double dat
     }
 }
 
-static void R_API_CALLCONV format_jsons_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV format_jsons_int(struct data_output *output, int32_t data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_print_jsons_t *jsons = (data_print_jsons_t *)output;
     abuf_printf(&jsons->msg, "%d", data);
 }
 
-R_API size_t data_print_jsons(data_t *data, char *dst, size_t len)
+R_API size_t data_print_jsons(data_t *data, uint8_t *dst, size_t len, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_print_jsons_t jsons = {
             .output = {
@@ -563,7 +639,7 @@ R_API size_t data_print_jsons(data_t *data, char *dst, size_t len)
 
     abuf_init(&jsons.msg, dst, len);
 
-    format_jsons_object(&jsons.output, data, NULL);
+    format_jsons_object(&jsons.output, data, NULL,NULL);
 
     return len - jsons.msg.left;
 }

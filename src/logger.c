@@ -17,7 +17,7 @@
 static r_logger_handler logger_handler = NULL;
 static void *logger_handler_userdata   = NULL;
 
-static void default_handler(log_level_t level, char const *src, char const *msg)
+static void default_handler(log_level_t level, uint8_t const *src, uint8_t const *msg)
 {
     (void)level;
     fprintf(stderr, "%s: %s\n", src, msg);
@@ -29,22 +29,24 @@ void r_logger_set_log_handler(r_logger_handler const handler, void *userdata)
     logger_handler_userdata = userdata;
 }
 
-void print_log(log_level_t level, char const *src, char const *msg)
+void print_log(log_level_t level, uint8_t const *src, uint8_t const *msg)
 {
-    if (logger_handler) {
-        logger_handler(level, src, msg, logger_handler_userdata);
-    }
-    else {
-        default_handler(level, src, msg);
-    }
+	return;
+    //if (logger_handler) {
+    //    logger_handler(level, src, msg, logger_handler_userdata);
+    //}
+    //else {
+    //    default_handler(level, src, msg);
+    //}
 }
 
-void print_logf(log_level_t level, char const *src, char const *fmt, ...)
+void print_logf(log_level_t level, uint8_t const *src, uint8_t const *fmt, ...)
 {
-    char msg[256];
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(msg, sizeof(msg), fmt, ap);
-    va_end(ap);
-    print_log(level, src, msg);
+	return;
+    //uint8_t msg[256];
+    //va_list ap;
+    //va_start(ap, fmt);
+    //vsnprintf(msg, sizeof(msg), fmt, ap);
+    //va_end(ap);
+    //print_log(level, src, msg);
 }

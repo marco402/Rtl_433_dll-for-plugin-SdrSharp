@@ -68,33 +68,33 @@ Examples:
 
  */
 
-static int bresser_leakage_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t bresser_leakage_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0x2d, 0xd4};
     uint8_t msg[18];
 
     if (bitbuffer->num_rows != 1
-            || bitbuffer->bits_per_row[0] < 160
-            || bitbuffer->bits_per_row[0] > 440) {
-        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);
+            || bitbuffer->bits_per_row[row] < 160
+            || bitbuffer->bits_per_row[row] > 440) {
+        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_EARLY; // Unrecognized data
     }
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof (preamble_pattern) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (start_pos >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
-    start_pos += sizeof (preamble_pattern) * 8;
+    bit_offset += sizeof (preamble_pattern) * 8;
 
-    unsigned len = bitbuffer->bits_per_row[0] - start_pos;
+    uint32_t len = bitbuffer->bits_per_row[row] - bit_offset;
     if (len < sizeof(msg) * 8) {
         decoder_logf(decoder, 2, __func__, "%u too short", len);
         return DECODE_ABORT_LENGTH; // message too short
     }
 
-    bitbuffer_extract_bytes(bitbuffer, 0, start_pos, msg, sizeof(msg) * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, msg, sizeof(msg) * 8);
 
     decoder_log_bitrow(decoder, 2, __func__, msg, sizeof(msg) * 8, "");
 
@@ -108,12 +108,12 @@ static int bresser_leakage_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     uint32_t sensor_id = ((uint32_t)msg[2] << 24) | (msg[3] << 16) | (msg[4] << 8) | (msg[5]);
-    int s_type         = msg[6] >> 4;
-    int chan           = (msg[6] & 0x7);
-    int battery_ok     = ((msg[7] & 0x30) != 0x00);
-    int nstartup       = (msg[6] & 0x08) >> 3;
-    int alarm          = (msg[7] & 0x80) >> 7;
-    int no_alarm       = (msg[7] & 0x40) >> 6;
+    int32_t s_type         = msg[6] >> 4;
+    int32_t chan           = (msg[6] & 0x7);
+    int32_t battery_ok     = ((msg[7] & 0x30) != 0x00);
+    int32_t nstartup       = (msg[6] & 0x08) >> 3;
+    int32_t alarm          = (msg[7] & 0x80) >> 7;
+    int32_t no_alarm       = (msg[7] & 0x40) >> 6;
 
     // Sanity checks
     if (s_type != SENSOR_TYPE_LEAKAGE
@@ -133,11 +133,12 @@ static int bresser_leakage_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

@@ -10,7 +10,12 @@
     (at your option) any later version.
 */
 
-/**
+/** @fn int32_t secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
+Security+ 1.0 rolling code
+
+@warning This decoder is not stateless.
+@warning This decoder is dependent on elapsed time.
+
 Freq 310, 315 and 390 MHz.
 
 Security+ 1.0  is described in [US patent application US6980655B2](https://patents.google.com/patent/US6980655B2/)
@@ -46,17 +51,17 @@ The patterns `1 1 1 1` or `0 0 0 0` should never happen
 note: due to implementation this needs 44 bytes output in worst case of invalid data.
 */
 
-static int secplus_v1_decode_v1_half(r_device *decoder, uint8_t *bits, uint8_t *result)
+static int32_t secplus_v1_decode_v1_half(r_device *decoder, uint8_t *bits, uint8_t *result)
 {
     uint8_t *r;
-    int x = 0;
+    int32_t x = 0;
 
     r = result;
 
-    for (int i = 0; i < 11; i++) {
+    for (int32_t i = 0; i < 11; i++) {
         // fprintf(stderr, "\nbin X = {%ld} %s\n", strlen(binstr), binstr);
-        for (int j = 0; j < 8; j++) {
-            int k = (bits[i] << j) & 0x80;
+        for (int32_t j = 0; j < 8; j++) {
+            int32_t k = (bits[i] << j) & 0x80;
             // fprintf(stderr, "k == %d\n", k);
             if (k) {
                 x++;
@@ -86,7 +91,7 @@ static int secplus_v1_decode_v1_half(r_device *decoder, uint8_t *bits, uint8_t *
         }
     }
 
-    return (int)result[0];
+    return (int32_t)result[0];
 }
 
 static const uint8_t preamble_1[1] = {0x02};
@@ -97,18 +102,18 @@ Find index of next bursts/packets in bitbuffer.
 
 The transmissions do not have a magic number or preamble.
 
-They all start with a '0' or a '2'  represented at 0001. and 0111.
+They all start with a '0' or a '2' represented at 0001. and 0111.
 since all nibbles start with 0 we can look for bytes
-000 + 0001 + 0 and 000 + 0111 + 0 for the start of a transmission
+000 + 0001 + 0 and 000 + 0111 + 0 for the start of a transmission
 (or just the 0001 and 0111 at the start of a bitbuffer)
 */
 
-static int find_next(bitbuffer_t *bitbuffer, int cur_index)
+static int32_t find_next(bitbuffer_t *bitbuffer, int32_t cur_index)
 {
 
-    // int search_index;
-    int search_index_1;
-    int search_index_2;
+    // int32_t search_index;
+    int32_t search_index_1;
+    int32_t search_index_2;
 
     if (cur_index == 0 && ((bitbuffer->bb[0][0] & 0xf0) == 0x10 || (bitbuffer->bb[0][0] & 0xf0) == 0x70))
         return 0;
@@ -132,12 +137,12 @@ static int find_next(bitbuffer_t *bitbuffer, int cur_index)
 static uint8_t cached_result[24] = {0};
 static struct timeval cached_tv  = {0};
 
-static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t result_1[24] = {0};
     uint8_t result_2[24] = {0};
-    int status           = 0;
-    int search_index;
+    int32_t status           = 0;
+    int32_t search_index;
 
     // the max of 130 is just a guess
     if (bitbuffer->bits_per_row[0] < 84 || bitbuffer->bits_per_row[0] > 130) {
@@ -148,7 +153,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     search_index = 0;
     while (search_index < bitbuffer->bits_per_row[0] && status == 0) {
-        int dr            = 0;
+        int32_t dr            = 0;
         uint8_t buffy[44] = {0}; // actually we expect 22 bytes on valid decode
         uint8_t buffi[11] = {0};
 
@@ -263,7 +268,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     res++;
 
     uint32_t acc = 0;
-    for (int i = 0; i < 20; i += 2) {
+    for (int32_t i = 0; i < 20; i += 2) {
         uint8_t digit = 0;
 
         digit        = res[i];
@@ -279,7 +284,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     res++;
 
     acc = 0;
-    for (int i = 0; i < 20; i += 2) {
+    for (int32_t i = 0; i < 20; i += 2) {
         uint8_t digit = 0;
 
         digit        = res[i];
@@ -297,16 +302,16 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         we now have values for rolling & fixed
         next we extract status info stored in the value for 'fixed'
     */
-    int switch_id = fixed % 3;
-    int id;
-    int id0        = (fixed / 3) % 3;
-    int id1        = (int)(fixed / 9) % 3;
-    int pad_id     = 0;
-    int pin        = 0;
-    char pin_s[24] = {0};
+    int32_t switch_id = fixed % 3;
+    int32_t id;
+    int32_t id0        = (fixed / 3) % 3;
+    int32_t id1        = (int32_t)(fixed / 9) % 3;
+    int32_t pad_id     = 0;
+    int32_t pin        = 0;
+    uint8_t pin_s[24] = {0};
 
-    int remote_id = 0;
-    char const *button  = "";
+    int32_t remote_id = 0;
+    uint8_t const *button  = "";
 
     if (id1 == 0) {
         //  pad_id = (fixed // 3**3) % (3**7)     27  3^72187
@@ -322,7 +327,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             strcat(pin_s, "enter"); // NOLINT
         }
 
-        int pin_suffix = 0;
+        int32_t pin_suffix = 0;
         // pin_suffix = (fixed // 3**19) % 3   3^19=1162261467
         pin_suffix = (fixed / 1162261467) % 3;
 
@@ -334,7 +339,7 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // decoder_logf(decoder, 1, __func__, "pad_id=%d pin=%d pin_s=%s", pad_id, pin, pin_s);
     }
     else {
-        remote_id = (int)fixed / 27;
+        remote_id = (int32_t)fixed / 27;
         id        = remote_id;
         if (switch_id == 1)
             button = "left";
@@ -346,12 +351,12 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // decoder_logf(decoder, 1, __func__, "remote_id=%d button=%s", remote_id, button);
     }
 
-    // preformat unsigned int
-    char rolling_str[16];
+    // preformat uint32_t
+    uint8_t rolling_str[16];
     snprintf(rolling_str, sizeof(rolling_str), "%u", rolling);
 
-    // preformat unsigned int
-    char fixed_str[16]; // should be 10 chars max
+    // preformat uint32_t
+    uint8_t fixed_str[16]; // should be 10 chars max
     snprintf(fixed_str, sizeof(fixed_str), "%u", fixed);
 
     // decoder_logf(decoder, 0, __func__,  "# Security+:  rolling=2320615320  fixed=1846948897  (id1=2 id0=0 switch=1 remote_id=68405514 button=left)");
@@ -373,11 +378,11 @@ static int secplus_v1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "id0",

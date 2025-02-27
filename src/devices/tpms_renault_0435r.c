@@ -70,25 +70,25 @@ not fit into 8 bits (that is for speeds above 93 kph on my tires).
 
 #include "decoder.h"
 
-static int tpms_renault_0435r_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_renault_0435r_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
     // require 72 data bits
-    if (packet_bits.bits_per_row[0] < 72) {
+    if (packet_bits.bits_per_row[row] < 72) {  // to see
         return DECODE_ABORT_EARLY;
     }
-    uint8_t *b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[row];
 
     // check checksum (checksum8 xor)
-    int chk = xor_bytes(b, 9);
+    int32_t chk = xor_bytes(b, 9);
     if (chk != 0) {
         return DECODE_FAIL_MIC;
     }
 
-    int tick     = b[8] & 0x7f;
-    int has_tick = b[8] >> 7;
+    int32_t tick     = b[8] & 0x7f;
+    int32_t has_tick = b[8] >> 7;
 
     // Sensor begins with has_tick = 1, and tick = 0. It sends data every 4.5s
     // and increments tick. Value tick >= 30 is never send, sensor instead
@@ -98,19 +98,19 @@ static int tpms_renault_0435r_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
         return DECODE_FAIL_SANITY;
     }
 
-    int flags = b[3];
+    int32_t flags = b[3];
     // observed always 0xc0 - FIXME: find possible combinations and reject message with impossible combination
     // to avoid confusion with other FSK manchester 9-byte sensors with 8bit xor checksum.
 
-    int pressure_raw    = b[4];
+    int32_t pressure_raw    = b[4];
     double pressure_kpa = pressure_raw / 0.75;
-    int temp_c          = (int)b[5] - 50;
-    int rad_acc         = (int)b[6] * 5;
+    int32_t temp_c          = (int32_t)b[5] - 50;
+    int32_t rad_acc         = (int32_t)b[6] * 5;
 
-    char id_str[7];
+    uint8_t id_str[7];
     snprintf(id_str, sizeof(id_str), "%02x%02x%02x", b[0], b[1], b[2]);
 
-    char flags_str[3];
+    uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%02x", flags);
 
     /* clang-format off */
@@ -128,39 +128,40 @@ static int tpms_renault_0435r_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_renault_0435r_decode() */
-static int tpms_renault_0435r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_renault_0435r_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // full preamble is 55 55 55 56 (inverted: aa aa aa a9)
     uint8_t const preamble_pattern[2] = {0xaa, 0xa9}; // 16 bits
 
-    int ret    = 0;
-    int events = 0;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     bitbuffer_invert(bitbuffer);
 
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
-        unsigned bitpos = 0;
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
+        uint32_t bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
-        while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
+        while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset,
                         preamble_pattern, 16)) +
                         160 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = tpms_renault_0435r_decode(decoder, bitbuffer, row, bitpos + 16);
+            ret = tpms_renault_0435r_decode(decoder, bitbuffer, row, bit_offset + 16, startPulses, package_type);
             if (ret > 0)
                 events += ret;
-            bitpos += 15;
+            bit_offset += 15;
         }
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

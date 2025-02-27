@@ -9,7 +9,7 @@
     (at your option) any later version.
 */
 
-/** @fn int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int row, unsigned int start_pos)
+/** @fn int32_t parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, uint32_t row, uint32_t start_pos)
 Insteon RF decoder.
 
     "Insteon is a home automation (domotics) technology that enables
@@ -56,7 +56,7 @@ all following bytes are transmitted with a decrementing index count with the fin
 #include "decoder.h"
 
 // 1100111010101010
-static const uint8_t insteon_preamble[] = {0xCE, 0xAA};
+static uint8_t const insteon_preamble[] = {0xCE, 0xAA};
 
 #define INSTEON_PACKET_MIN 10
 #define INSTEON_PACKET_MAX 13
@@ -81,7 +81,7 @@ static uint8_t gen_ext_crc(uint8_t *dat)
 {
     uint8_t r = 0;
 
-    for (int i = 7; i < 22; i++) {
+    for (int32_t i = 7; i < 22; i++) {
         r += dat[i];
     }
 
@@ -103,7 +103,7 @@ static uint8_t gen_crc(uint8_t *dat)
 {
     uint8_t r = 0;
 
-    for (int i = 0; i < 9; i++) {
+    for (int32_t i = 0; i < 9; i++) {
         r ^= dat[i];
         r ^= ((r ^ (r << 1)) & 0x0F) << 4;
     }
@@ -111,13 +111,13 @@ static uint8_t gen_crc(uint8_t *dat)
     return (r);
 }
 
-static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int row, unsigned int start_pos)
+static int32_t parse_insteon_pkt(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t start_pos, int32_t startPulses, uint16_t package_type)
 {
     uint8_t results[35]   = {0};
     uint8_t results_len   = 0;
     bitbuffer_t i_bits    = {0};
     bitbuffer_t d_bits    = {0};
-    unsigned int next_pos = 0;
+    uint32_t next_pos = 0;
     uint8_t i             = 0;
     uint8_t pkt_i, pkt_d;
 
@@ -154,10 +154,10 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 
     */
 
-    next_pos = bitbuffer_manchester_decode(bits, row, start_pos, &i_bits, 5);
+    next_pos = bitbuffer_manchester_decode(bitbuffer, row, start_pos, &i_bits, 5);
     pkt_i    = reverse8(i_bits.bb[0][0]);
 
-    next_pos               = bitbuffer_manchester_decode(bits, row, next_pos, &d_bits, 8);
+    next_pos               = bitbuffer_manchester_decode(bitbuffer, row, next_pos, &d_bits, 8);
     pkt_d                  = reverse8(d_bits.bb[0][0]);
     results[results_len++] = pkt_d;
 
@@ -165,14 +165,14 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         return DECODE_ABORT_EARLY;
     }
 
-    bitbuffer_extract_bytes(bits, row, start_pos + 26, &i, 2);
+    bitbuffer_extract_bytes(bitbuffer, row, start_pos + 26, &i, 2);
     // Check for packet delimiter  marker bits (at least once)
     if (i != 0xc0) {                 // 0b11000000
         return DECODE_FAIL_SANITY; // There should be two high bits '11' between packets
     }
 
     // printBits(sizeof(d), &d);
-    int extended        = 0;
+    int32_t extended        = 0;
 
     uint8_t max_pkt_len = INSTEON_PACKET_MAX;
     uint8_t min_pkt_len = INSTEON_PACKET_MIN;
@@ -182,20 +182,19 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         min_pkt_len = INSTEON_PACKET_MIN_EXT;
     }
 
-    if (decoder->verbose) {
-        decoder_logf(decoder, 1, __func__, "start_pos %u row_length %hu =  %u",
-                start_pos, bits->bits_per_row[row], (bits->bits_per_row[row] - start_pos));
-        decoder_logf(decoder, 1, __func__, "%s %-5s %s %s %s",
-                "pkt_i", "pkt_d", "next", "length", "count");
+    decoder_logf(decoder, 1, __func__, "start_pos %u row_length %hu =  %u",
+            start_pos, bitbuffer->bits_per_row[row], (bitbuffer->bits_per_row[row] - start_pos));
 
-        uint8_t buffy[4];
-        bitbuffer_extract_bytes(bits, row, start_pos - 2, buffy, 30);
-        decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%2d %02X %03u %u %2d",
-                pkt_i, pkt_d, next_pos, (next_pos - start_pos), 0);
+    {
+    decoder_log(decoder, 1, __func__, "pkt_i pkt_d next length count");
+    uint8_t buffy[4];
+    bitbuffer_extract_bytes(bitbuffer, row, start_pos - 2, buffy, 30);
+    decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%2d %02X %03u %u %2d",
+            pkt_i, pkt_d, next_pos, (next_pos - start_pos), 0);
     }
 
     /*   Is this overkill ??
-    unsigned int l;
+    uint32_t l;
     if (extended) {
          l = 642;
      } else {
@@ -214,13 +213,13 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         and 8bits of data
     */
     uint8_t prev_i=33;
-    for (int j = 1; j < max_pkt_len; j++) {
-        unsigned y;
+    for (int32_t j = 1; j < max_pkt_len; j++) {
+        uint32_t y;
         start_pos += 28;
         bitbuffer_clear(&i_bits);
         bitbuffer_clear(&d_bits);
-        next_pos = bitbuffer_manchester_decode(bits, row, start_pos, &i_bits, 5);
-        next_pos = bitbuffer_manchester_decode(bits, row, next_pos, &d_bits, 8);
+        next_pos = bitbuffer_manchester_decode(bitbuffer, row, start_pos, &i_bits, 5);
+        next_pos = bitbuffer_manchester_decode(bitbuffer, row, next_pos, &d_bits, 8);
 
         y = (next_pos - start_pos);
         if (y != 26) {
@@ -236,13 +235,12 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 
         results[results_len++] = pkt_d;
 
-        if (decoder->verbose) {
-            uint8_t buffy[4];
-            bitbuffer_extract_bytes(bits, row, start_pos - 2, buffy, 30);
-            // decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%s: %2d  %02X  %3u %d %d",
-            decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%2d %02X %03u %u %2d",
-                    pkt_i, pkt_d, next_pos, (next_pos - start_pos), j);
-            // parse_insteon_pkt: curr packet (3f) { 1} d6 : 1
+        {
+        uint8_t buffy[4];
+        bitbuffer_extract_bytes(bitbuffer, row, start_pos - 2, buffy, 30);
+        decoder_logf_bitrow(decoder, 1, __func__, buffy, 30, "%2d %02X %03u %u %2d",
+                pkt_i, pkt_d, next_pos, (next_pos - start_pos), j);
+        // parse_insteon_pkt: curr packet (3f) { 1} d6 : 1
         }
 
         // packet index should decrement
@@ -274,27 +272,27 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
         return DECODE_FAIL_MIC;
     }
 
-    char pkt_from_addr[8]   = {0};
-    char pkt_to_addr[32]    = {0};
-    char pkt_formatted[256] = {0};
-    char cmd_str[92]        = {0};
+    uint8_t pkt_from_addr[8]   = {0};
+    uint8_t pkt_to_addr[32]    = {0};
+    uint8_t pkt_formatted[256] = {0};
+    uint8_t cmd_str[92]        = {0};
 
     snprintf(pkt_to_addr, sizeof(pkt_to_addr), "%02X%02X%02X",
             results[3], results[2], results[1]);
     snprintf(pkt_from_addr, sizeof(pkt_from_addr), "%02X%02X%02X",
             results[6], results[5], results[4]);
 
-    char *p = cmd_str;
-    int cmd_array[32];
-    int cmd_array_len = 0;
-    for (int j = 7; j < min_pkt_len - 1; j++) {
+    uint8_t *p = cmd_str;
+    int32_t cmd_array[32];
+    int32_t cmd_array_len = 0;
+    for (int32_t j = 7; j < min_pkt_len - 1; j++) {
         p += sprintf(p, "%02X ", results[j]);
-        cmd_array[cmd_array_len++] = (int)results[j];
+        cmd_array[cmd_array_len++] = (int32_t)results[j];
     }
 
-    char payload[INSTEON_PACKET_MAX_EXT * 2 + 2] = {0};
+    uint8_t payload[INSTEON_PACKET_MAX_EXT * 2 + 2] = {0};
     p                = payload;
-    for (int j = 0; j < results_len; j++) {
+    for (int32_t j = 0; j < results_len; j++) {
         p += sprintf(p, "%02X", results[j]);
     }
 
@@ -312,16 +310,16 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
     "mtype"    = (flag & 0b11100000)
     */
 
-    int hopsmax = (results[0] & 0x03);
-    int hopsleft = (results[0] >> 2) & 0x03;
+    int32_t hopsmax = (results[0] & 0x03);
+    int32_t hopsleft = (results[0] >> 2) & 0x03;
 
-    // char hops_str[8] = {0};
+    // uint8_t hops_str[8] = {0};
     // snprintf(hops_str, sizeof(hops_str), "%d / %d",
     //         (results[0] & 0x03),
     //         (results[0] >> 2) & 0x03);
 
-    int pkt_type = (results[0] >> 5) & 0x07;
-    char const *messsage_text[8] = {
+    int32_t pkt_type = (results[0] >> 5) & 0x07;
+    uint8_t const *const messsage_text[8] = {
             "Direct Message",                         // 000
             "ACK of Direct Message",                  // 001
             "Group Cleanup Direct Message",           // 010
@@ -331,7 +329,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
             "Group Broadcast Message",                // 110
             "NAK of Group Cleanup Direct Message"};   // 111
 
-    char const *pkt_type_str = messsage_text[pkt_type];
+    uint8_t const *pkt_type_str = messsage_text[pkt_type];
     // decoder_log_bitrow(decoder, 0, __func__, results, 8, "Flag");
     //decoder_logf(decoder, 0, __func__, "pkt_type: %02X", pkt_type);
 
@@ -339,9 +337,9 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 
     // Format data
     /*
-    static int data_payload[35];
-    for (int j = 0; j < min_pkt_len; j++) {
-        data_payload[j] = (int)results[j];
+    int32_t data_payload[35];
+    for (int32_t j = 0; j < min_pkt_len; j++) {
+        data_payload[j] = (int32_t)results[j];
     }
     */
 
@@ -367,7 +365,7 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
             NULL);
 
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     // Return 1 if message successfully decoded
     return 1;
@@ -377,13 +375,13 @@ static int parse_insteon_pkt(r_device *decoder, bitbuffer_t *bits, unsigned int 
 Insteon RF decoder.
 @sa parse_insteon_pkt()
 */
-static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    // unsigned int pkt_start_pos;
+    // uint32_t pkt_start_pos;
     uint16_t row;
-    unsigned int ret_value = 0;
-    int fail_value         = 0;
-    // unsigned int pkt_cnt   = 0;
+    uint32_t ret_value = 0;
+    int32_t fail_value         = 0;
+    // uint32_t pkt_cnt   = 0;
 
     // decoder_logf(decoder, 2, __func__, "row complete row / bit_index : %d, %d", row, bit_index);
 
@@ -395,7 +393,7 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
      * loop over all rows and look for preamble
     */
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        unsigned bit_index = 0;
+        uint32_t bit_index = 0;
         // Validate message and reject it as fast as possible : check for preamble
 
         if (bitbuffer->bits_per_row[row] < INSTEON_BITLEN_MIN) {
@@ -406,8 +404,8 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         // decoder_logf(decoder, 1, __func__, "New row=%d len=%d",  row, bitbuffer->bits_per_row[row]);
 
         while (1) {
-            unsigned search_index = bit_index;
-            int ret;
+            uint32_t search_index = bit_index;
+            int32_t ret;
 
             if ((bitbuffer->bits_per_row[row] - bit_index) < INSTEON_BITLEN_MIN) {
                  // decoder_log(decoder, 2, __func__, "short remainder");
@@ -429,7 +427,7 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             decoder_logf(decoder, 1, __func__, "parse_insteon_pkt at: row / search_index : %hu, %u (%hu)",
                         row, search_index, bitbuffer->bits_per_row[row]);
 
-            ret = parse_insteon_pkt(decoder, bitbuffer, row, search_index);
+            ret = parse_insteon_pkt(decoder, bitbuffer, row, search_index, startPulses,package_type);
 
             // decoder_logf(decoder, 1, __func__, "parse_insteon_pkt ret value %d", ret_value);
             if (ret > 0) { // preamble good, decode good
@@ -458,13 +456,13 @@ static int insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer)
  *
  */
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         // "id",
         // "data",
         "from_id",
         "to_id",
-        "msg_type",     // packet type at int
+        "msg_type",     // packet type at int32_t
         "msg_type_str",  // packet type as formatted string
         // "command",
         "extended",     // 0= short pkt, 1=extended pkt
@@ -473,7 +471,7 @@ static char const *const output_fields[] = {
         "formatted",   // entire packet as a formatted string with hex
         "mic",
         "payload",      // packet as a hex string
-        "cmd_dat",      // array of int containing command + data
+        "cmd_dat",      // array of int32_t containing command + data
         "msg_str",
         "hopsmax",
         "hopsleft",

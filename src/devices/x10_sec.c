@@ -57,13 +57,14 @@ Based on code provided by Willi 'wherzig' in issue #30 (2014-04-21)
 
 #include "decoder.h"
 
-static int x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 1;
     data_t *data;
     uint8_t *b;                       /* bits of a row            */
-    char const *event_str = "UNKNOWN"; /* human-readable event     */
-    int battery_low       = 0;         /* battery indicator        */
-    int delay             = 0;         /* delay setting            */
+    uint8_t const *event_str = "UNKNOWN"; /* human-readable event     */
+    int32_t battery_low       = 0;         /* battery indicator        */
+    int32_t delay             = 0;         /* delay setting            */
     uint8_t tamper        = 0;         /* tamper alarm indicator   */
     uint8_t parity        = 0;         /* for CRC calculation      */
 
@@ -71,13 +72,13 @@ static int x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
 
     /* First row should be sync, second row should be 41 bit message */
-    if (bitbuffer->bits_per_row[1] < 41) {
-        if (bitbuffer->bits_per_row[1] != 0)
+    if (bitbuffer->bits_per_row[row] < 41) {
+        if (bitbuffer->bits_per_row[row] != 0)
             decoder_logf(decoder, 1, __func__, "DECODE_ABORT_LENGTH, Received message length=%i", bitbuffer->bits_per_row[1]);
         return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[1];
+    b = bitbuffer->bb[row];
 
     /* validate what we received */
     if ((b[0] ^ b[1]) != 0x0f || (b[2] ^ b[3]) != 0xff) {
@@ -160,9 +161,9 @@ static int x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     /* get x10_id_str, x10_code_str ready for output */
-    char x10_id_str[12];
+    uint8_t x10_id_str[12];
     snprintf(x10_id_str, sizeof(x10_id_str), "%02x%02x", b[0], b[4]);
-    char x10_code_str[5];
+    uint8_t x10_code_str[5];
     snprintf(x10_code_str, sizeof(x10_code_str), "%02x", b[2]);
 
     /* debug output */
@@ -181,12 +182,13 @@ static int x10_sec_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",          "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "code",

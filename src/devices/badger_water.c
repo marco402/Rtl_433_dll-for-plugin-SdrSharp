@@ -11,7 +11,7 @@
 
 #include "decoder.h"
 
-/** @fn static int badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn static int32_t badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Badger ORION water meter.
 
 S.a. https://fccid.io/GIF2006B
@@ -68,9 +68,9 @@ static uint8_t badger_decode_3of6(uint8_t byte)
 }
 
 // Decode the DC-free 4:6 encoding
-static int badger_decode_3of6_buffer(uint8_t const *bits, unsigned bit_offset, uint8_t *output)
+static int32_t badger_decode_3of6_buffer(uint8_t const *bits, uint32_t bit_offset, uint8_t *output)
 {
-    for (unsigned n=0; n<10; ++n) {
+    for (uint32_t n=0; n<10; ++n) {
         uint8_t nibble_h = badger_decode_3of6(bitrow_get_byte(bits, n*12+bit_offset) >> 2);
         uint8_t nibble_l = badger_decode_3of6(bitrow_get_byte(bits, n*12+bit_offset+6) >> 2);
         if ((nibble_h | nibble_l) > 15) {
@@ -81,7 +81,7 @@ static int badger_decode_3of6_buffer(uint8_t const *bits, unsigned bit_offset, u
     return 0;
 }
 
-static int badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     static uint8_t const preamble_pattern[] = {0x54, 0x3D};
 
@@ -96,7 +96,7 @@ static int badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Find the preamble
-    unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
     if (bit_offset + 12 * 10 >= bitbuffer->bits_per_row[0]) {
         return DECODE_ABORT_EARLY;
     }
@@ -112,8 +112,8 @@ static int badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint16_t crc_calc = ~crc16(data_in, 8, 0x3D65, 0);
     if (crc_calc != crc_read) {
         decoder_logf(decoder, 1, __func__,
-                "Badger ORION: CRC error: Calculated 0x%0X, Read 0x%0X",
-                (unsigned)crc_calc, (unsigned) crc_read);
+                "Badger ORION: CRC error: Calculated 0x%X, Read 0x%X",
+                (uint32_t)crc_calc, (uint32_t) crc_read);
         return DECODE_FAIL_MIC;
     }
 
@@ -133,12 +133,12 @@ static int badger_orion_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
-    return 0;
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
+    return 1;
 }
 
 // Note: At this time the exact meaning of the flags is not known.
-static char const *const badger_output_fields[] = {
+static uint8_t const *const badger_output_fields[] = {
         "model",
         "id",
         "flags_1",

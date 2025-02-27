@@ -76,16 +76,16 @@ static uint8_t danfoss_decode_nibble(uint8_t byte)
     return out;
 }
 
-static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t bytes[NUM_BYTES]; // Decoded bytes with two 4 bit nibbles in each
     data_t *data;
 
     // Validate package
-    unsigned bits = bitbuffer->bits_per_row[0];
+    uint32_t bits = bitbuffer->bits_per_row[0];
     if (bits >= 246 && bits <= 260) { // Normal size is 255, but allow for some noise in preamble
         // Find a package
-        unsigned bit_offset = bitbuffer_search(bitbuffer, 0, 112, HEADER, sizeof(HEADER)*8);    // Normal index is 128, skip first 14 bytes to find faster
+        uint32_t bit_offset = bitbuffer_search(bitbuffer, 0, 112, HEADER, sizeof(HEADER)*8);    // Normal index is 128, skip first 14 bytes to find faster
         if (bits-bit_offset < 126) {    // Package should be at least 126 bits
             decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "Danfoss: short package. Header index: %u", bit_offset);
             return DECODE_ABORT_LENGTH;
@@ -93,7 +93,7 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         bit_offset += 6; // Skip first nibble 0xE to get byte alignment and remove from CRC calculation
 
         // Decode input 6 bit nibbles to output 4 bit nibbles (packed in bytes)
-        for (unsigned n = 0; n < NUM_BYTES; ++n) {
+        for (uint32_t n = 0; n < NUM_BYTES; ++n) {
             uint8_t nibble_h = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n * 12 + bit_offset) >> 2);
             uint8_t nibble_l = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n * 12 + bit_offset + 6) >> 2);
             if (nibble_h > 0xF || nibble_l > 0xF) {
@@ -116,9 +116,9 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // Decode data
-        unsigned id = (bytes[1] << 8) | bytes[2];
+        uint32_t id = (bytes[1] << 8) | bytes[2];
 
-        char const *str_sw;
+        uint8_t const *str_sw;
         switch (bytes[3] & 0x0F) {
         case 2: str_sw = "DAY"; break;
         case 4: str_sw = "TIMER"; break;
@@ -126,8 +126,8 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         default: str_sw = "ERROR";
         }
 
-        float temp_meas = (float)bytes[5] + (float)bytes[4] / 256.0;
-        float temp_setp = (float)bytes[7] + (float)bytes[6] / 256.0;
+        float temp_meas = (float)bytes[5] + (float)bytes[4] / 256.0f;
+        float temp_setp = (float)bytes[7] + (float)bytes[6] / 256.0f;
 
         /* clang-format off */
         data = data_make(
@@ -140,14 +140,14 @@ static int danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
     // TODO: move up instead of putting at bottom
     return DECODE_ABORT_LENGTH;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

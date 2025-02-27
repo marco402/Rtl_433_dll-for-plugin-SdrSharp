@@ -16,19 +16,20 @@ Silvercrest remote decoder.
 
 @todo Documentation needed.
 */
-static int silvercrest_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t silvercrest_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                 = 1;
     uint8_t const cmd_lu_tab[16] = {2, 3, 0, 1, 4, 5, 7, 6, 0xC, 0xD, 0xF, 0xE, 8, 9, 0xB, 0xA};
 
     uint8_t *b; // bits of a row
     uint8_t cmd;
-    data_t *data;
+data_t *data;
 
-    if (bitbuffer->bits_per_row[1] != 33)
+    if (bitbuffer->bits_per_row[row] != 33)
         return DECODE_ABORT_LENGTH;
 
     /* select second row, first might be bad */
-    b = bitbuffer->bb[1];
+    b = bitbuffer->bb[row];
     if ((b[0] == 0x7c) && (b[1] == 0x26)) {
         cmd = b[2] & 0xF;
         // Validate button
@@ -41,15 +42,17 @@ static int silvercrest_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "button",   "", DATA_INT,    cmd,
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+        (decoder, data, 1);
 
         return 1;
     }
     return DECODE_ABORT_EARLY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "button",
         NULL,

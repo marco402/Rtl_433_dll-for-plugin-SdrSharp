@@ -51,36 +51,37 @@ Pulses
 
 */
 
-static int revolt_nc5462_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t revolt_nc5462_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     bitbuffer_invert(bitbuffer);
 
     if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
-    if (bitbuffer->bits_per_row[0] != 104) {
+    if (bitbuffer->bits_per_row[row] != 104) {
         return DECODE_ABORT_EARLY;
     }
 
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer->bb[row];
 
-    int sum = add_bytes(b, 11);
+    int32_t sum = add_bytes(b, 11);
     if (sum == 0) {
         return DECODE_FAIL_SANITY;
     }
-    int chk = b[11];
+    int32_t chk = b[11];
     if ((sum & 0xff) != chk) {
         return DECODE_FAIL_MIC;
     }
 
-    int button    = b[0] >> 7;
-    int id        = ((b[0] & 0x7f) << 8) | (b[1]);
-    int voltage   = b[2];
-    int current   = b[4] | b[3] << 8;
-    int frequency = b[5];
-    int power     = b[7] | b[6] << 8;
-    int pf        = b[8];
-    int energy    = b[10] | b[9] << 8;
+    int32_t button    = b[0] >> 7;
+    int32_t id        = ((b[0] & 0x7f) << 8) | (b[1]);
+    int32_t voltage   = b[2];
+    int32_t current   = b[4] | b[3] << 8;
+    int32_t frequency = b[5];
+    int32_t power     = b[7] | b[6] << 8;
+    int32_t pf        = b[8];
+    int32_t energy    = b[10] | b[9] << 8;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -96,12 +97,13 @@ static int revolt_nc5462_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "voltage_V",

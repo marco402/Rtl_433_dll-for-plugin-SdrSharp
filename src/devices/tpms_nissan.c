@@ -19,7 +19,7 @@ Data format:
 
 #include "decoder.h"
 
-static int tpms_nissan_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_nissan_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
 
@@ -41,19 +41,19 @@ static int tpms_nissan_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigne
     // DECODE_ABORT_EARLY or DECODE_FAIL_MIC
 
     // MODE:3d
-    int mode = b[0] >> 5;
+    int32_t mode = b[0] >> 5;
 
     // TPMS_ID:24h
-    int id = (unsigned)((b[0] & 0x1F) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
+    int32_t id = (uint32_t)((b[0] & 0x1F) << 19) | (b[1] << 11) | (b[2] << 3) | (b[3] >> 5);
 
     // (PSI+THREE)*FOUR=8d
-    int pressure_raw   = ((b[3] & 0x1F) << 3) | (b[4] >> 5);
-    float pressure_psi = (double)(pressure_raw / 4.0) - 3.0;
+    int32_t pressure_raw   = ((b[3] & 0x1F) << 3) | (b[4] >> 5);
+    float pressure_psi = (float)pressure_raw / 4.0f;
 
     // UNKNOWN:2b
-    int unknown = (b[4] & 0x1F) >> 3;
+    int32_t unknown = (b[4] & 0x1F) >> 3;
 
-    char id_str[7];
+    uint8_t id_str[7];
     snprintf(id_str, sizeof(id_str), "%06x", id);
 
     /* clang-format off */
@@ -62,43 +62,43 @@ static int tpms_nissan_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigne
             "type",             "",             DATA_STRING, "TPMS",
             "id",               "",             DATA_STRING, id_str,
             "mode",             "",             DATA_INT,    mode,
-            "pressure_psi",     "Pressure",     DATA_FORMAT, "%.1f PSI", DATA_DOUBLE, (double)(pressure_psi / 4.0) - 3.0,
+            "pressure_PSI",     "Pressure",     DATA_FORMAT, "%.1f PSI", DATA_DOUBLE, pressure_psi,
             "unknown",          "",             DATA_INT,    unknown,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
 /** @sa tpms_nissan_decode() */
-static int tpms_nissan_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_nissan_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // preamble is f5 55 55 55 e
     uint8_t const preamble_pattern[5] = {0xf5, 0x55, 0x55, 0x55, 0xe0}; // 36 bits
 
-    unsigned bitpos = 0;
-    int ret         = 0;
-    int events      = 0;
+    uint32_t bitpos = 0;
+    int32_t ret         = 0;
+    int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
     while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 36)) + 77 <=
             bitbuffer->bits_per_row[0]) {
-        ret = tpms_nissan_decode(decoder, bitbuffer, 0, bitpos + 36);
+        ret = tpms_nissan_decode(decoder, bitbuffer, 0, bitpos + 36, startPulses,package_type);
         if (ret > 0)
             events += ret;
-        bitpos += 1;
+        bitpos ++;
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",
         "mode",
-        "pressure_psi",
+        "pressure_PSI",
         "unknown",
         NULL,
 };

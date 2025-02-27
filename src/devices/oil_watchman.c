@@ -18,33 +18,34 @@ Tested devices:
 - Sensor Systems Watchman Sonic
 - Kingspan Watchman Sonic Plus
 */
-static int oil_watchman_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t oil_watchman_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // Start of frame preamble is 111000xx
     uint8_t const preamble_pattern[] = {0xe0};
 
     // End of frame is 00xxxxxx or 11xxxxxx depending on final data bit
     uint8_t const postamble_pattern[2] = {0x00, 0xc0};
 
-    unsigned bitpos      = 0;
-    int events           = 0;
+    uint32_t bit_offset      = 0;
+    int32_t events           = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 6)) + 136 <=
-            bitbuffer->bits_per_row[0]) {
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 6)) + 136 <=
+            bitbuffer->bits_per_row[row]) {
 
         // Skip the matched preamble bits to point to the data
-        bitpos += 6;
+        bit_offset += 6;
 
         bitbuffer_t databits = {0};
-        bitpos = bitbuffer_manchester_decode(bitbuffer, 0, bitpos, &databits, 64);
-        if (databits.bits_per_row[0] != 64)
+        bit_offset = bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 64);
+        if (databits.bits_per_row[row] != 64)
             continue; // DECODE_ABORT_LENGTH
 
-        uint8_t *b = databits.bb[0];
+        uint8_t *b = databits.bb[row];
 
         // Check for postamble, depending on last data bit
-        if (bitbuffer_search(bitbuffer, 0, bitpos, &postamble_pattern[b[7] & 1], 2) != bitpos)
+        if (bitbuffer_search(bitbuffer, row, bit_offset, &postamble_pattern[b[7] & 1], 2) != bit_offset)
             continue; // DECODE_ABORT_EARLY
 
         if (b[7] != crc8le(b, 7, 0x31, 0))
@@ -52,7 +53,7 @@ static int oil_watchman_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
         // The unit ID changes when you rebind by holding a magnet to the
         // sensor for long enough; it seems to be time-based.
-        uint32_t unit_id = ((unsigned)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+        uint32_t unit_id = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
 
         // 0x01: Rebinding (magnet held to sensor)
         // 0x08: Leak/theft alarm
@@ -92,13 +93,14 @@ static int oil_watchman_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         events++;
     }
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "flags",

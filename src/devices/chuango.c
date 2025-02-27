@@ -31,17 +31,18 @@ Note: simple 24 bit fixed ID protocol (x1527 style) and should be handled by the
 
 #include "decoder.h"
 
-static int chuango_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t chuango_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t *b;
-    int id;
-    int cmd;
-    char const *cmd_str;
+    int32_t id;
+    int32_t cmd;
+    uint8_t const *cmd_str;
 
-    if (bitbuffer->bits_per_row[0] != 25)
+    if (bitbuffer->bits_per_row[row] != 25)
         return DECODE_ABORT_LENGTH;
-    b = bitbuffer->bb[0];
+    b = bitbuffer->bb[row];
 
     b[0] = ~b[0];
     b[1] = ~b[1];
@@ -83,12 +84,13 @@ static int chuango_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "cmd_id",   "CMD_ID",       DATA_INT,    cmd,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "cmd",

@@ -19,19 +19,20 @@ Tested devices:
 
 #include "decoder.h"
 
-static int generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
-    uint8_t *b = bitbuffer->bb[0];
-    char tristate[23];
-    char *p = tristate;
+    uint8_t *b = bitbuffer->bb[row];
+    uint8_t tristate[23];
+    uint8_t *p = tristate;
 
     //invert bits, short pulse is 0, long pulse is 1
     b[0] = ~b[0];
     b[1] = ~b[1];
     b[2] = ~b[2];
 
-    unsigned bits = bitbuffer->bits_per_row[0];
+    uint32_t bits = bitbuffer->bits_per_row[row];
 
     // Validate package
     if ((bits != 25)
@@ -40,13 +41,13 @@ static int generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             || (b[2] == 0)) // Reduce false positives. CMD 0x00 not supported
         return DECODE_ABORT_LENGTH;
 
-    int id_16b = b[0] << 8 | b[1];
-    int cmd_8b = b[2];
+    int32_t id_16b = b[0] << 8 | b[1];
+    int32_t cmd_8b = b[2];
 
     // output tristate coding
     uint32_t full = b[0] << 16 | b[1] << 8 | b[2];
 
-    for (int i = 22; i >= 0; i -= 2) {
+    for (int32_t i = 22; i >= 0; i -= 2) {
         switch ((full >> i) & 0x03) {
         case 0x00: *p++ = '0'; break;
         case 0x01: *p++ = 'Z'; break; // floating / "open"
@@ -65,13 +66,14 @@ static int generic_remote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "tristate",     "Tri-State",    DATA_STRING, tristate,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "cmd",

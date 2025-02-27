@@ -41,22 +41,22 @@ TODO: identify battery bits
 
 #include "decoder.h"
 
-static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    unsigned id;
-    int flags;
-    int pressure;
-    int temperature;
+    uint32_t id;
+    int32_t flags;
+    int32_t pressure;
+    int32_t temperature;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 88);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 88);
     bitbuffer_invert(&packet_bits);
 
-    if (packet_bits.bits_per_row[0] < 88) {
+    if (packet_bits.bits_per_row[row] < 88) {  //to see
         return DECODE_FAIL_SANITY;
     }
-    b = packet_bits.bb[0];
+    b = packet_bits.bb[row];
 
     /* Check for sync */
     if ((b[0] << 8 | b[1]) != 0xdd33) {
@@ -70,14 +70,14 @@ static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
         return DECODE_FAIL_MIC;
     }
 
-    id          = (unsigned)b[2] << 16 | b[3] << 8 | b[4];
+    id          = (uint32_t)b[2] << 16 | b[3] << 8 | b[4];
     flags       = b[5];
     temperature = b[6];
     pressure    = b[7];
 
-    char id_str[7 + 1];
+    uint8_t id_str[7 + 1];
     snprintf(id_str, sizeof(id_str), "%06x", id);
-    char code_str[9 * 2 + 1];
+    uint8_t code_str[9 * 2 + 1];
     snprintf(code_str, sizeof(code_str), "%02x%02x%02x%02x%02x%02x%02x%02x%02x", b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10]);
 
     /* clang-format off */
@@ -93,32 +93,34 @@ static int tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_jansite_solar_decode() */
-static int tpms_jansite_solar_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_jansite_solar_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                      = 0;
     uint8_t const preamble_pattern[3] = {0xa6, 0xa6, 0x5a};
 
-    unsigned bitpos = 0;
-    int ret         = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    int32_t ret         = 0;
+    int32_t events      = 0;
 
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 24)) + 80 <=
-            bitbuffer->bits_per_row[0]) {
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 24)) + 80 <=
+            bitbuffer->bits_per_row[row]) {
 
-        ret = tpms_jansite_solar_decode(decoder, bitbuffer, 0, bitpos);
+        ret = tpms_jansite_solar_decode(decoder, bitbuffer, row, bit_offset, startPulses, package_type);
         if (ret > 0)
             events += ret;
-        bitpos += 2;
+        bit_offset += 2;
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

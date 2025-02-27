@@ -70,20 +70,23 @@ Frame structure:
 
 #include "decoder.h"
 
-static int gt_tmbbq05_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t gt_tmbbq05_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t b[4], p[4];
     data_t *data;
 
     // 33 bit, repeated multiple times (technically it is repeated 8 times, look for 5 identical versions)
-    int r = bitbuffer_find_repeated_row(bitbuffer, 5, 33);
+	uint32_t nbRepeat = 5;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 33);
 
     // we're looking for exactly 33 bits
-    if (r < 0 || bitbuffer->bits_per_row[r] != 33)
+    if (row < 0 || bitbuffer->bits_per_row[row] != 33)
         return DECODE_ABORT_LENGTH;
 
     // remove the first leading bit and extract the 4 bytes carrying the data
-    bitbuffer_extract_bytes(bitbuffer, r, 1, b, 32);
+    bitbuffer_extract_bytes(bitbuffer, row, 1, b, 32);
 
     // Prevent false positives from 'allzero'
     // reject if Checksum Id and temperature are all zero
@@ -102,32 +105,32 @@ static int gt_tmbbq05_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int sum = add_nibbles(b, 3) + (b[3] >> 4);
+    int32_t sum = add_nibbles(b, 3) + (b[3] >> 4);
     if ((sum & 0xf) != (b[3] & 0xf)) {
         decoder_logf_bitrow(decoder, 2, __func__, b, 32, "Bad checksum (%x)", sum);
         return DECODE_FAIL_MIC;
     }
 
     // temperature: concat the upper bits to the lower bits and subtract the fixed offset 90
-    int tempf = (((b[3] & 0xc0) << 2) | b[1]) - 90;
+    int32_t tempf = (((b[3] & 0xc0) << 2) | b[1]) - 90;
 
     // device id: concat the two bytes
-    int device_id = (b[0] << 8) | b[2];
+    int32_t device_id = (b[0] << 8) | b[2];
 
     /* clang-format off */
     data = data_make(
             "model",            "",             DATA_STRING, "GT-TMBBQ05",
             "id",               "ID Code",      DATA_INT,    device_id,
-            "temperature_F",    "Temperature",  DATA_FORMAT, "%.02f F", DATA_DOUBLE, (float)tempf,
+            "temperature_F",    "Temperature",  DATA_FORMAT, "%.2f F", DATA_DOUBLE, (float)tempf,
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_F",

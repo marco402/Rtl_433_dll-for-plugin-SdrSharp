@@ -21,7 +21,7 @@
 ///
 /// This should be private/opaque but the OOK pulse_detect uses this.
 typedef struct {
-    unsigned int fsk_pulse_length; ///< Counter for internal FSK pulse detection
+    uint32_t fsk_pulse_length; ///< Counter for internal FSK pulse detection
     enum {
         PD_FSK_STATE_INIT  = 0, ///< Initial frequency estimation
         PD_FSK_STATE_FH    = 1, ///< High frequency (pulse)
@@ -29,15 +29,15 @@ typedef struct {
         PD_FSK_STATE_ERROR = 3  ///< Error - stay here until cleared
     } fsk_state;
 
-    int fm_f1_est; ///< Estimate for the F1 frequency for FSK
-    int fm_f2_est; ///< Estimate for the F2 frequency for FSK
+    int32_t fm_f1_est; ///< Estimate for the F1 frequency for FSK
+    int32_t fm_f2_est; ///< Estimate for the F2 frequency for FSK
 
     int16_t var_test_max;
     int16_t var_test_min;
     int16_t maxx;
     int16_t minn;
     int16_t midd;
-    int skip_samples;
+    int32_t skip_samples;
 } pulse_detect_fsk_t;
 
 /// Init/clear Demodulate Frequency Shift Keying (FSK) state.
@@ -58,13 +58,15 @@ void pulse_detect_fsk_init(pulse_detect_fsk_t *s);
 /// @param s Internal state
 /// @param fm_n One single sample of FM data
 /// @param fsk_pulses Will return a pulse_data_t structure for FSK demodulated data
-void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses);
+
+void pulse_detect_fsk_classic(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter);
 
 /// Wrap up FSK modulation and store last data at End Of Package.
 ///
 /// @param s Internal state
 /// @param fsk_pulses Pulse_data_t structure for FSK demodulated data
-void pulse_detect_fsk_wrap_up(pulse_detect_fsk_t *s, pulse_data_t *fsk_pulses);
+
+void pulse_detect_fsk_wrap_up(pulse_detect_fsk_t *s, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter);
 
 /// Demodulate Frequency Shift Keying (FSK) sample by sample.
 ///
@@ -72,6 +74,7 @@ void pulse_detect_fsk_wrap_up(pulse_detect_fsk_t *s, pulse_data_t *fsk_pulses);
 /// @param s Internal state
 /// @param fm_n One single sample of FM data
 /// @param fsk_pulses Will return a pulse_data_t structure for FSK demodulated data
-void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses);
+
+void pulse_detect_fsk_minmax(pulse_detect_fsk_t *s, int16_t fm_n, pulse_data_t *fsk_pulses, int32_t *startFsk, int32_t counter);
 
 #endif /* INCLUDE_PULSE_DETECT_FSK_H_ */

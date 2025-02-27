@@ -34,16 +34,18 @@ Observed update intervals:
 
 #include "decoder.h"
 
-static int eurochron_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t eurochron_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int row;
     uint8_t *b;
-    int temp_raw, humidity, device, battery_low, button;
+    int32_t temp_raw, humidity, device, battery_low, button;
     float temp_c;
 
     /* Validation checks */
-    row = bitbuffer_find_repeated_row(bitbuffer, 3, 36);
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
 
     if (row < 0) // repeated rows?
         return DECODE_ABORT_EARLY;
@@ -73,17 +75,17 @@ static int eurochron_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",             DATA_STRING, "Eurochron-TH",
             "id",               "",             DATA_INT,    device,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
             "humidity",         "Humidity",     DATA_INT,    humidity,
             "button",           "Button",       DATA_INT,    button,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

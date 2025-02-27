@@ -51,20 +51,21 @@ e.g.:
 
 #include "decoder.h"
 
-static int auriol_afw2a1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t auriol_afw2a1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    int row;
-    int id;
-    int channel;
-    int battery_ok;
-    int tx_button;
-    int temp_raw;
+    int32_t id;
+    int32_t channel;
+    int32_t battery_ok;
+    int32_t tx_button;
+    int32_t temp_raw;
     float temp_c;
-    int humidity;
-
-    row = bitbuffer_find_repeated_row(bitbuffer, 12, 36);
+    int32_t humidity;
+	uint32_t nbRepeat = 12;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0) {
         return DECODE_ABORT_EARLY; // no repeated row found
     }
@@ -100,12 +101,13 @@ static int auriol_afw2a1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "humidity",         "Humidity",          DATA_FORMAT, "%.0f %%", DATA_DOUBLE, (float)humidity,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

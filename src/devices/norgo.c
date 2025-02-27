@@ -8,7 +8,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
-/** @fn int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Norgo Energy NGE101 decoder.
 
 The code is based on info and code from Jesper Hansen's pages (used with
@@ -80,7 +80,7 @@ pulse_count/(n_imp_per_kwh)
 
 #include "decoder.h"
 
-static uint16_t checksum_taps[] = {
+static uint16_t const checksum_taps[] = {
         0x4880, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
         0x2080, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000, 0x4000,
 };
@@ -88,15 +88,15 @@ static uint16_t checksum_taps[] = {
 static uint16_t next_mask(uint32_t mask)
 {
     uint16_t i;
-    uint16_t next_mask;
+	uint16_t n_mask;
 
-    next_mask = mask >> 1;
-    for (i = 0; i < 15; i++) {
-        if (mask & (1 << i)) {
-            next_mask ^= checksum_taps[i];
-        }
-    }
-    return next_mask;
+	n_mask = mask >> 1;
+	for (i = 0; i < 15; i++) {
+		if (mask & (1 << i)) {
+			n_mask ^= checksum_taps[i];
+		}
+	}
+	return n_mask;
 }
 
 static uint8_t calc_checksum(uint8_t *data, uint8_t datalen)
@@ -113,19 +113,19 @@ static uint8_t calc_checksum(uint8_t *data, uint8_t datalen)
     return chks >> 8;
 }
 
-static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[0];
 
-    int device_id;
-    int channel;
-    int impulse_gap;
+    int32_t device_id;
+    int32_t channel;
+    int32_t impulse_gap;
     uint64_t impulses;
-    int low_battery;
-    //int maybe_overflow;
-    int checksum;
-    int calc_chk;
+    int32_t low_battery;
+    //int32_t maybe_overflow;
+    int32_t checksum;
+    int32_t calc_chk;
 
     if (bitbuffer->bits_per_row[0] != 56
             && bitbuffer->bits_per_row[0] != 72
@@ -141,7 +141,7 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int xor_byte = xor_bytes(b + 1, (bitbuffer->bits_per_row[0] - 15) / 8);
+    int32_t xor_byte = xor_bytes(b + 1, (bitbuffer->bits_per_row[0] - 15) / 8);
     if (xor_byte != 0xff) { // before invert 0 is ff
         decoder_logf_bitrow(decoder, 1, __func__, b, bitbuffer->bits_per_row[0], "XOR fail (%02x)",
                     xor_byte);
@@ -173,7 +173,7 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
     else {
@@ -203,12 +203,12 @@ static int norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

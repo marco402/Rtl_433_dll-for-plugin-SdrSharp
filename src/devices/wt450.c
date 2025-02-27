@@ -55,7 +55,7 @@ every 60 seconds 3 packets.
 
 #include "decoder.h"
 
-static int wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b = bitbuffer->bb[0];
     uint8_t humidity;
@@ -64,7 +64,7 @@ static int wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t house_code;
     uint8_t channel;
     uint8_t battery_low;
-    int seq;
+    int32_t seq;
     float temp;
     uint8_t parity;
     data_t *data;
@@ -105,17 +105,17 @@ static int wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",               "House Code",   DATA_INT,    house_code,
             "channel",          "Channel",      DATA_INT,    channel,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",  DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp,
+            "temperature_C",    "Temperature",  DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp,
             "humidity",         "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "seq",              "Sequence",     DATA_INT,    seq,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

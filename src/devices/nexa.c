@@ -25,8 +25,9 @@ since the Nexa uses two different bit lengths for ON and OFF.
 
 #include "decoder.h"
 
-static int nexa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t nexa_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
 
     /* Reject missing sync */
@@ -34,12 +35,12 @@ static int nexa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
 
     /* Reject codes of wrong length */
-    if (bitbuffer->bits_per_row[0] != 64 && bitbuffer->bits_per_row[0] != 72)
+    if (bitbuffer->bits_per_row[row] != 64 && bitbuffer->bits_per_row[row] != 72)
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_t databits = {0};
     // note: not manchester encoded but actually ternary
-    unsigned pos = bitbuffer_manchester_decode(bitbuffer, 0, 0, &databits, 80);
+    uint32_t pos = bitbuffer_manchester_decode(bitbuffer, row, 0, &databits, 80);
     bitbuffer_invert(&databits);
 
     /* Reject codes when Manchester decoding fails */
@@ -64,12 +65,13 @@ static int nexa_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "group",         "Group",       DATA_INT,    group_cmd,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

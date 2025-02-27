@@ -47,44 +47,46 @@ Also you always need to learn from the same primary.
 
 #include "decoder.h"
 
-static int smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b;
-    int r;
-    int learn = 0;
-    int unit; // max 30
-    int id;
+    int32_t row;
+    int32_t learn = 0;
+    int32_t unit; // max 30
+    int32_t id;
 
     if (bitbuffer->num_rows < 3)
         return DECODE_ABORT_EARLY; // truncated transmission
 
     bitbuffer_invert(bitbuffer);
 
-    for (r = 0; r < bitbuffer->num_rows; ++r) {
-        b = bitbuffer->bb[r];
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
+        b = bitbuffer->bb[row];
 
         // count learn pattern and strip
-        if (bitbuffer->bits_per_row[r] >= 24
+        if (bitbuffer->bits_per_row[row] >= 24
                 && b[0] == 0x55 && b[1] == 0x55 && b[2] == 0x55) {
             ++learn;
-            bitbuffer->bits_per_row[r] = 0;
+            bitbuffer->bits_per_row[row] = 0;
         }
 
         // strip end-of-packet pulse
-        if ((bitbuffer->bits_per_row[r] == 26 || bitbuffer->bits_per_row[r] == 27)
+        if ((bitbuffer->bits_per_row[row] == 26 || bitbuffer->bits_per_row[row] == 27)
                 && b[3] == 0)
-            bitbuffer->bits_per_row[r] = 24;
+            bitbuffer->bits_per_row[row] = 24;
     }
+	uint32_t nbRepeat = 3;
+	
+		
+    row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 24);
 
-    r = bitbuffer_find_repeated_row(bitbuffer, 3, 24);
-
-    if (r < 0)
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
-    if (bitbuffer->bits_per_row[r] > 4 * 8)
+    if (bitbuffer->bits_per_row[row] > 4 * 8)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     // if ((b[2] & 0x0f) != 0x03)
     //     return DECODE_ABORT_EARLY; // last nibble is always 0x3?
@@ -99,24 +101,24 @@ static int smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     if (id == 0 || id == 0x7fff)
         return DECODE_FAIL_SANITY; // reject min/max to reduce false positives
 
-    char code_str[7];
+    uint8_t code_str[7];
     snprintf(code_str, sizeof(code_str), "%02x%02x%02x", b[2], b[1], b[0]);
 
     /* clang-format off */
     data_t *data = data_make(
             "model",        "",             DATA_STRING, "Smoke-GS558",
-            "id"   ,        "",             DATA_INT, id,
+            "id",           "",             DATA_INT, id,
             "unit",         "",             DATA_INT, unit,
             "learn",        "",             DATA_INT, learn > 1,
             "code",         "Raw Code",     DATA_STRING, code_str,
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "unit",
@@ -134,4 +136,5 @@ r_device const smoke_gs558 = {
         .reset_limit = 11764 * 1.2f, // Maximum gap size before End Of Message [us]
         .decode_fn   = &smoke_gs558_callback,
         .fields      = output_fields,
+        .disabled    = 1, // false positives with generic EV1527 devices
 };

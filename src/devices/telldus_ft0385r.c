@@ -77,11 +77,11 @@ Telldus outdoor unit is missing Light and UV sensors, but they may be seen in th
 
 #include "decoder.h"
 
-static int telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0x14, 0xe0}; // 9 bits
 
-    int r = -1;
+    int32_t r = -1;
     uint8_t b[37]; // 296 bits, 37 bytes
     data_t *data;
 
@@ -91,16 +91,16 @@ static int telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (bitbuffer->bits_per_row[0] < 296 && bitbuffer->bits_per_row[1] < 296) {
         return DECODE_ABORT_EARLY;
     }
-
-    for (int i = 0; i < bitbuffer->num_rows; ++i) {
-        unsigned pos = bitbuffer_search(bitbuffer, i, 0, preamble, 9);
+	int32_t row = 0;
+    for (row = 0; row < bitbuffer->num_rows; ++row) {
+        uint32_t pos = bitbuffer_search(bitbuffer, row, 0, preamble, 9);
         pos += 8;
 
-        if (pos + 296 > bitbuffer->bits_per_row[i])
+        if (pos + 296 > bitbuffer->bits_per_row[row])
             continue; // too short or not found
 
-        r = i;
-        bitbuffer_extract_bytes(bitbuffer, i, pos, b, 296);
+        r = row;
+        bitbuffer_extract_bytes(bitbuffer, row, pos, b, 296);
         break;
     }
 
@@ -115,43 +115,43 @@ static int telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Extract data from buffer
-    //int header    = (b[0] & 0xf0) >> 4;                           // [0:4]
-    //int serial    = ((b[0] & 0x0f) << 4) | ((b[1] & 0xf0) >> 4);  // [8:8]
-    //int flags     = (b[1] & 0x0f);                                // [12:4]
-    //int unk16     = (b[1] & 0x80) >> 7;                           // [16:1]
-    //int deg3_msb  = (b[2] & 0x40) >> 6;                           // [17:1]
-    //int wind3_msb = (b[2] & 0x20) >> 5;                           // [18:1]
-    //int deg2_msb  = (b[2] & 0x10) >> 4;                           // [19:1]
-    //int wind2_msb = (b[2] & 0x08) >> 3;                           // [20:1]
-    int deg_msb   = (b[2] & 0x04) >> 2;                           // [21:1]
-    int gust_msb  = (b[2] & 0x02) >> 1;                           // [22:1]
-    int wind_msb  = (b[2] & 0x01);                                // [23:1]
-    int wind      = (wind_msb << 8) | b[3];                       // [24:8]
-    int gust      = (gust_msb << 8) | b[4];                       // [32:8]
-    int wind_dir  = (deg_msb << 8) | b[5];                        // [40:8]
-    //int wind2     = (wind2_msb << 8) | b[6];                      // [48:8]
-    //int wind2_dir = (deg2_msb << 8) | b[7];                       // [56:8]
-    //int wind3     = (wind3_msb << 8) | b[8];                      // [64:8]
-    //int wind3_dir = (deg3_msb << 8) | b[9];                       // [72:8]
-    //int rain_rate = ((b[10]) << 8) | (b[11]);                     // [80:12]
-    //int rain_1h   = ((b[12]) << 8) | (b[13]);                     // [96:12]
-    //int rain_24h  = ((b[14]) << 8) | (b[15]);                     // [112:12]
-    //int rain_week = ((b[16]) << 8) | (b[17]);                     // [128:12]
-    //int rain_mon  = ((b[18]) << 8) | (b[19]);                     // [144:12]
-    int rain_tot  = ((b[20]) << 8) | (b[21]);                     // [160:16]
-    //int rain_tot2 = ((b[22]) << 8) | (b[23]);                     // [176:16]
-    int temp2_msb  = (b[24] & 0xf0) >> 4;                         // [192:4]
-    int temp_raw  = ((b[24] & 0x0f) << 8) | (b[25]);              // [196:12]
-    int humidity  = (b[26]);                                      // [208:8]
-    int temp2_raw = (temp2_msb << 8) | (b[27]);                   // [216:8]
-    int humidity2 = (b[28]);                                      // [224:8]
-    int pressure  = ((b[29]) << 8) | (b[30]);                     // [232:16]
-    //int pressure2 = ((b[31]) << 8) | (b[32]);                     // [248:16]
-    //int light_lux = ((b[33]) << 8) | (b[34]);                     // [264:16]
-    //int uv        = (b[35]);                                      // [280:8]
-    //int crc       = (b[36]);                                      // [288:8]
+    //int32_t header    = (b[0] & 0xf0) >> 4;                           // [0:4]
+    //int32_t serial    = ((b[0] & 0x0f) << 4) | ((b[1] & 0xf0) >> 4);  // [8:8]
+    //int32_t flags     = (b[1] & 0x0f);                                // [12:4]
+    //int32_t unk16     = (b[1] & 0x80) >> 7;                           // [16:1]
+    //int32_t deg3_msb  = (b[2] & 0x40) >> 6;                           // [17:1]
+    //int32_t wind3_msb = (b[2] & 0x20) >> 5;                           // [18:1]
+    //int32_t deg2_msb  = (b[2] & 0x10) >> 4;                           // [19:1]
+    //int32_t wind2_msb = (b[2] & 0x08) >> 3;                           // [20:1]
+    int32_t deg_msb   = (b[2] & 0x04) >> 2;                           // [21:1]
+    int32_t gust_msb  = (b[2] & 0x02) >> 1;                           // [22:1]
+    int32_t wind_msb  = (b[2] & 0x01);                                // [23:1]
+    int32_t wind      = (wind_msb << 8) | b[3];                       // [24:8]
+    int32_t gust      = (gust_msb << 8) | b[4];                       // [32:8]
+    int32_t wind_dir  = (deg_msb << 8) | b[5];                        // [40:8]
+    //int32_t wind2     = (wind2_msb << 8) | b[6];                      // [48:8]
+    //int32_t wind2_dir = (deg2_msb << 8) | b[7];                       // [56:8]
+    //int32_t wind3     = (wind3_msb << 8) | b[8];                      // [64:8]
+    //int32_t wind3_dir = (deg3_msb << 8) | b[9];                       // [72:8]
+    //int32_t rain_rate = ((b[10]) << 8) | (b[11]);                     // [80:12]
+    //int32_t rain_1h   = ((b[12]) << 8) | (b[13]);                     // [96:12]
+    //int32_t rain_24h  = ((b[14]) << 8) | (b[15]);                     // [112:12]
+    //int32_t rain_week = ((b[16]) << 8) | (b[17]);                     // [128:12]
+    //int32_t rain_mon  = ((b[18]) << 8) | (b[19]);                     // [144:12]
+    int32_t rain_tot  = ((b[20]) << 8) | (b[21]);                     // [160:16]
+    //int32_t rain_tot2 = ((b[22]) << 8) | (b[23]);                     // [176:16]
+    int32_t temp2_msb  = (b[24] & 0xf0) >> 4;                         // [192:4]
+    int32_t temp_raw  = ((b[24] & 0x0f) << 8) | (b[25]);              // [196:12]
+    int32_t humidity  = (b[26]);                                      // [208:8]
+    int32_t temp2_raw = (temp2_msb << 8) | (b[27]);                   // [216:8]
+    int32_t humidity2 = (b[28]);                                      // [224:8]
+    int32_t pressure  = ((b[29]) << 8) | (b[30]);                     // [232:16]
+    //int32_t pressure2 = ((b[31]) << 8) | (b[32]);                     // [248:16]
+    //int32_t light_lux = ((b[33]) << 8) | (b[34]);                     // [264:16]
+    //int32_t uv        = (b[35]);                                      // [280:8]
+    //int32_t crc       = (b[36]);                                      // [288:8]
 
-    //int batt_low  = (flags & 0x04) >> 3;
+    //int32_t batt_low  = (flags & 0x04) >> 3;
     float temp_f = (temp_raw - 400) * 0.1f;
     float temp2_f = (temp2_raw - 400) * 0.1f;
 
@@ -164,8 +164,8 @@ static int telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "humidity",         "Humidity",         DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "temperature_2_F",  "Temperature in",   DATA_FORMAT, "%.1f F", DATA_DOUBLE, temp2_f,
             "humidity_2",       "Humidity in",      DATA_FORMAT, "%u %%", DATA_INT, humidity2,
-            "pressure_hPa",     "Pressure",         DATA_FORMAT, "%.01f hPa", DATA_DOUBLE, pressure * 0.1f,
-            //"rain_rate_mm_h",   "Rain Rate",        DATA_FORMAT, "%.02f mm/h", DATA_DOUBLE, rain_rate * 0.1f,
+            "pressure_hPa",     "Pressure",         DATA_FORMAT, "%.1f hPa", DATA_DOUBLE, pressure * 0.1f,
+            //"rain_rate_mm_h",   "Rain Rate",        DATA_FORMAT, "%.2f mm/h", DATA_DOUBLE, rain_rate * 0.1f,
             "rain_mm",          "Rain",             DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain_tot * 0.1f,
             "wind_dir_deg",     "Wind direction",   DATA_INT,    wind_dir,
             "wind_avg_m_s",     "Wind",             DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind * 0.1f,
@@ -179,17 +179,17 @@ static int telldus_ft0385r_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             //"battery_ok",       "Battery",          DATA_INT,    !batt_low,
             "temperature_2_F",  "Temperature in",   DATA_FORMAT, "%.1f F", DATA_DOUBLE, temp2_f,
             "humidity_2",       "Humidity in",      DATA_FORMAT, "%u %%", DATA_INT, humidity2,
-            "pressure_hPa",     "Pressure",         DATA_FORMAT, "%.01f hPa", DATA_DOUBLE, pressure * 0.1f,
+            "pressure_hPa",     "Pressure",         DATA_FORMAT, "%.1f hPa", DATA_DOUBLE, pressure * 0.1f,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     }
     /* clang-format on */
-
-    decoder_output_data(decoder, data);
+	//row = 0;    //particular case test row 0 and use another
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const telldus_ft0385r_output_fields[] = {
+static uint8_t const *const telldus_ft0385r_output_fields[] = {
         "model",
         "battery_ok",
         "temperature_F",

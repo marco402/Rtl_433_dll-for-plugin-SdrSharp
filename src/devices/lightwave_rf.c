@@ -20,9 +20,9 @@ Reference: https://wiki.somakeit.org.uk/wiki/LightwaveRF_RF_Protocol
 
 /// Decode a nibble from byte value
 /// Will return -1 if invalid byte is input
-static int lightwave_rf_nibble_from_byte(uint8_t in)
+static int32_t lightwave_rf_nibble_from_byte(uint8_t in)
 {
-    int nibble = -1; // Default error
+    int32_t nibble = -1; // Default error
     switch (in) {
     case 0xF6: nibble = 0x0; break;
     case 0xEE: nibble = 0x1; break;
@@ -47,15 +47,16 @@ static int lightwave_rf_nibble_from_byte(uint8_t in)
     return nibble;
 }
 
-static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;   // to see
     data_t *data;
     bitrow_t *bb = bitbuffer->bb;
 
     // Validate package
     // Transmitted pulses are always 72
     // Pulse 72 (delimiting "1" is not demodulated, as gap becomes End-Of-Message - thus expected length is 71
-    if (bitbuffer->bits_per_row[0] != 71
+    if (bitbuffer->bits_per_row[row] != 71
             || bitbuffer->num_rows != 1) // There should be only one message (and we use the rest...)
         return DECODE_ABORT_LENGTH;
 
@@ -64,8 +65,13 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Expand all "0" to "10" (bit stuffing)
     // row_in = 0, row_out = 1
-    bitbuffer_add_row(bitbuffer);
-    for (unsigned n = 0; n < bitbuffer->bits_per_row[0]; ++n) {
+//#if SYNCHROGRAPH
+	int32_t l = 0;
+    bitbuffer_add_row(bitbuffer, &l);
+//#else
+//    bitbuffer_add_row(bitbuffer);
+//#endif
+    for (uint32_t n = 0; n < bitbuffer->bits_per_row[row]; ++n) {
         if (bitrow_get_bit(bb[0], n)) {
             bitbuffer_add_bit(bitbuffer, 1);
         } else {
@@ -80,20 +86,24 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_LENGTH;
 
     // Check initial delimiter bit is "1"
-    unsigned bit_idx = 0;
+    uint32_t bit_idx = 0;
     uint8_t delimiter_bit = bitrow_get_bit(bb[1], bit_idx++);
     if (delimiter_bit == 0)
         return DECODE_ABORT_EARLY; // Decode error
 
     // Strip delimiter bits
     // row_in = 1, row_out = 2
-    bitbuffer_add_row(bitbuffer);
-    for (unsigned n = 0; n < 10; ++n) { // We have 10 bytes
+//#if SYNCHROGRAPH
+    bitbuffer_add_row(bitbuffer, &bitbuffer->len_rows[bitbuffer->num_rows - 1]);
+//#else
+//    bitbuffer_add_row(bitbuffer);
+//#endif
+    for (uint32_t n = 0; n < 10; ++n) { // We have 10 bytes
         delimiter_bit = bitrow_get_bit(bb[1], bit_idx++);
         if (delimiter_bit == 0)
             return DECODE_ABORT_EARLY; // Decode error
 
-        for (unsigned m = 0; m < 8; ++m) {
+        for (uint32_t m = 0; m < 8; ++m) {
             bitbuffer_add_bit(bitbuffer, bitrow_get_bit(bb[1], bit_idx++));
         }
     }
@@ -101,23 +111,27 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Decode bytes to nibbles
     // row_in = 2, row_out = 3
-    bitbuffer_add_row(bitbuffer);
-    for (unsigned n = 0; n < 10; ++n) { // We have 10 bytes/nibbles
-        int nibble = lightwave_rf_nibble_from_byte(bb[2][n]);
+//#if SYNCHROGRAPH
+    bitbuffer_add_row(bitbuffer, &bitbuffer->len_rows[bitbuffer->num_rows-1]);
+//#else
+//    bitbuffer_add_row(bitbuffer);
+//#endif
+    for (uint32_t n = 0; n < 10; ++n) { // We have 10 bytes/nibbles
+        int32_t nibble = lightwave_rf_nibble_from_byte(bb[2][n]);
         if (nibble < 0) {
             decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "Nibble decode error %X, idx: %u", bb[2][n], n);
             return DECODE_FAIL_SANITY; // Decode error
         }
-        for (unsigned m = 0; m < 4; ++m) { // Add nibble one bit at a time...
+        for (uint32_t m = 0; m < 4; ++m) { // Add nibble one bit at a time...
             bitbuffer_add_bit(bitbuffer, (nibble & (8 >> m)) >> (3 - m));
         }
     }
-
+    row = 3;
     // Decoded nibbles are in row 3
-    int id = bb[3][2] << 16 | bb[3][3] << 8 | bb[3][4];
-    int subunit = (bb[3][1] & 0xF0) >> 4;
-    int command = bb[3][1] & 0x0F;
-    int parameter = bb[3][0];
+    int32_t id = bb[3][2] << 16 | bb[3][3] << 8 | bb[3][4];
+    int32_t subunit = (bb[3][1] & 0xF0) >> 4;
+    int32_t command = bb[3][1] & 0x0F;
+    int32_t parameter = bb[3][0];
 
     decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Row 0 = Input, Row 1 = Zero bit stuffing, Row 2 = Stripped delimiters, Row 3 = Decoded nibbles");
 
@@ -130,13 +144,14 @@ static int lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "parameter",    "", DATA_INT,    parameter,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "subunit",

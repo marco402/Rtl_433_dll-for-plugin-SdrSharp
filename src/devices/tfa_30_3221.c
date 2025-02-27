@@ -11,6 +11,7 @@
 /**
 Temperature/Humidity outdoor sensor TFA 30.3221.02.
 
+Other compatible sensors: 30.3249.02
 This is the same as LaCrosse-TX141THBv2 and should be merged.
 
 S.a. https://github.com/RFD-FHEM/RFFHEM/blob/master/FHEM/14_SD_WS.pm
@@ -24,7 +25,7 @@ S.a. https://github.com/RFD-FHEM/RFFHEM/blob/master/FHEM/14_SD_WS.pm
 - B:  1 bit battery indicator (0=>OK, 1=>LOW)
 - S:  1 bit sendmode (0=>auto, 1=>manual)
 - C:  2 bit channel valid channels are 0-2 (1-3)
-- T: 12 bit unsigned temperature, offset 500, scaled by 10
+- T: 12 bit uint32_t temperature, offset 500, scaled by 10
 - H:  8 bit relative humidity percentage
 - X:  8 bit checksum digest 0x31, 0xf4
 
@@ -33,16 +34,19 @@ The sensor sends 3 repetitions at intervals of about 60 seconds.
 
 #include "decoder.h"
 
-static int tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int row, sendmode, channel, battery_low, temp_raw, humidity;
+    int32_t sendmode, channel, battery_low, temp_raw, humidity;
     float temp_c;
     data_t *data;
     uint8_t *b;
-    unsigned int device;
+    uint32_t device;
 
     // Device send 4 row, checking for two repeated
-    row = bitbuffer_find_repeated_row(bitbuffer, (bitbuffer->num_rows > 4) ? 4 : 2, 40);
+	uint32_t nbRepeat = (bitbuffer->num_rows > 4) ? 4 : 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -60,8 +64,8 @@ static int tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_SANITY;
 
     // Validate checksum
-    int observed_checksum = b[4];
-    int computed_checksum = lfsr_digest8_reflect(b, 4, 0x31, 0xf4);
+    int32_t observed_checksum = b[4];
+    int32_t computed_checksum = lfsr_digest8_reflect(b, 4, 0x31, 0xf4);
     if (observed_checksum != computed_checksum) {
         return DECODE_FAIL_MIC;
     }
@@ -85,12 +89,13 @@ static int tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",
@@ -103,7 +108,7 @@ static char const *const output_fields[] = {
 };
 
 r_device const tfa_30_3221 = {
-        .name        = "TFA Dostmann 30.3221.02 T/H Outdoor Sensor",
+        .name        = "TFA Dostmann 30.3221.02 T/H Outdoor Sensor (also 30.3249.02)",
         .modulation  = OOK_PULSE_PWM,
         .short_width = 235,
         .long_width  = 480,

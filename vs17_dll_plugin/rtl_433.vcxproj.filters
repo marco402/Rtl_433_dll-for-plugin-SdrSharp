@@ -53,9 +53,6 @@
     <ClInclude Include="..\include\fileformat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\http_server.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\jsmn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,9 +63,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\output_influx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\output_mqtt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\pulse_detect.h">
@@ -101,9 +95,6 @@
     <ClInclude Include="..\include\term_ctl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\write_sigrok.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -125,9 +116,6 @@
     <ClInclude Include="..\include\output_file.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\output_udp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\compat_pthread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -135,9 +123,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\output_log.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\output_rtltcp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\output_trigger.h">
@@ -149,13 +134,16 @@
     <ClInclude Include="..\include\pulse_slicer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\raw_output.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\r_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\data_tag.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\bit_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\c_util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\mongoose.h">
@@ -193,9 +181,6 @@
     <ClCompile Include="..\src\fileformat.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\http_server.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\jsmn.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -230,9 +215,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\term_ctl.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\write_sigrok.c">
@@ -503,9 +485,6 @@
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\missil_ml0757.c">
-      <Filter>Source Files\devices</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\devices\new_template.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\newkaku.c">
@@ -787,9 +766,6 @@
     <ClCompile Include="..\src\output_file.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\output_udp.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\devices\ant_antplus.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
@@ -835,9 +811,6 @@
     <ClCompile Include="..\src\output_log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\output_rtltcp.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\output_trigger.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -847,22 +820,13 @@
     <ClCompile Include="..\src\pulse_slicer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\raw_output.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\r_api.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\data_tag.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\mongoose.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\output_influx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\output_mqtt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\bresser_leakage.c">
@@ -946,6 +910,78 @@
     <ClCompile Include="..\src\compat_alarm.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\bit_util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\arad_ms_meter.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\arexx_ml.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\chamberlain_cwpirc.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\fineoffset_wh46.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\geevon.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\mueller_hotrod.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\thermopro_tp28b.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\thermor.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\tpms_bmw.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\tpms_bmw_g3.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\vevor_7in1.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\watts_thermostat.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mongoose.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\bresser_st1005h.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\deltadore_x3d.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\gridstream.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\quinetic.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\revolt_zx7717.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\risco_agility.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\rosstech_dcu706.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\thermopro_tp82xb.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\tpms_gm.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\new_template.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="rtl_433.def">
@@ -954,16 +990,25 @@
     <None Include="..\src\mongoose_bool.patch">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\src\mongoose_broadcast.patch">
+      <Filter>Source Files</Filter>
+    </None>
     <None Include="..\src\mongoose_ipv6.patch">
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\src\mongoose_lenchk.patch">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\src\mongoose_libressl.patch">
+      <Filter>Source Files</Filter>
+    </None>
     <None Include="..\src\mongoose_msvcdbg.patch">
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\src\mongoose_pedantic.patch">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\src\mongoose_sigpipe.patch">
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\src\mongoose_warn.patch">

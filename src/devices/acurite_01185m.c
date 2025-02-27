@@ -27,7 +27,7 @@ Modulation:
 S.a. #1824
 
 Temperature is 16 bit, degrees F, scaled x10 +900.
-The first reading is the “Meat” channel and the second is for the “Ambient” or grill temperature.
+The first reading is the "Meat" channel and the second is for the "Ambient" or grill temperature.
 The range would be around -57F to 572F with the manual stating temps higher than 700F could damage the sensor.
 
 - A value of 0x1b58 (7000 / 610F) indicates the sensor is unplugged and sending an E1 error to the displays.
@@ -51,13 +51,13 @@ Data layout:
 
 */
 
-static int acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int result = 0;
+    int32_t result = 0;
     bitbuffer_invert(bitbuffer);
 
     // Output the first valid row
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         if (bitbuffer->bits_per_row[row] != 56) {
             result = DECODE_ABORT_LENGTH;
             continue; // return DECODE_ABORT_LENGTH;
@@ -68,7 +68,7 @@ static int acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         decoder_log_bitrow(decoder, 2, __func__, b, 7 * 8, "");
 
         // Verify checksum, add with carry
-        int sum = add_bytes(b, 6);
+        int32_t sum = add_bytes(b, 6);
         if ((sum & 0xff) != b[6]) {
             decoder_log_bitrow(decoder, 1, __func__, b, 7 * 8, "bad checksum");
             result = DECODE_FAIL_MIC;
@@ -84,13 +84,13 @@ static int acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         }
 
         // Decode fields
-        int id        = (b[0]);
-        int batt_low  = (b[1] >> 7);
-        int channel   = (b[1] & 0x0f);
-        int temp1_raw = (b[2] << 8) | b[3];
-        int temp2_raw = (b[4] << 8) | b[5];
-        int temp1_ok  = temp1_raw > 200 && temp1_raw < 7000;
-        int temp2_ok  = temp2_raw > 200 && temp2_raw < 7000;
+        int32_t id        = (b[0]);
+        int32_t batt_low  = (b[1] >> 7);
+        int32_t channel   = (b[1] & 0x0f);
+        int32_t temp1_raw = (b[2] << 8) | b[3];
+        int32_t temp2_raw = (b[4] << 8) | b[5];
+        int32_t temp1_ok  = temp1_raw > 200 && temp1_raw < 7000;
+        int32_t temp2_ok  = temp2_raw > 200 && temp2_raw < 7000;
         float temp1_f = (temp1_raw - 900) * 0.1f;
         float temp2_f = (temp2_raw - 900) * 0.1f;
 
@@ -106,7 +106,7 @@ static int acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
 
@@ -114,7 +114,7 @@ static int acurite_01185m_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return result;
 }
 
-static char const *const acurite_01185m_output_fields[] = {
+static uint8_t const *const acurite_01185m_output_fields[] = {
         "model",
         "id",
         "channel",

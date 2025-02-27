@@ -1,5 +1,5 @@
 // **************************************************************************************
-//                                dll_rtl_433.h 
+//                                dll_rtl_433.h
 //						  include for project Rtl_433.dll
 //						call by Plugin Rtl_433 for SdrSharp
 // **************************************************************************************
@@ -26,6 +26,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <r_device.h>
 
 /******************************************update rtl_433*************************************************
 
@@ -62,8 +63,8 @@ nombre de devices 12/2021: 177/208  202/208
 nombre de devices 01/2023: 192/223  217/223
 nombre de devices 01/2024: 214/248  242/248  +25
 **************************************************************************************************************/
-
-//add code dll_rtl_433 
+#include <stdint.h>
+//add code dll_rtl_433
 #define DLL_RTL_433
 //no open sdr
 //#define DLL_RTL_433
@@ -72,11 +73,14 @@ nombre de devices 01/2024: 214/248  242/248  +25
 
 #define fprintf my_fprintf
 
-int my_fprintf(_Inout_ FILE *const _Stream,
-        _In_z_ _Printf_format_string_ char const *const _Format, ...);
+int32_t my_fprintf(_Inout_ FILE *const _Stream,
+        _In_z_ _Printf_format_string_ uint8_t const *const _Format, ...);
+typedef void(__stdcall *prt_call_back_init)(void(__stdcall *)(short *, uint32_t, void *));
 
-typedef void(__stdcall *prt_call_back_init)(char *);
-typedef void(__stdcall *prt_call_back_RecordOrder)(char *);
+typedef void(__stdcall *prt_call_back_CBStructDevices)( deviceToPlugin );
+
 void setPtrInit(prt_call_back_init ptr_init, intptr_t ptr_cfg);
+
+void fctInfosToPlugin(defDeviceToPlugin *ptrDeviceToPlugin);
 
 #endif /* INCLUDE_DLL_RTL_433_H_ */

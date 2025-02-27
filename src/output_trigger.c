@@ -25,7 +25,7 @@ typedef struct {
     FILE *file;
 } data_output_trigger_t;
 
-static void R_API_CALLCONV data_output_trigger_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_trigger_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(data);
     data_output_trigger_t *trigger = (data_output_trigger_t *)output;

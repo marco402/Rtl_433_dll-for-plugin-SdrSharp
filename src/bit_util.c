@@ -9,11 +9,12 @@
     (at your option) any later version.
 */
 
-#include "util.h"
+#include "bit_util.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "rtl_433.h"
+
 uint8_t reverse8(uint8_t x)
 {
     x = (x & 0xF0) >> 4 | (x & 0x0F) << 4;
@@ -25,14 +26,14 @@ uint8_t reverse8(uint8_t x)
 uint32_t reverse32(uint32_t x)
 {
     uint32_t ret;
-    uint8_t* xp = (uint8_t*)&x;
+    uint8_t const* xp = (uint8_t*)&x;
     ret = (uint32_t) reverse8(xp[0]) << 24 | reverse8(xp[1]) << 16 | reverse8(xp[2]) << 8 | reverse8(xp[3]);
     return ret;
 }
 
-void reflect_bytes(uint8_t message[], unsigned num_bytes)
+void reflect_bytes(uint8_t message[], uint32_t num_bytes)
 {
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         message[i] = reverse8(message[i]);
     }
 }
@@ -44,16 +45,16 @@ uint8_t reflect4(uint8_t x)
     return x;
 }
 
-void reflect_nibbles(uint8_t message[], unsigned num_bytes)
+void reflect_nibbles(uint8_t message[], uint32_t num_bytes)
 {
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         message[i] = reflect4(message[i]);
     }
 }
 
-unsigned extract_nibbles_4b1s(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
+uint32_t extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst)
 {
-    unsigned ret = 0;
+    uint32_t ret = 0;
 
     while (num_bits >= 5) {
         uint16_t bits = (message[offset_bits / 8] << 8) | message[(offset_bits / 8) + 1];
@@ -61,7 +62,7 @@ unsigned extract_nibbles_4b1s(uint8_t *message, unsigned offset_bits, unsigned n
         if ((bits & 1) != 1)
             break; // stuff-bit error
         *dst++ = (bits >> 1) & 0xf;
-        ret += 1;
+        ret ++;
         offset_bits += 5;
         num_bits -= 5;
     }
@@ -69,36 +70,67 @@ unsigned extract_nibbles_4b1s(uint8_t *message, unsigned offset_bits, unsigned n
     return ret;
 }
 
-unsigned extract_bytes_uart(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint8_t *dst)
+uint32_t extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst)
 {
-    unsigned ret = 0;
+    uint32_t ret = 0;
 
     while (num_bits >= 10) {
-        int startb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
-        offset_bits += 1;
-        int datab = message[offset_bits / 8];
+        int32_t startb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
+        offset_bits ++;
+        int32_t datab = message[offset_bits / 8];
         if (offset_bits % 8) {
             datab = (message[offset_bits / 8] << 8) | message[offset_bits / 8 + 1];
             datab >>= 8 - (offset_bits % 8);
         }
         offset_bits += 8;
-        int stopb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
-        offset_bits += 1;
+        int32_t stopb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
+        offset_bits ++;
         if ((startb & 1) != 0)
             break; // start-bit error
         if ((stopb & 1) != 1)
             break; // stop-bit error
         *dst++ = reverse8(datab & 0xff);
-        ret += 1;
+        ret ++;
         num_bits -= 10;
     }
 
     return ret;
 }
-
-static unsigned symbol_match(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint32_t symbol)
+uint32_t extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst)
 {
-    unsigned symbol_len = symbol & 0x1f;
+	uint32_t ret = 0;
+
+	while (num_bits >= 11) {
+		int32_t startb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
+		offset_bits += 1;
+		int32_t datab = message[offset_bits / 8];
+		if (offset_bits % 8) {
+			datab = (message[offset_bits / 8] << 8) | message[offset_bits / 8 + 1];
+			datab >>= 8 - (offset_bits % 8);
+		}
+		offset_bits += 8;
+		int32_t parityb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
+		offset_bits += 1;
+		int32_t stopb = message[offset_bits / 8] >> (7 - (offset_bits % 8));
+		offset_bits += 1;
+		int32_t data_parity = parity8(datab);
+		if ((startb & 1) != 1)
+			break; // start-bit error
+		if ((parityb & 1) != data_parity)
+			break; // parity-bit error
+		if ((stopb & 1) != 0)
+			break; // stop-bit error
+		*dst++ = (datab & 0xff);
+		ret += 1;
+		num_bits -= 11;
+	}
+
+	return ret;
+}
+
+static uint32_t symbol_match(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t symbol)
+{
+    uint32_t symbol_len = symbol & 0x1f;
 
     // check required len
     if (num_bits < symbol_len) {
@@ -106,10 +138,10 @@ static unsigned symbol_match(uint8_t *message, unsigned offset_bits, unsigned nu
     }
 
     // match each bit otherwise abort
-    for (unsigned pos = 0; pos < symbol_len; ++pos) {
-        unsigned m_pos = offset_bits + pos;
-        unsigned m_bit = message[m_pos / 8] >> (7 - (m_pos % 8));
-        unsigned s_bit = symbol >> (31 - pos);
+    for (uint32_t pos = 0; pos < symbol_len; ++pos) {
+        uint32_t m_pos = offset_bits + pos;
+        uint32_t m_bit = message[m_pos / 8] >> (7 - (m_pos % 8));
+        uint32_t s_bit = symbol >> (31 - pos);
         if ((m_bit & 1) != (s_bit & 1)) {
             return 0;
         }
@@ -118,13 +150,13 @@ static unsigned symbol_match(uint8_t *message, unsigned offset_bits, unsigned nu
     return symbol_len;
 }
 
-unsigned extract_bits_symbols(uint8_t *message, unsigned offset_bits, unsigned num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst)
+uint32_t extract_bits_symbols(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst)
 {
-    unsigned zero_len = zero & 0x1f;
-    unsigned one_len  = one & 0x1f;
-    unsigned sync_len = sync & 0x1f;
+    uint32_t zero_len = zero & 0x1f;
+    uint32_t one_len  = one & 0x1f;
+    uint32_t sync_len = sync & 0x1f;
 
-    unsigned dst_len = 0;
+    uint32_t dst_len = 0;
 
     while (num_bits >= 1) {
         // TODO: match the longest symbol first
@@ -137,13 +169,13 @@ unsigned extract_bits_symbols(uint8_t *message, unsigned offset_bits, unsigned n
             offset_bits += zero_len;
             num_bits -= zero_len;
             // no need to set a zero
-            dst_len += 1;
+            dst_len ++;
         }
         else if (symbol_match(message, offset_bits, num_bits, one)) {
             offset_bits += one_len;
             num_bits -= one_len;
             dst[dst_len / 8] |= 0x80 >> (dst_len % 8);
-            dst_len += 1;
+            dst_len ++;
         }
         else {
             break;
@@ -154,11 +186,11 @@ unsigned extract_bits_symbols(uint8_t *message, unsigned offset_bits, unsigned n
     return dst_len;
 }
 
-uint8_t crc4(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t init)
+uint8_t crc4(uint8_t const message[], uint32_t nBytes, uint8_t polynomial, uint8_t init)
 {
-    unsigned remainder = init << 4; // LSBs are unused
-    unsigned poly = polynomial << 4;
-    unsigned bit;
+    uint32_t remainder = init << 4; // LSBs are unused
+    uint32_t poly = polynomial << 4;
+    uint32_t bit;
 
     while (nBytes--) {
         remainder ^= *message++;
@@ -173,11 +205,11 @@ uint8_t crc4(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8
     return remainder >> 4 & 0x0f; // discard the LSBs
 }
 
-uint8_t crc7(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t init)
+uint8_t crc7(uint8_t const message[], uint32_t nBytes, uint8_t polynomial, uint8_t init)
 {
-    unsigned remainder = init << 1; // LSB is unused
-    unsigned poly = polynomial << 1;
-    unsigned byte, bit;
+    uint32_t remainder = init << 1; // LSB is unused
+    uint32_t poly = polynomial << 1;
+    uint32_t byte, bit;
 
     for (byte = 0; byte < nBytes; ++byte) {
         remainder ^= message[byte];
@@ -192,10 +224,10 @@ uint8_t crc7(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8
     return remainder >> 1 & 0x7f; // discard the LSB
 }
 
-uint8_t crc8(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t init)
+uint8_t crc8(uint8_t const message[], uint32_t nBytes, uint8_t polynomial, uint8_t init)
 {
     uint8_t remainder = init;
-    unsigned byte, bit;
+    uint32_t byte, bit;
 
     for (byte = 0; byte < nBytes; ++byte) {
         remainder ^= message[byte];
@@ -210,10 +242,10 @@ uint8_t crc8(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8
     return remainder;
 }
 
-uint8_t crc8le(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uint8_t init)
+uint8_t crc8le(uint8_t const message[], uint32_t nBytes, uint8_t polynomial, uint8_t init)
 {
     uint8_t remainder = reverse8(init);
-    unsigned byte, bit;
+    uint32_t byte, bit;
     polynomial = reverse8(polynomial);
 
     for (byte = 0; byte < nBytes; ++byte) {
@@ -229,10 +261,10 @@ uint8_t crc8le(uint8_t const message[], unsigned nBytes, uint8_t polynomial, uin
     return remainder;
 }
 
-uint16_t crc16lsb(uint8_t const message[], unsigned nBytes, uint16_t polynomial, uint16_t init)
+uint16_t crc16lsb(uint8_t const message[], uint32_t nBytes, uint16_t polynomial, uint16_t init)
 {
     uint16_t remainder = init;
-    unsigned byte, bit;
+    uint32_t byte, bit;
 
     for (byte = 0; byte < nBytes; ++byte) {
         remainder ^= message[byte];
@@ -248,10 +280,10 @@ uint16_t crc16lsb(uint8_t const message[], unsigned nBytes, uint16_t polynomial,
     return remainder;
 }
 
-uint16_t crc16(uint8_t const message[], unsigned nBytes, uint16_t polynomial, uint16_t init)
+uint16_t crc16(uint8_t const message[], uint32_t nBytes, uint16_t polynomial, uint16_t init)
 {
     uint16_t remainder = init;
-    unsigned byte, bit;
+    uint32_t byte, bit;
 
     for (byte = 0; byte < nBytes; ++byte) {
         remainder ^= message[byte] << 8;
@@ -267,36 +299,39 @@ uint16_t crc16(uint8_t const message[], unsigned nBytes, uint16_t polynomial, ui
     return remainder;
 }
 
-uint8_t lfsr_digest8(uint8_t const message[], unsigned bytes, uint8_t gen, uint8_t key)
+uint8_t lfsr_digest8(uint8_t const message[], uint32_t bytes, uint8_t gen, uint8_t key)
 {
     uint8_t sum = 0;
-    for (unsigned k = 0; k < bytes; ++k) {
+	// Process message from first byte to last byte
+    for (uint32_t k = 0; k < bytes; ++k) {
         uint8_t data = message[k];
-        for (int i = 7; i >= 0; --i) {
-            // fprintf(stderr, "key is %02x\n", key);
+		// Process individual bits of each byte (MSB to LSB)
+        for (int32_t i = 7; i >= 0; --i) {
+			// fprintf(stderr, "key at %d.%d : %02x\n", k, i, key);
             // XOR key into sum if data bit is set
             if ((data >> i) & 1)
                 sum ^= key;
 
-            // roll the key right (actually the lsb is dropped here)
-            // and apply the gen (needs to include the dropped lsb as msb)
-            if (key & 1)
-                key = (key >> 1) ^ gen;
-            else
-                key = (key >> 1);
-        }
-    }
-    return sum;
+
+			// roll the key right (actually the lsb is dropped here)
+			// and apply the gen (needs to include the dropped lsb as msb)
+			if (key & 1)
+				key = (key >> 1) ^ gen;
+			else
+				key = (key >> 1);
+		}
+	}
+	return sum;
 }
 
-uint8_t lfsr_digest8_reflect(uint8_t const message[], int bytes, uint8_t gen, uint8_t key)
+uint8_t lfsr_digest8_reflect(uint8_t const message[], int32_t bytes, uint8_t gen, uint8_t key)
 {
     uint8_t sum = 0;
     // Process message from last byte to first byte (reflected)
-    for (int k = bytes - 1; k >= 0; --k) {
+    for (int32_t k = bytes - 1; k >= 0; --k) {
         uint8_t data = message[k];
         // Process individual bits of each byte (reflected)
-        for (int i = 0; i < 8; ++i) {
+        for (int32_t i = 0; i < 8; ++i) {
             // fprintf(stderr, "key is %02x\n", key);
             // XOR key into sum if data bit is set
             if ((data >> i) & 1) {
@@ -314,12 +349,12 @@ uint8_t lfsr_digest8_reflect(uint8_t const message[], int bytes, uint8_t gen, ui
     return sum;
 }
 
-uint16_t lfsr_digest16(uint8_t const message[], unsigned bytes, uint16_t gen, uint16_t key)
+uint16_t lfsr_digest16(uint8_t const message[], uint32_t bytes, uint16_t gen, uint16_t key)
 {
     uint16_t sum = 0;
-    for (unsigned k = 0; k < bytes; ++k) {
+    for (uint32_t k = 0; k < bytes; ++k) {
         uint8_t data = message[k];
-        for (int i = 7; i >= 0; --i) {
+        for (int32_t i = 7; i >= 0; --i) {
             // fprintf(stderr, "key at bit %d : %04x\n", i, key);
             // if data bit is set then xor with key
             if ((data >> i) & 1)
@@ -336,10 +371,36 @@ uint16_t lfsr_digest16(uint8_t const message[], unsigned bytes, uint16_t gen, ui
     return sum;
 }
 
-/*
-void lfsr_keys_fwd16(int rounds, uint16_t gen, uint16_t key)
+// The CCITT data whitening process is built around a 9-bit Linear Feedback Shift Register (LFSR).
+// The LFSR polynomial is the same polynomial as for IBM data whitening (x9 + x5 + 1).
+// The initial value of the data whitening key is set to all ones, 0x1FF.
+// s.a. https://www.nxp.com/docs/en/application-note/AN5070.pdf s.5.2
+void ccitt_whitening(uint8_t *buffer, uint32_t buffer_size)
 {
-    for (int i = 0; i <= rounds; ++i) {
+	uint8_t key_msb = 0x01;
+	uint8_t key_lsb = 0xff;
+	uint8_t key_msb_previous;
+	uint8_t reflected_key_lsb = key_lsb;
+
+	for (uint32_t buffer_pos = 0; buffer_pos < buffer_size; buffer_pos++) {
+		reflected_key_lsb = (key_lsb & 0xf0) >> 4 | (key_lsb & 0x0f) << 4;
+		reflected_key_lsb = (reflected_key_lsb & 0xcc) >> 2 | (reflected_key_lsb & 0x33) << 2;
+		reflected_key_lsb = (reflected_key_lsb & 0xaa) >> 1 | (reflected_key_lsb & 0x55) << 1;
+
+		buffer[buffer_pos] ^= reflected_key_lsb;
+
+		for (uint8_t rol_counter = 0; rol_counter < 8; rol_counter++) {
+			key_msb_previous = key_msb;
+			key_msb = (key_lsb & 0x01) ^ ((key_lsb >> 5) & 0x01);
+			key_lsb = ((key_msb_previous << 7) & 0x80) | ((key_lsb >> 1) & 0xff);
+		}
+	}
+}
+
+/*
+void lfsr_keys_fwd16(int32_t rounds, uint16_t gen, uint16_t key)
+{
+    for (int32_t i = 0; i <= rounds; ++i) {
         fprintf(stderr, "key at bit %d : %04x\n", i, key);
 
         // roll the key right (actually the lsb is dropped here)
@@ -351,9 +412,9 @@ void lfsr_keys_fwd16(int rounds, uint16_t gen, uint16_t key)
     }
 }
 
-void lfsr_keys_rwd16(int rounds, uint16_t gen, uint16_t key)
+void lfsr_keys_rwd16(int32_t rounds, uint16_t gen, uint16_t key)
 {
-    for (int i = 0; i <= rounds; ++i) {
+    for (int32_t i = 0; i <= rounds; ++i) {
         fprintf(stderr, "key at bit -%d : %04x\n", i, key);
 
         // roll the key left (actually the msb is dropped here)
@@ -367,44 +428,44 @@ void lfsr_keys_rwd16(int rounds, uint16_t gen, uint16_t key)
 */
 
 // we could use popcount intrinsic, but don't actually need the performance
-int parity8(uint8_t byte)
+int32_t parity8(uint8_t byte)
 {
     byte ^= byte >> 4;
     byte &= 0xf;
     return (0x6996 >> byte) & 1;
 }
 
-int parity_bytes(uint8_t const message[], unsigned num_bytes)
+int32_t parity_bytes(uint8_t const message[], uint32_t num_bytes)
 {
-    int result = 0;
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    int32_t result = 0;
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         result ^= parity8(message[i]);
     }
     return result;
 }
 
-uint8_t xor_bytes(uint8_t const message[], unsigned num_bytes)
+uint8_t xor_bytes(uint8_t const message[], uint32_t num_bytes)
 {
     uint8_t result = 0;
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         result ^= message[i];
     }
     return result;
 }
 
-int add_bytes(uint8_t const message[], unsigned num_bytes)
+int32_t add_bytes(uint8_t const message[], uint32_t num_bytes)
 {
-    int result = 0;
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    int32_t result = 0;
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         result += message[i];
     }
     return result;
 }
 
-int add_nibbles(uint8_t const message[], unsigned num_bytes)
+int32_t add_nibbles(uint8_t const message[], uint32_t num_bytes)
 {
-    int result = 0;
-    for (unsigned i = 0; i < num_bytes; ++i) {
+    int32_t result = 0;
+    for (uint32_t i = 0; i < num_bytes; ++i) {
         result += (message[i] >> 4) + (message[i] & 0x0f);
     }
     return result;
@@ -421,10 +482,26 @@ int add_nibbles(uint8_t const message[], unsigned num_bytes)
             fprintf(stderr, "FAIL: %d <> %d\n", (a), (b)); \
         } \
     } while (0)
-
-int main(void) {
-    unsigned passed = 0;
-    unsigned failed = 0;
+#define ASSERT_MATCH(a, b, n) \
+    do { \
+        if (memcmp(a, b, n) == 0) \
+            ++passed; \
+        else { \
+            ++failed; \
+            fprintf(stderr, "FAIL:"); \
+            for (size_t i = 0; i < n; i++) { \
+                fprintf(stderr, " %02x", a[i]); \
+            } \
+            fprintf(stderr, "\n   <>"); \
+            for (size_t i = 0; i < n; i++) { \
+                fprintf(stderr, " %02x", b[i]); \
+            } \
+            fprintf(stderr, "\n"); \
+        } \
+    } while (0)
+int32_t main(void) {
+    uint32_t passed = 0;
+    uint32_t failed = 0;
 
     fprintf(stderr, "util:: test\n");
 

@@ -36,7 +36,7 @@ Command packet (5 bytes)
 
 - ID:   {16} ID
 - Type: {8}  type
-- Heat: {8}  heating level 0-255 (bit reflected unsigned integer)
+- Heat: {8}  heating level 0-255 (bit reflected uint32_t integer)
 - CRC:  {8}  CRC-8, poly 0x31, init 0xd7
 
 Pairing packet (4 bytes)
@@ -47,34 +47,35 @@ Pairing packet (4 bytes)
 
 */
 
-static int celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row             = 0;
     uint8_t const preamble[] = {0xcc, 0xcc, 0xcc, 0xcc, 0x55, 0x55, 0x55, 0x55};
     // data section in command packet == 160 bits
     // data section in pair packet == 128 bits
     // terminal 0xf == 4 bits
 
-    if (bitbuffer->num_rows > 1 || bitbuffer->bits_per_row[0] < 144) {
+    if (bitbuffer->num_rows > 1 || bitbuffer->bits_per_row[row] < 144) {
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned preamble_end = bitbuffer_search(bitbuffer, 0, 0, preamble, 64) + 64;
-    unsigned first_byte = preamble_end >> 3;
+    uint32_t preamble_end = bitbuffer_search(bitbuffer, row, 0, preamble, 64) + 64;
+    uint32_t bit_offset = preamble_end >> 3;
 
-    if (preamble_end >= bitbuffer->bits_per_row[0]) {
+    if (preamble_end >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY;
     }
 
-    if ((preamble_end + 132) > bitbuffer->bits_per_row[0]) {
+    if ((preamble_end + 132) > bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
 
     bitbuffer_t decoded_bits = {0};
     //convert raw bits to symbols
 
-    uint8_t *bits = bitbuffer->bb[0];
-    unsigned int n_bytes = bitbuffer->bits_per_row[0] >> 3;
-    unsigned int ipos = first_byte;
+    uint8_t *bits = bitbuffer->bb[row];
+    uint32_t n_bytes = bitbuffer->bits_per_row[row] >> 3;
+    uint32_t ipos = bit_offset;
     while (ipos < n_bytes) {
         if (bits[ipos] == 0xf0) {
             break;
@@ -101,7 +102,7 @@ static int celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     decoder_log_bitbuffer(decoder, 2, __func__, &decoded_bits, "Extracted data");
-    uint8_t *b = decoded_bits.bb[0];
+    uint8_t *b = decoded_bits.bb[row];
 
     uint8_t crc = crc8(b, 8, 0x31, 0xd7);
     if (crc != 0) {
@@ -115,9 +116,9 @@ static int celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_OTHER;
     }
 
-    int id      = (b[0] << 8) | b[1];
-    int heat_ok = b[2] == 0xf0;   // is it a command packet?
-    int heat    = reverse8(b[3]); // command packet only
+    int32_t id      = (b[0] << 8) | b[1];
+    int32_t heat_ok = b[2] == 0xf0;   // is it a command packet?
+    int32_t heat    = reverse8(b[3]); // command packet only
 
     /* clang-format off */
     data_t *data = data_make(
@@ -128,11 +129,12 @@ static int celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "heat",

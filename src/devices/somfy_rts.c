@@ -59,9 +59,10 @@ The command is fixed to 0xf, which we use as indication that an actual command i
 
 #include "decoder.h"
 
-static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    char const *const control_strs[] = {
+    int32_t row                     = -1;
+    uint8_t const *const control_strs[] = {
             "? (0)",
             "My (1)",
             "Up (2)",
@@ -80,7 +81,7 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "? (15)",
     };
 
-    char const *const seed_strs[] = {
+    uint8_t const *const seed_strs[] = {
             "? (0)",
             "? (1)",
             "? (2)",
@@ -110,67 +111,66 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t const preamble_pattern_short[] = {0xf0, 0xf0, 0xff, 0x00};
     uint8_t const preamble_length_short = 25;
 
-    int is_retransmission = 0;
-    int decode_row = -1;
-    int bitpos = 0;
-
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
-        if (bitbuffer->bits_per_row[row] > 170) {
+    int32_t is_retransmission = 0;
+    int32_t bit_offset = 0;
+    int32_t rowTemp           = 0;
+    for (rowTemp = 0; rowTemp < bitbuffer->num_rows; rowTemp++) {
+        if (bitbuffer->bits_per_row[rowTemp] > 170) {
             is_retransmission = 1;
-            bitpos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern_long, preamble_length_long) + preamble_length_long;
+            bit_offset = bitbuffer_search(bitbuffer, rowTemp, 0, preamble_pattern_long, preamble_length_long) + preamble_length_long;
             // Retry for wrong bitrate if needed
-            if (bitpos + 56 * 2 > bitbuffer->bits_per_row[row]) {
-                bitpos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern_rate, preamble_length_rate) + preamble_length_rate;
+            if (bit_offset + 56 * 2 > bitbuffer->bits_per_row[rowTemp]) {
+                bit_offset = bitbuffer_search(bitbuffer, rowTemp, 0, preamble_pattern_rate, preamble_length_rate) + preamble_length_rate;
             }
             // Are there at least 56 MC bits in this row?
-            if (bitpos + 56 * 2 <= bitbuffer->bits_per_row[row]) {
-                decode_row = row;
+            if (bit_offset + 56 * 2 <= bitbuffer->bits_per_row[rowTemp]) {
+                row = rowTemp;
                 break;
             }
         }
-        else if (bitbuffer->bits_per_row[row] > 130) {
+        else if (bitbuffer->bits_per_row[rowTemp] > 130) {
             is_retransmission = 0;
-            bitpos = bitbuffer_search(bitbuffer, row, 0, preamble_pattern_short, preamble_length_short) + preamble_length_short;
-            if (bitpos + 56 * 2 <= bitbuffer->bits_per_row[row]) {
-                decode_row = row;
+            bit_offset = bitbuffer_search(bitbuffer, rowTemp, 0, preamble_pattern_short, preamble_length_short) + preamble_length_short;
+            if (bit_offset + 56 * 2 <= bitbuffer->bits_per_row[rowTemp]) {
+                row = rowTemp;
                 break;
             }
         }
     }
 
-    if (decode_row < 0)
+    if (row < 0)
         return DECODE_ABORT_EARLY;
 
     // Are there at least 56 MC bits in this row?
-    if (bitpos + 56 * 2 > bitbuffer->bits_per_row[decode_row])
+    if (bit_offset + 56 * 2 > bitbuffer->bits_per_row[row])
         return DECODE_ABORT_LENGTH;
 
     bitbuffer_t decoded = {0};
-    bitbuffer_manchester_decode(bitbuffer, decode_row, bitpos, &decoded, 80);
-    if (decoded.num_rows == 0 || decoded.bits_per_row[0] < 56)
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &decoded, 80);
+    if (decoded.num_rows == 0 || decoded.bits_per_row[row] < 56)  // to see row=0?
         return DECODE_ABORT_LENGTH;
 
-    uint8_t *b = decoded.bb[0];
+    uint8_t *b = decoded.bb[row]; // to see row=0?
 
     // descramble
-    for (int i = 6; i > 0; i--)
+    for (int32_t i = 6; i > 0; i--)
         b[i] = b[i] ^ b[i - 1];
 
     // calculate and verify checksum
-    int chksum_calc = xor_bytes(b, 7);
+    int32_t chksum_calc = xor_bytes(b, 7);
     chksum_calc = (chksum_calc & 0xf) ^ (chksum_calc >> 4); // fold to nibble
     if (chksum_calc != 0)
         return DECODE_FAIL_MIC;
 
-    int seed    = b[0];
-    int control = (b[1] & 0xf0) >> 4;
-    int chksum  = b[1] & 0xf;
-    int counter = (b[2] << 8) | b[3];
+    int32_t seed    = b[0];
+    int32_t control = (b[1] & 0xf0) >> 4;
+    int32_t chksum  = b[1] & 0xf;
+    int32_t counter = (b[2] << 8) | b[3];
     // assume little endian as multiple addresses used by one remote control increase the address value in little endian byte order.
-    int address = (b[6] << 16) | (b[5] << 8) | b[4];
+    int32_t address = (b[6] << 16) | (b[5] << 8) | b[4];
 
     // lookup control
-    char const *control_str = control_strs[control];
+    uint8_t const *control_str = control_strs[control];
     if (control == 0xf) {
         // TEL-FIX quirk
         control_str = seed_strs[seed & 0xf];
@@ -189,11 +189,12 @@ static int somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "control",

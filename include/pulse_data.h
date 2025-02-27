@@ -29,16 +29,16 @@
 typedef struct pulse_data {
     uint64_t offset;      ///< Offset to first pulse in number of samples from start of stream.
     uint32_t sample_rate; ///< Sample rate the pulses are recorded with.
-    unsigned depth_bits;  ///< Sample depth in bits.
-    unsigned start_ago;   ///< Start of first pulse in number of samples ago.
-    unsigned end_ago;     ///< End of last pulse in number of samples ago.
-    unsigned int num_pulses;
-    int pulse[PD_MAX_PULSES]; ///< Width of pulses (high) in number of samples.
-    int gap[PD_MAX_PULSES];   ///< Width of gaps between pulses (low) in number of samples.
-    int ook_low_estimate;     ///< Estimate for the OOK low level (base noise level) at beginning of package.
-    int ook_high_estimate;    ///< Estimate for the OOK high level at end of package.
-    int fsk_f1_est;           ///< Estimate for the F1 frequency for FSK.
-    int fsk_f2_est;           ///< Estimate for the F2 frequency for FSK.
+	uint32_t depth_bits;  ///< Sample depth in bits.
+	uint32_t start_ago;   ///< Start of first pulse in number of samples ago.
+	uint32_t end_ago;     ///< End of last pulse in number of samples ago.
+    uint32_t num_pulses;
+    int32_t pulse[PD_MAX_PULSES]; ///< Width of pulses (high) in number of samples.
+    int32_t gap[PD_MAX_PULSES];   ///< Width of gaps between pulses (low) in number of samples.
+    int32_t ook_low_estimate;     ///< Estimate for the OOK low level (base noise level) at beginning of package.
+    int32_t ook_high_estimate;    ///< Estimate for the OOK high level at end of package.
+    int32_t fsk_f1_est;           ///< Estimate for the F1 frequency for FSK.
+    int32_t fsk_f2_est;           ///< Estimate for the F2 frequency for FSK.
     float freq1_hz;
     float freq2_hz;
     float centerfreq_hz;
@@ -58,13 +58,13 @@ void pulse_data_shift(pulse_data_t *data);
 void pulse_data_print(pulse_data_t const *data);
 
 /// Dump the content of a pulse_data_t structure as raw binary.
-void pulse_data_dump_raw(uint8_t *buf, unsigned len, uint64_t buf_offset, pulse_data_t const *data, uint8_t bits);
+void pulse_data_dump_raw(uint8_t *buf, uint32_t len, uint64_t buf_offset, pulse_data_t const *data, uint8_t bits);
 
 /// Print a header for the VCD format.
 void pulse_data_print_vcd_header(FILE *file, uint32_t sample_rate);
 
 /// Print the content of a pulse_data_t structure in VCD format.
-void pulse_data_print_vcd(FILE *file, pulse_data_t const *data, int ch_id);
+void pulse_data_print_vcd(FILE *file, pulse_data_t const *data, int32_t ch_id);
 
 /// Read the next pulse_data_t structure from OOK text.
 void pulse_data_load(FILE *file, pulse_data_t *data, uint32_t sample_rate);

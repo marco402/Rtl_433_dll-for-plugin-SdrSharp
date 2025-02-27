@@ -30,14 +30,14 @@ Data is transmitted with 6 bytes row:
 
 #include "decoder.h"
 
-static int opus_xt300_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t opus_xt300_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int ret       = 0;
-    int fail_code = 0;
-    int row;
-    int chk;
+    int32_t ret       = 0;
+    int32_t fail_code = 0;
+    int32_t row;
+    int32_t chk;
     uint8_t *b;
-    int channel, temp, moisture;
+    int32_t channel, temp, moisture;
     data_t *data;
 
     for (row = 0; row < bitbuffer->num_rows; row++) {
@@ -88,14 +88,15 @@ static int opus_xt300_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         ret++;
     }
     return ret > 0 ? ret : fail_code;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "channel",
         "temperature_C",

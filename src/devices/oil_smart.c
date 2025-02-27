@@ -55,16 +55,16 @@ Start of frame full preamble is depending on first data bit either
     0101 0101 0101 0101 0101 0111 01
     0101 0101 0101 0101 0101 1000 10
 */
-static int oil_smart_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t oil_smart_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t databits = {0};
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &databits, 64);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 64);
 
-    if (databits.bits_per_row[0] < 64) {
+    if (databits.bits_per_row[row] < 64) {
         return 0; // DECODE_ABORT_LENGTH; // TODO: fix calling code to handle negative return values
     }
 
-    uint8_t *b = databits.bb[0];
+    uint8_t *b = databits.bb[row];
 
     if (b[0] != 0x55 || b[1] != 0x58) {
         decoder_log(decoder, 2, __func__, "Couldn't find preamble");
@@ -99,7 +99,8 @@ static int oil_smart_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
@@ -107,25 +108,26 @@ static int oil_smart_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
 Oil tank monitor using manchester encoded FSK protocol with CRC.
 @sa oil_smart_decode()
 */
-static int oil_smart_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t oil_smart_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                      = 0;
     uint8_t const preamble_pattern[2] = {0x55, 0x58};
     // End of frame is the last half-bit repeated additional 2 times, then 4 times mark.
 
-    unsigned bitpos = 0;
-    int events      = 0;
+    uint32_t bit_offset = 0;
+    int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 16)) + 128 <=
-            bitbuffer->bits_per_row[0]) {
-        events += oil_smart_decode(decoder, bitbuffer, 0, bitpos + 16);
-        bitpos += 2;
+    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 16)) + 128 <=
+            bitbuffer->bits_per_row[row]) {
+        events += oil_smart_decode(decoder, bitbuffer, row, bit_offset + 16, startPulses, package_type);
+        bit_offset += 2;
     }
 
     return events;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "depth_cm",

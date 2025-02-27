@@ -31,36 +31,36 @@ Actually 37 bits for all but last transmission which is 36 bits.
 
 #include "decoder.h"
 
-static int springfield_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t springfield_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int ret = 0;
-    unsigned tmpData;
-    unsigned savData = 0;
+    int32_t ret = 0;
+    uint32_t tmpData;
+    uint32_t savData = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] != 36 && bitbuffer->bits_per_row[row] != 37)
             continue; // DECODE_ABORT_LENGTH
         uint8_t *b = bitbuffer->bb[row];
-        tmpData = ((unsigned)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+        tmpData = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
         if (tmpData == 0xffffffff)
             continue; // DECODE_ABORT_EARLY
         if (tmpData == savData)
             continue;
         savData = tmpData;
 
-        int chk = xor_bytes(b, 4); // sum nibble 0-7
+        int32_t chk = xor_bytes(b, 4); // sum nibble 0-7
         chk = (chk >> 4) ^ (chk & 0x0f); // fold to nibble
         if (chk != 0)
             continue; // DECODE_FAIL_MIC
 
-        int sid      = (b[0]);
-        int battery  = (b[1] >> 7) & 1;
-        int button   = (b[1] >> 6) & 1;
-        int channel  = ((b[1] >> 4) & 0x03) + 1;
-        int temp     = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
+        int32_t sid      = (b[0]);
+        int32_t battery  = (b[1] >> 7) & 1;
+        int32_t button   = (b[1] >> 6) & 1;
+        int32_t channel  = ((b[1] >> 4) & 0x03) + 1;
+        int32_t temp     = (int16_t)(((b[1] & 0x0f) << 12) | (b[2] << 4)); // uses sign extend
         float temp_c = (temp >> 4) * 0.1f;
-        int moisture = (b[3] >> 4) * 10; // Moisture level is 0-10
-        //int uk1      = b[4] >> 4; /* unknown. */
+        int32_t moisture = (b[3] >> 4) * 10; // Moisture level is 0-10
+        //int32_t uk1      = b[4] >> 4; /* unknown. */
 
         // reduce false positives by checking specified sensor range, this isn't great...
         if (temp_c < -30 || temp_c > 70) {
@@ -82,14 +82,15 @@ static int springfield_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         ret++;
     }
     return ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

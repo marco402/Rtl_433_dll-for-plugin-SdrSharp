@@ -13,11 +13,11 @@
 
 #include "compat_paths.h"
 
-char **compat_get_default_conf_paths(void)
+uint8_t **compat_get_default_conf_paths(void)
 {
-    static char *paths[4] = { NULL };
-    static char buf[256] = "";
-    char *env_config_home = getenv("XDG_CONFIG_HOME");
+    static uint8_t *paths[4] = { NULL };
+    static uint8_t buf[256] = "";
+    uint8_t *env_config_home = getenv("XDG_CONFIG_HOME");
     if (!paths[0]) {
         paths[0] = "rtl_433.conf";
         if (env_config_home && *env_config_home)
@@ -42,14 +42,14 @@ char **compat_get_default_conf_paths(void)
 
 #include "compat_paths.h"
 
-char **compat_get_default_conf_paths(void)
+uint8_t **compat_get_default_conf_paths(void)
 {
-    static char bufs[3][256];
-    static char *paths[4] = { NULL };
+    static uint8_t bufs[3][256];
+    static uint8_t *paths[4] = { NULL };
     if (paths[0]) return paths;
     // Working directory, i.e. where the binary is located
     if (GetModuleFileName(NULL, bufs[0], sizeof(bufs[0]))) {
-        char *last_backslash = strrchr(bufs[0], '\\');
+        uint8_t *last_backslash = strrchr(bufs[0], '\\');
         if (last_backslash)
             *last_backslash = '\0';
         strcat_s(bufs[0], sizeof(bufs[0]), "\\rtl_433.conf");

@@ -17,13 +17,13 @@ CurrentCost TX, CurrentCost EnviR current sensors.
 
 @todo Documentation needed.
 */
-static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     bitbuffer_t packet = {0};
     uint8_t *b;
-    int is_envir = 0;
-    unsigned int start_pos;
+    int32_t is_envir = 0;
+    uint32_t start_pos;
 
     bitbuffer_invert(bitbuffer);
 
@@ -55,7 +55,7 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         start_pos += 45;
     }
 
-    start_pos = bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet, 0);
+    bitbuffer_manchester_decode(bitbuffer, 0, start_pos, &packet, 0);
 
     if (packet.bits_per_row[0] < 64) {
         return DECODE_ABORT_EARLY;
@@ -88,7 +88,7 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
     // Counter (b[0] = 0100xxxx) bits 5 and 4 are "unknown", but always 0 to date.
@@ -96,7 +96,7 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         uint16_t device_id = (b[0] & 0x0f) << 8 | b[1];
         // b[2] is "Apparently unused"
         uint16_t sensor_type = b[3]; // Sensor type. Valid values are: 2-Electric, 3-Gas, 4-Water
-        uint32_t c_impulse   = (unsigned)b[4] << 24 | b[5] << 16 | b[6] << 8 | b[7];
+        uint32_t c_impulse   = (uint32_t)b[4] << 24 | b[5] << 16 | b[6] << 8 | b[7];
         /* clang-format off */
         data = data_make(
                "model",         "",              DATA_STRING, is_envir ? "CurrentCost-EnviRCounter" : "CurrentCost-Counter", //TODO: it may have different CC Model ? any ref ?
@@ -107,14 +107,14 @@ static int current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
 
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "subtype",

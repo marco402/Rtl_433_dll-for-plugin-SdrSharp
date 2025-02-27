@@ -46,7 +46,7 @@ Type 2 messages usually contain long runs of zeros that might cause bitstream de
 
 #include "decoder.h"
 
-static int flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {
             /*0xaa, 0xaa, */ 0xaa, 0xaa, // preamble
@@ -57,23 +57,23 @@ static int flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int row = 0;
+    int32_t row = 0;
     // Validate message and reject it as fast as possible : check for preamble
-    unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
 
-    if (start_pos == bitbuffer->bits_per_row[row]) {
+    if (bit_offset == bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY; // no preamble detected
     }
 
     uint8_t len;
-    bitbuffer_extract_bytes(bitbuffer, row, start_pos + sizeof (preamble) * 8, &len, 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset + sizeof (preamble) * 8, &len, 8);
 
 
     uint8_t frame[256+2+1] = {0}; // uint8_t max bytes + 2 bytes crc + 1 length byte
     frame[0] = len;
     // Get frame (len don't include the length byte and the crc16 bytes)
     bitbuffer_extract_bytes(bitbuffer, row,
-            start_pos + (sizeof (preamble) + 1) * 8,
+            bit_offset + (sizeof (preamble) + 1) * 8,
             &frame[1], (len + 2) * 8);
 
     decoder_log_bitrow(decoder, 2, __func__, frame, (len + 1) * 8, "frame data");
@@ -86,21 +86,21 @@ static int flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
     uint8_t* b = frame;
-    int type = b[1];
+    int32_t type = b[1];
 
     /* Only type 1 decoding is supported */
     if (type != 1) return DECODE_ABORT_EARLY;
 
-    int id   = b[5] << 24 | b[4] << 16 | b[3] << 8 | b[2];
-    int volume = b[13] << 16 | b[12] << 8 | b[11];
+    int32_t id   = b[5] << 24 | b[4] << 16 | b[3] << 8 | b[2];
+    int32_t volume = b[13] << 16 | b[12] << 8 | b[11];
 
-    int fts_year = b[10] >> 2;
-    int fts_mth  = ((b[9]>>6) | (b[10]&3)<<2);
-    int fts_day  = (b[9]&0x3E) >> 1;
-    int fts_hour = (b[8]>>4) | ((b[9]&1)<<4);
-    int fts_min  = ((b[8]&0xF)<<2) | ((b[7]&0xC0)>>6);
-    int fts_sec  = b[7]&0x3F;
-    char fts_str[20];
+    int32_t fts_year = b[10] >> 2;
+    int32_t fts_mth  = ((b[9]>>6) | (b[10]&3)<<2);
+    int32_t fts_day  = (b[9]&0x3E) >> 1;
+    int32_t fts_hour = (b[8]>>4) | ((b[9]&1)<<4);
+    int32_t fts_min  = ((b[8]&0xF)<<2) | ((b[7]&0xC0)>>6);
+    int32_t fts_sec  = b[7]&0x3F;
+    uint8_t fts_str[20];
     snprintf(fts_str, sizeof(fts_str), "%4d-%02d-%02dT%02d:%02d:%02d", fts_year + 2000, fts_mth, fts_day, fts_hour, fts_min, fts_sec);
 
     /* clang-format off */
@@ -116,11 +116,11 @@ static int flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "type",

@@ -33,10 +33,11 @@ rtl_433 -R 0 -X 'n=hcs200,m=OOK_PWM,s=370,l=772,r=9000,g=1500,t=152'
 
 #include "decoder.h"
 
-static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     // Reject codes of wrong length
-    if (bitbuffer->bits_per_row[0] != 12 || bitbuffer->bits_per_row[1] != 66)
+    if (bitbuffer->bits_per_row[row] != 12 || bitbuffer->bits_per_row[1] != 66)
         return DECODE_ABORT_LENGTH;
 
     uint8_t *b = bitbuffer->bb[0];
@@ -48,7 +49,7 @@ static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Second row is data
     b = bitbuffer->bb[1];
-
+	row = 1;
     // No need to decode/extract values for simple test
     if (b[1] == 0xff && b[2] == 0xff && b[3] == 0xff && b[4] == 0xff
             && b[5] == 0xff && b[6] == 0xff && b[7] == 0xff) {
@@ -57,17 +58,17 @@ static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // The transmission is LSB first, big endian.
-    uint32_t encrypted = ((unsigned)reverse8(b[3]) << 24) | (reverse8(b[2]) << 16) | (reverse8(b[1]) << 8) | (reverse8(b[0]));
-    int serial         = (reverse8(b[7] & 0xf0) << 24) | (reverse8(b[6]) << 16) | (reverse8(b[5]) << 8) | (reverse8(b[4]));
-    int btn            = (b[7] & 0x0f);
-    int btn_num        = (btn & 0x08) | ((btn & 0x01) << 2) | (btn & 0x02) | ((btn & 0x04) >> 2); // S3, S0, S1, S2
-    int learn          = (b[7] & 0x0f) == 0x0f;
-    int battery_low    = (b[8] & 0x80) == 0x80;
-    int repeat         = (b[8] & 0x40) == 0x40;
+    uint32_t encrypted = ((uint32_t)reverse8(b[3]) << 24) | (reverse8(b[2]) << 16) | (reverse8(b[1]) << 8) | (reverse8(b[0]));
+    int32_t serial         = (reverse8(b[7] & 0xf0) << 24) | (reverse8(b[6]) << 16) | (reverse8(b[5]) << 8) | (reverse8(b[4]));
+    int32_t btn            = (b[7] & 0x0f);
+    int32_t btn_num        = (btn & 0x08) | ((btn & 0x01) << 2) | (btn & 0x02) | ((btn & 0x04) >> 2); // S3, S0, S1, S2
+    int32_t learn          = (b[7] & 0x0f) == 0x0f;
+    int32_t battery_low    = (b[8] & 0x80) == 0x80;
+    int32_t repeat         = (b[8] & 0x40) == 0x40;
 
-    char encrypted_str[9];
+    uint8_t encrypted_str[9];
     snprintf(encrypted_str, sizeof(encrypted_str), "%08X", encrypted);
-    char serial_str[9];
+    uint8_t serial_str[9];
     snprintf(serial_str, sizeof(serial_str), "%07X", serial);
 
     /* clang-format off */
@@ -81,12 +82,13 @@ static int hcs200_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "encrypted",        "",             DATA_STRING,    encrypted_str,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses-bitbuffer->len_rows[0],package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

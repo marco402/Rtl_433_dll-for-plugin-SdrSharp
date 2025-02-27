@@ -2,7 +2,7 @@
     Ambient Weather (Fine Offset) WH31L protocol.
 
     Copyright (C) 2021 Christian W. Zuckschwerdt <zany@triq.net>
-    based on protocol analysis by @MksRasp.
+    based on protocol analysis by \@MksRasp.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -85,13 +85,13 @@ Raw flex decoder and BitBench format:
 
 #include "decoder.h"
 
-static int fineoffset_wh31l_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_wh31l_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0xaa, 0x2d, 0xd4}; // (partial) preamble and sync word
 
-    int row = 0;
+    int32_t row = 0;
     // Search for preamble and sync-word
-    unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
+    uint32_t start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
     // No preamble detected
     if (start_pos == bitbuffer->bits_per_row[row])
         return DECODE_ABORT_EARLY;
@@ -118,14 +118,14 @@ static int fineoffset_wh31l_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int state      = (b[1] >> 4);
-    int id         = ((b[1] & 0xf) << 16) | (b[2] << 8) | (b[3]);
-    int flags      = (state << 12) | (b[4] << 4) | (b[5] >> 4);
-    int battery_ok = (b[4] & 0x06) >> 1; // 0 to 2
-    int s_dist     = (b[5] & 0x3f);
-    int s_count    = (b[6]);
+    int32_t state      = (b[1] >> 4);
+    int32_t id         = ((b[1] & 0xf) << 16) | (b[2] << 8) | (b[3]);
+    int32_t flags      = (state << 12) | (b[4] << 4) | (b[5] >> 4);
+    int32_t battery_ok = (b[4] & 0x06) >> 1; // 0 to 2
+    int32_t s_dist     = (b[5] & 0x3f);
+    int32_t s_count    = (b[6]);
 
-    char const *state_str;
+    uint8_t const *state_str;
     if (state == 0)
         state_str = "reset";
     else if (state == 1)
@@ -140,21 +140,21 @@ static int fineoffset_wh31l_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     /* clang-format off */
     data_t *data = data_make(
             "model",            "",                 DATA_STRING, "FineOffset-WH31L",
-            "id" ,              "",                 DATA_INT,    id,
+            "id",               "",                 DATA_INT,    id,
             "battery_ok",       "Battery",          DATA_DOUBLE, battery_ok * 0.5f,
             "state",            "State",            DATA_STRING, state_str,
             "flags",            "Flags",            DATA_FORMAT, "%04x", DATA_INT,    flags,
-            "storm_dist_km",    "Storm Dist",       DATA_COND, s_dist != 63, DATA_FORMAT, "%d km", DATA_INT,    s_dist,
+            "storm_dist_km",    "Storm Distance",   DATA_COND, s_dist != 63, DATA_FORMAT, "%d km", DATA_INT,    s_dist,
             "strike_count",     "Strike Count",     DATA_INT,    s_count,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

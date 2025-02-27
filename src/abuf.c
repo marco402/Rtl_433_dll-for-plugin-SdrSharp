@@ -16,7 +16,7 @@
 
 #include "abuf.h"
 
-void abuf_init(abuf_t *buf, char *dst, size_t len)
+void abuf_init(abuf_t *buf, uint8_t *dst, size_t len)
 {
     buf->head = dst;
     buf->tail = dst;
@@ -30,18 +30,18 @@ void abuf_setnull(abuf_t *buf)
     buf->left = 0;
 }
 
-char *abuf_push(abuf_t *buf)
+uint8_t *abuf_push(abuf_t *buf)
 {
     return buf->tail;
 }
 
-void abuf_pop(abuf_t *buf, char *end)
+void abuf_pop(abuf_t *buf, uint8_t *end)
 {
     buf->left += buf->tail - end;
     buf->tail = end;
 }
 
-void abuf_cat(abuf_t *buf, char const *str)
+void abuf_cat(abuf_t *buf, uint8_t const *str)
 {
     size_t len = strlen(str);
     if (buf->left >= len + 1) {
@@ -51,12 +51,12 @@ void abuf_cat(abuf_t *buf, char const *str)
     }
 }
 
-int abuf_printf(abuf_t *buf, _Printf_format_string_ char const *restrict format, ...)
+int32_t abuf_printf(abuf_t *buf, _Printf_format_string_ uint8_t const *restrict format, ...)
 {
     va_list ap;
     va_start(ap, format);
 
-    int n = vsnprintf(buf->tail, buf->left, format, ap);
+    int32_t n = vsnprintf(buf->tail, buf->left, format, ap);
 
     if (n > 0) {
         size_t len = (size_t)n < buf->left ? (size_t)n : buf->left;

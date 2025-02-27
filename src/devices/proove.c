@@ -29,7 +29,7 @@ Proove packet structure (32 bits or 36 bits with dimmer value):
 
     HHHH HHHH HHHH HHHH HHHH HHHH HHGO CCEE [DDDD]
 
-- H = The first 26 bits are transmitter unique codes, and it is this code that the receiver “learns” to recognize.
+- H = The first 26 bits are transmitter unique codes, and it is this code that the receiver "learns" to recognize.
 - G = Group command. Set to 1 for on, 0 for off.
 - O = On/Off bit. Set to 1 for on, 0 for off.
 - C = Channel bits (inverted).
@@ -48,7 +48,7 @@ Packet gap is 10 ms.
 
 #include "decoder.h"
 
-static int proove_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t proove_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
 
@@ -90,11 +90,11 @@ static int proove_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

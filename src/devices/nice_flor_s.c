@@ -21,16 +21,19 @@ A packet is made of 52 bits (13 nibbles S0 to S12):
 - S1: retransmission count starting from 1, xored with ~S0
 - S2 and S7-S12: 28 bit encrypted serial number
 - S3-S6: 16 bits encrypted rolling code
+
+Nice One remotes repeat the Nice Flor-s protocol with 20 additional bytes:
+a packet is made of 72 bits
 */
 
 #include "decoder.h"
 
-static int nice_flor_s_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t nice_flor_s_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     if (bitbuffer->num_rows != 2 || bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
-    if (bitbuffer->bits_per_row[0] != 52) {
+    if (bitbuffer->bits_per_row[0] != 52 && bitbuffer->bits_per_row[0] != 72) {
         return DECODE_ABORT_LENGTH;
     }
 
@@ -41,7 +44,7 @@ static int nice_flor_s_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (button_id < 1 || button_id > 4) {
         return DECODE_ABORT_EARLY;
     }
-    int count = 1 + (((b[0] ^ ~button_id) - 1) & 0xf);
+    int32_t count = 1 + (((b[0] ^ ~button_id) - 1) & 0xf);
     uint32_t serial = ((b[1] & 0xf0) << 20) | ((b[3] & 0xf) << 20) |
        (b[4] << 12) | (b[5] << 4) | (b[6] >> 4);
     uint16_t code = (b[1] << 12) | (b[2] << 4) | (b[3] >> 4);
@@ -56,11 +59,11 @@ static int nice_flor_s_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "button",
         "serial",

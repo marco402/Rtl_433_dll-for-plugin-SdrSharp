@@ -82,27 +82,27 @@ There's no way to distinguish between the TX35 and TX25U models
 #define LACROSSE_TX29_MODEL          29 // Model number
 #define LACROSSE_TX35_MODEL          35
 
-static int lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int device29or35)
+static int32_t lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int32_t device29or35, int32_t startPulses, uint16_t package_type)
 {
     // 4 bits of preamble, sync word 2dd4, sensor model 9: 24 bit
     uint8_t const preamble[] = {0xa2, 0xdd, 0x49};
 
-    int events = 0;
+    int32_t events = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         // Validate message and reject it as fast as possible : check for preamble
-        unsigned int start_pos = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
+        uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, 24);
         // no preamble detected, move to the next row
-        if (start_pos >= bitbuffer->bits_per_row[row])
+        if (bit_offset >= bitbuffer->bits_per_row[row])
             continue; // DECODE_ABORT_EARLY
         decoder_logf(decoder, 1, __func__, "LaCrosse TX29/35 detected, buffer is %d bits length, device is TX%d", bitbuffer->bits_per_row[row], device29or35);
         // remove preamble and keep only five octets
         uint8_t b[5];
-        bitbuffer_extract_bytes(bitbuffer, row, start_pos + 20, b, 40);
+        bitbuffer_extract_bytes(bitbuffer, row, bit_offset + 20, b, 40);
 
         // Check message integrity
-        int r_crc = b[4];
-        int c_crc = crc8(b, 4, 0x31, 0x00);
+        int32_t r_crc = b[4];
+        int32_t c_crc = crc8(b, 4, 0x31, 0x00);
         if (r_crc != c_crc) {
             decoder_logf(decoder, 1, __func__, "LaCrosse TX29/35 bad CRC: calculated %02x, received %02x", c_crc, r_crc);
             // reject row
@@ -110,11 +110,11 @@ static int lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int device29or
         }
 
         // message "envelope" has been validated, start parsing data
-        int sensor_id   = ((b[0] & 0x0f) << 2) | (b[1] >> 6);
+        int32_t sensor_id   = ((b[0] & 0x0f) << 2) | (b[1] >> 6);
         float temp_c    = 10 * (b[1] & 0x0f) + 1 * ((b[2] >> 4) & 0x0f) + 0.1f * (b[2] & 0x0f) - 40.0f;
-        int new_batt    = (b[1] >> 5) & 1;
-        int battery_low = b[3] >> 7;
-        int humidity    = b[3] & 0x7f;
+        int32_t new_batt    = (b[1] >> 5) & 1;
+        int32_t battery_low = b[3] >> 7;
+        int32_t humidity    = b[3] & 0x7f;
 
         data_t *data;
         if ((humidity == LACROSSE_TX29_NOHUMIDSENSOR) || (humidity == LACROSSE_TX25_PROBE_FLAG)) {
@@ -145,7 +145,7 @@ static int lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int device29or
             /* clang-format on */
         }
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         events++;
     }
     return events;
@@ -155,21 +155,21 @@ static int lacrosse_it(r_device *decoder, bitbuffer_t *bitbuffer, int device29or
 Wrapper for the TX29 and TX25U device.
 @sa lacrosse_it()
 */
-static int lacrossetx29_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrossetx29_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    return lacrosse_it(decoder, bitbuffer, LACROSSE_TX29_MODEL);
+    return lacrosse_it(decoder, bitbuffer, LACROSSE_TX29_MODEL, startPulses, package_type);
 }
 
 /**
 Wrapper for the TX35 device.
 @sa lacrosse_it()
 */
-static int lacrossetx35_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrossetx35_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    return lacrosse_it(decoder, bitbuffer, LACROSSE_TX35_MODEL);
+    return lacrosse_it(decoder, bitbuffer, LACROSSE_TX35_MODEL, startPulses, package_type);
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

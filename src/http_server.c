@@ -140,13 +140,13 @@ History : V1.00 2021-04-01 - First release
 #define DEFAULT_HISTORY_SIZE 100
 
 typedef struct {
-    unsigned size;
+    uint32_t size;
     void **data;
     void **head;
     void **tail;
 } ring_list_t;
 
-static ring_list_t *ring_list_new(unsigned size)
+static ring_list_t *ring_list_new(uint32_t size)
 {
     ring_list_t *ring = calloc(1, sizeof(ring_list_t));
     if (!ring) {
@@ -261,10 +261,10 @@ static data_t *protocols_data(r_cfg_t *cfg)
     list_t devs = {0};
     list_ensure_size(&devs, cfg->num_r_devices);
 
-    for (int i = 0; i < cfg->num_r_devices; ++i) {
+    for (int32_t i = 0; i < cfg->num_r_devices; ++i) {
         r_device *dev = &cfg->devices[i];
 
-        int enabled = 0;
+        int32_t enabled = 0;
         for (void **iter = cfg->demod->r_devs.elems; iter && *iter; ++iter) {
             r_device *r_dev = *iter;
             if (r_dev->protocol_num == dev->protocol_num) {
@@ -272,8 +272,8 @@ static data_t *protocols_data(r_cfg_t *cfg)
                 break;
             }
         }
-        int fields_len = 0;
-        for (char const *const *iter = dev->fields; iter && *iter; ++iter) {
+        int32_t fields_len = 0;
+        for (uint8_t const *const *iter = dev->fields; iter && *iter; ++iter) {
             fields_len++;
         }
         data_t *data = data_make(
@@ -300,8 +300,8 @@ static data_t *protocols_data(r_cfg_t *cfg)
         if (dev->protocol_num > 0) {
             continue;
         }
-        int fields_len = 0;
-        for (char const *const *iter2 = dev->fields; iter2 && *iter2; ++iter2) {
+        int32_t fields_len = 0;
+        for (uint8_t const *const *iter2 = dev->fields; iter2 && *iter2; ++iter2) {
             fields_len++;
         }
         data_t *data = data_make(
@@ -332,32 +332,32 @@ static data_t *protocols_data(r_cfg_t *cfg)
 
 typedef struct rpc rpc_t;
 
-typedef void (*rpc_response_fn)(rpc_t *rpc, int error_code, char const *message, int is_json);
+typedef void (*rpc_response_fn)(rpc_t *rpc, int32_t error_code, uint8_t const *message, int32_t is_json);
 
 struct rpc {
     struct mg_connection *nc;
     rpc_response_fn response;
-    int ver;
-    char *method;
-    char *arg;
+    int32_t ver;
+    uint8_t *method;
+    uint8_t *arg;
     uint32_t val;
     //list_t params;
-    char *id;
+    uint8_t *id;
 };
 
-static int jsoneq(const char *json, jsmntok_t *tok, const char *s)
+static int32_t jsoneq(const uint8_t *json, jsmntok_t *tok, const uint8_t *s)
 {
-    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+    if (tok->type == JSMN_STRING && (int32_t)strlen(s) == tok->end - tok->start &&
             strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
         return 0;
     }
     return -1;
 }
 
-static char *jsondup(const char *json, jsmntok_t *tok)
+static uint8_t *jsondup(const uint8_t *json, jsmntok_t *tok)
 {
-    int len = tok->end - tok->start;
-    char *p = malloc(len + 1);
+    int32_t len = tok->end - tok->start;
+    uint8_t *p = malloc(len + 1);
     if (!p) {
         WARN_MALLOC("jsondup()");
         return NULL;
@@ -366,10 +366,10 @@ static char *jsondup(const char *json, jsmntok_t *tok)
     return memcpy(p, json + tok->start, len);
 }
 
-static char *jsondupq(const char *json, jsmntok_t *tok)
+static uint8_t *jsondupq(const uint8_t *json, jsmntok_t *tok)
 {
-    int len = tok->end - tok->start + 2;
-    char *p = malloc(len + 1);
+    int32_t len = tok->end - tok->start + 2;
+    uint8_t *p = malloc(len + 1);
     if (!p) {
         WARN_MALLOC("jsondupq()");
         return NULL;
@@ -379,15 +379,15 @@ static char *jsondupq(const char *json, jsmntok_t *tok)
 }
 
 // {"cmd": "report_meta", "arg": "utc", "val": 1}
-static int json_parse(rpc_t *rpc, struct mg_str const *json)
+static int32_t json_parse(rpc_t *rpc, struct mg_str const *json)
 {
-    int i;
-    int r;
+    int32_t i;
+    int32_t r;
     jsmn_parser p;
     jsmntok_t t[16]; /* We expect no more than 7 tokens */
 
-    char *cmd    = NULL;
-    char *arg    = NULL;
+    uint8_t *cmd    = NULL;
+    uint8_t *arg    = NULL;
     uint32_t val = 0;
 
     jsmn_init(&p);
@@ -417,7 +417,7 @@ static int json_parse(rpc_t *rpc, struct mg_str const *json)
         }
         else if (jsoneq(json->p, &t[i], "val") == 0) {
             i++;
-            char *endptr = NULL;
+            uint8_t *endptr = NULL;
             val          = strtol(json->p + t[i].start, &endptr, 10);
             // compare endptr to t[i].end
         }
@@ -437,15 +437,15 @@ static int json_parse(rpc_t *rpc, struct mg_str const *json)
 }
 
 // {"jsonrpc": "2.0", "method": "report_meta", "params": ["utc", 1], "id": 0}
-static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
+static int32_t jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
 {
-    int r;
+    int32_t r;
     jsmn_parser p;
     jsmntok_t t[16]; /* We expect no more than 11 tokens */
 
-    char *cmd    = NULL;
-    char *id     = NULL;
-    char *arg    = NULL;
+    uint8_t *cmd    = NULL;
+    uint8_t *id     = NULL;
+    uint8_t *arg    = NULL;
     uint32_t val = 0;
 
     jsmn_init(&p);
@@ -462,7 +462,7 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
     }
 
     /* Loop over all keys of the root object */
-    for (int i = 1; i < r; i++) {
+    for (int32_t i = 1; i < r; i++) {
         if (jsoneq(json->p, &t[i], "jsonrpc") == 0) {
             i++;
             // (jsoneq(json->p, &t[i], "2.0") == 0);
@@ -488,7 +488,7 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
             if (t[i + 1].type != JSMN_ARRAY) {
                 continue; /* We expect groups to be an array of strings */
             }
-            for (int j = 0; j < t[i + 1].size; j++) {
+            for (int32_t j = 0; j < t[i + 1].size; j++) {
                 jsmntok_t *g = &t[i + j + 2];
                 if (g->type == JSMN_STRING) {
                     free(arg);
@@ -496,7 +496,7 @@ static int jsonrpc_parse(rpc_t *rpc, struct mg_str const *json)
                 }
                 else if (g->type == JSMN_PRIMITIVE) {
                     // Number, null/true/false not supported
-                    char *endptr = NULL;
+                    uint8_t *endptr = NULL;
                     val          = strtol(json->p + g->start, &endptr, 10);
                 }
                 //printf("  * %.*s\n", g->end - g->start, json + g->start);
@@ -543,10 +543,10 @@ static void rpc_exec(rpc_t *rpc, r_cfg_t *cfg)
         rpc->response(rpc, 2, NULL, cfg->hop_time[0]);
     }
     else if (!strcmp(rpc->method, "get_center_frequency")) {
-        rpc->response(rpc, 3, NULL, cfg->center_frequency); // unsigned
+        rpc->response(rpc, 3, NULL, cfg->center_frequency); // uint32_t
     }
     else if (!strcmp(rpc->method, "get_sample_rate")) {
-        rpc->response(rpc, 3, NULL, cfg->samp_rate); // unsigned
+        rpc->response(rpc, 3, NULL, cfg->samp_rate); // uint32_t
     }
     else if (!strcmp(rpc->method, "get_grab_mode")) {
         rpc->response(rpc, 2, NULL, cfg->grab_mode);
@@ -564,7 +564,7 @@ static void rpc_exec(rpc_t *rpc, r_cfg_t *cfg)
         rpc->response(rpc, 2, NULL, cfg->conversion_mode);
     }
     else if (!strcmp(rpc->method, "get_stats")) {
-        char buf[20480]; // we expect the stats string to be around 15k bytes.
+        uint8_t buf[20480]; // we expect the stats string to be around 15k bytes.
         data_t *data = create_report_data(cfg, 2 /*report active devices*/);
         // flush_report_data(cfg); // snapshot, do not flush
         data_print_jsons(data, buf, sizeof(buf));
@@ -572,14 +572,14 @@ static void rpc_exec(rpc_t *rpc, r_cfg_t *cfg)
         data_free(data);
     }
     else if (!strcmp(rpc->method, "get_meta")) {
-        char buf[2048]; // we expect the meta string to be around 500 bytes.
+        uint8_t buf[2048]; // we expect the meta string to be around 500 bytes.
         data_t *data = meta_data(cfg);
         data_print_jsons(data, buf, sizeof(buf));
         rpc->response(rpc, 1, buf, 0);
         data_free(data);
     }
     else if (!strcmp(rpc->method, "get_protocols")) {
-        char buf[65536]; // we expect the protocol string to be around 60k bytes.
+        uint8_t buf[65536]; // we expect the protocol string to be around 60k bytes.
         data_t *data = protocols_data(cfg);
         data_print_jsons(data, buf, sizeof(buf));
         rpc->response(rpc, 1, buf, 0);
@@ -689,7 +689,7 @@ struct http_server_context {
 };
 
 struct nc_context {
-    int is_chunked;
+    int32_t is_chunked;
 };
 
 static void handle_options(struct mg_connection *nc, struct http_message *hm)
@@ -708,7 +708,7 @@ static void handle_options(struct mg_connection *nc, struct http_message *hm)
             "\r\n");
 }
 
-static void handle_get(struct mg_connection *nc, struct http_message *hm, char const *buf, unsigned int len)
+static void handle_get(struct mg_connection *nc, struct http_message *hm, uint8_t const *buf, uint32_t len)
 {
     UNUSED(hm);
     //mg_send_head(nc, 200, -1, NULL);
@@ -723,10 +723,10 @@ static void handle_redirect(struct mg_connection *nc, struct http_message *hm)
 {
     // get the host header
     struct mg_str host = {0};
-    for (int i = 0; i < MG_MAX_HTTP_HEADERS && hm->header_names[i].len > 0; i++) {
+    for (int32_t i = 0; i < MG_MAX_HTTP_HEADERS && hm->header_names[i].len > 0; i++) {
         // struct mg_str hn = hm->header_names[i];
         // struct mg_str hv = hm->header_values[i];
-        // fprintf(stderr, "Header: %.*s: %.*s\n", (int)hn.len, hn.p, (int)hv.len, hv.p);
+        // fprintf(stderr, "Header: %.*s: %.*s\n", (int32_t)hn.len, hn.p, (int32_t)hv.len, hv.p);
         if (mg_vcasecmp(&hm->header_names[i], "Host") == 0) {
             host = hm->header_values[i];
             break;
@@ -736,12 +736,12 @@ static void handle_redirect(struct mg_connection *nc, struct http_message *hm)
     mg_printf(nc, "%s%s%.*s%s\r\n",
             "HTTP/1.1 307 Temporary Redirect\r\n",
             "Location: http://triq.org/rxui/#",
-            (int)host.len, host.p,
+            (int32_t)host.len, host.p,
             "\r\n\r\n");
 }
 
 // reply to ws command
-static void rpc_response_ws(rpc_t *rpc, int ret_code, char const *message, int arg)
+static void rpc_response_ws(rpc_t *rpc, int32_t ret_code, uint8_t const *message, int32_t arg)
 {
     if (ret_code < 0) {
         mg_printf_websocket_frame(rpc->nc, WEBSOCKET_OP_TEXT,
@@ -768,14 +768,14 @@ static void rpc_response_ws(rpc_t *rpc, int ret_code, char const *message, int a
     else /* if (ret_code == 3) */ {
         mg_printf_websocket_frame(rpc->nc, WEBSOCKET_OP_TEXT,
                 "{\"result\": %u}",
-                (unsigned)arg);
+                (uint32_t)arg);
     }
 }
 
 // reply to jsonrpc command
-static void rpc_response_jsonrpc(rpc_t *rpc, int ret_code, char const *message, int arg)
+static void rpc_response_jsonrpc(rpc_t *rpc, int32_t ret_code, uint8_t const *message, int32_t arg)
 {
-    char const *id = rpc->id ? rpc->id : "null";
+    uint8_t const *id = rpc->id ? rpc->id : "null";
     if (ret_code < 0) {
         mg_printf_http_chunk(rpc->nc,
                 "{\"jsonrpc\": \"2.0\", \"error\": {\"code\": %d, \"message\": \"%s\"}, \"id\": %s}",
@@ -804,13 +804,13 @@ static void rpc_response_jsonrpc(rpc_t *rpc, int ret_code, char const *message, 
     else /* if (ret_code == 3) */ {
         mg_printf_http_chunk(rpc->nc,
                 "{\"jsonrpc\": \"2.0\", \"result\": %u, \"id\": %s}",
-                (unsigned)arg, id);
+                (uint32_t)arg, id);
     }
     mg_send_http_chunk(rpc->nc, "", 0); /* Send empty chunk, the end of response */
 }
 
 // reply to json command
-static void rpc_response_jsoncmd(rpc_t *rpc, int ret_code, char const *message, int arg)
+static void rpc_response_jsoncmd(rpc_t *rpc, int32_t ret_code, uint8_t const *message, int32_t arg)
 {
     if (ret_code < 0) {
         mg_printf_http_chunk(rpc->nc,
@@ -839,7 +839,7 @@ static void rpc_response_jsoncmd(rpc_t *rpc, int ret_code, char const *message, 
     else /* if (ret_code == 3) */ {
         mg_printf_http_chunk(rpc->nc,
                 "{\"result\": %u}",
-                (unsigned)arg);
+                (uint32_t)arg);
     }
     mg_send_http_chunk(rpc->nc, "", 0); /* Send empty chunk, the end of response */
 }
@@ -892,7 +892,7 @@ static void handle_json_stream(struct mg_connection *nc, struct http_message *hm
 static void handle_cmd_rpc(struct mg_connection *nc, struct http_message *hm)
 {
     struct http_server_context *ctx = nc->user_data;
-    char cmd[100], arg[100], val[100];
+    uint8_t cmd[100], arg[100], val[100];
     rpc_t rpc = {
             .nc       = nc,
             .response = rpc_response_jsoncmd,
@@ -915,7 +915,7 @@ static void handle_cmd_rpc(struct mg_connection *nc, struct http_message *hm)
         mg_get_http_var(&hm->body, "arg", arg, sizeof(arg));
         mg_get_http_var(&hm->body, "val", val, sizeof(val));
     }
-    char *endptr = NULL;
+    uint8_t *endptr = NULL;
     rpc.val      = strtol(val, &endptr, 10);
     fprintf(stderr, "POST Got %s, arg %s, val %s (%u)\n", cmd, arg, val, rpc.val);
 
@@ -937,12 +937,12 @@ static void handle_json_rpc(struct mg_connection *nc, struct http_message *hm)
     mg_printf(nc, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
 
     /* Parse JSON */
-    int ret = jsonrpc_parse(&rpc, &hm->body);
+    int32_t ret = jsonrpc_parse(&rpc, &hm->body);
     if (!ret) {
         rpc_exec(&rpc, ctx->cfg);
     }
     else {
-        char *error = "{\"error\":\"Invalid command\"}";
+        uint8_t *error = "{\"error\":\"Invalid command\"}";
         mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, error, strlen(error));
     }
 
@@ -961,15 +961,15 @@ static void handle_ws_rpc(struct mg_connection *nc, struct websocket_message *wm
             .response = rpc_response_ws,
     };
 
-    struct mg_str d = {(char *)wm->data, wm->size};
+    struct mg_str d = {(uint8_t *)wm->data, wm->size};
 
     /* Parse JSON */
-    int ret = json_parse(&rpc, &d);
+    int32_t ret = json_parse(&rpc, &d);
     if (!ret) {
         rpc_exec(&rpc, ctx->cfg);
     }
     else {
-        char *error = "{\"error\":\"Invalid command\"}";
+        uint8_t *error = "{\"error\":\"Invalid command\"}";
         mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, error, strlen(error));
     }
 
@@ -978,7 +978,7 @@ static void handle_ws_rpc(struct mg_connection *nc, struct websocket_message *wm
     free(rpc.arg);
 }
 
-static void ev_handler(struct mg_connection *nc, int ev, void *ev_data);
+static void ev_handler(struct mg_connection *nc, int32_t ev, void *ev_data);
 
 static void send_keep_alive(struct mg_connection *nc)
 {
@@ -998,7 +998,7 @@ static void send_keep_alive(struct mg_connection *nc)
     mg_set_timer(nc, mg_time() + KEEP_ALIVE); // reset keep alive timer
 }
 
-static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
+static void ev_handler(struct mg_connection *nc, int32_t ev, void *ev_data)
 {
     switch (ev) {
     case MG_EV_TIMER:
@@ -1012,7 +1012,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
         data_free(meta);
         /* Send history */
         for (void **iter = ring_list_iter(ctx->history); iter; iter = ring_list_next(ctx->history, iter))
-            mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, (char *)*iter, strlen((char *)*iter));
+            mg_send_websocket_frame(nc, WEBSOCKET_OP_TEXT, (uint8_t *)*iter, strlen((uint8_t *)*iter));
         break;
     }
     case MG_EV_WEBSOCKET_FRAME: {
@@ -1065,18 +1065,18 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
     }
 }
 
-static int is_websocket(const struct mg_connection *nc)
+static int32_t is_websocket(const struct mg_connection *nc)
 {
     return nc->flags & MG_F_IS_WEBSOCKET;
 }
 
 // event handler to broadcast to all our sockets
-static void http_broadcast_send(struct http_server_context *ctx, char const *msg, size_t len)
+static void http_broadcast_send(struct http_server_context *ctx, uint8_t const *msg, size_t len)
 {
     struct mg_connection *nc;
     struct mg_mgr *mgr = ctx->conn->mgr;
 
-    char *dup = strdup(msg);
+    uint8_t *dup = strdup(msg);
     if (!dup) {
         WARN_STRDUP("http_broadcast_send()");
     }
@@ -1105,10 +1105,10 @@ static void http_broadcast_send(struct http_server_context *ctx, char const *msg
     }
 }
 
-static struct http_server_context *http_server_start(struct mg_mgr *mgr, char const *host, char const *port, r_cfg_t *cfg, struct data_output *output)
+static struct http_server_context *http_server_start(struct mg_mgr *mgr, uint8_t const *host, uint8_t const *port, r_cfg_t *cfg, struct data_output *output)
 {
     struct mg_bind_opts bind_opts;
-    const char *err_str;
+    const uint8_t *err_str;
 
     //struct http_server_context
     struct http_server_context *ctx = calloc(1, sizeof(struct http_server_context));
@@ -1121,7 +1121,7 @@ static struct http_server_context *http_server_start(struct mg_mgr *mgr, char co
     ctx->output  = output;
     ctx->history = ring_list_new(DEFAULT_HISTORY_SIZE);
 
-    char address[253 + 6 + 1]; // dns max + port
+    uint8_t address[253 + 6 + 1]; // dns max + port
     // if the host is an IPv6 address it needs quoting
     if (strchr(host, ':'))
         snprintf(address, sizeof(address), "[%s]:%s", host, port);
@@ -1154,7 +1154,7 @@ static struct http_server_context *http_server_start(struct mg_mgr *mgr, char co
 
 #define SHUTDOWN_JSON "{\"shutdown\":\"goodbye\"}"
 
-static int http_server_stop(struct http_server_context *ctx)
+static int32_t http_server_stop(struct http_server_context *ctx)
 {
     if (!ctx)
         return 0;
@@ -1200,7 +1200,7 @@ typedef struct {
     struct http_server_context *server;
 } data_output_http_t;
 
-static void R_API_CALLCONV print_http_data(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV print_http_data(data_output_t *output, data_t *data, uint8_t const *format)
 {
     UNUSED(format);
     data_output_http_t *http = (data_output_http_t *)output;
@@ -1214,14 +1214,14 @@ static void R_API_CALLCONV print_http_data(data_output_t *output, data_t *data, 
 
     if (data_model) {
         // "events"
-        char buf[2048]; // we expect the biggest strings to be around 500 bytes.
+        uint8_t buf[2048]; // we expect the biggest strings to be around 500 bytes.
         size_t len = data_print_jsons(data, buf, sizeof(buf));
         http_broadcast_send(http->server, buf, len);
     }
     else {
         // "states"
         size_t buf_size = 20000; // state message need a large buffer
-        char *buf       = malloc(buf_size);
+        uint8_t *buf       = malloc(buf_size);
         if (!buf) {
             WARN_MALLOC("print_http_data()");
             return; // NOTE: skip output on alloc failure.
@@ -1244,7 +1244,7 @@ static void R_API_CALLCONV data_output_http_free(data_output_t *output)
     free(http);
 }
 
-struct data_output *data_output_http_create(struct mg_mgr *mgr, char const *host, char const *port, r_cfg_t *cfg)
+struct data_output *data_output_http_create(struct mg_mgr *mgr, uint8_t const *host, uint8_t const *port, r_cfg_t *cfg)
 {
     data_output_http_t *http = calloc(1, sizeof(data_output_http_t));
     if (!http) {

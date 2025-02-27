@@ -33,26 +33,27 @@ rtl_433 -f 917.2M -s 250k -R 0 -X n=sharp,m=FSK_PWM,s=225,l=425,y=4000,g=2900,r=
 
 #include "decoder.h"
 
-static int sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0xa5};
 
     data_t *data;
     uint8_t b[6];
-    int length_match   = 0;
-    int preamble_match = 0;
+    int32_t length_match   = 0;
+    int32_t preamble_match = 0;
 
     // Invert data for processing
     bitbuffer_invert(bitbuffer);
-
-    for (int row = 0; row < bitbuffer->num_rows; row++) {
+	int32_t row = 0;
+    for ( row = 0; row < bitbuffer->num_rows; row++) {
         if (bitbuffer->bits_per_row[row] >= 48) {
             length_match++;
-            unsigned pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof(preamble) * 8);
+            uint32_t pos = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof(preamble) * 8);
             if (pos + 6 * 8 <= bitbuffer->bits_per_row[row]) {
                 preamble_match++;
                 bitbuffer_extract_bytes(bitbuffer, row, pos, b, 6 * 8);
             }
+			break;
         }
     }
 
@@ -61,15 +62,15 @@ static int sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     if (!preamble_match)
         return DECODE_FAIL_SANITY;
 
-    int id          = b[1];                                           // changes on each power cycle
-    int battery_low = (b[2] & 0x80);                                  // High bit is low battery indicator
-    int temp_raw    = (int16_t)(((b[2] & 0x0f) << 12) | (b[3] << 4)); // uses sign-extend
-    float temp_c    = (temp_raw >> 4) * 0.1f;                         // Convert sign extended int to float
-    int humidity    = b[4];                                           // Simple 0-100 RH
-    int chk_digest  = b[5];
+    int32_t id          = b[1];                                           // changes on each power cycle
+    int32_t battery_low = (b[2] & 0x80);                                  // High bit is low battery indicator
+    int32_t temp_raw    = (int16_t)(((b[2] & 0x0f) << 12) | (b[3] << 4)); // uses sign-extend
+    float temp_c    = (temp_raw >> 4) * 0.1f;                         // Convert sign extended int32_t to float
+    int32_t humidity    = b[4];                                           // Simple 0-100 RH
+    int32_t chk_digest  = b[5];
 
     uint8_t chk_calc = xor_bytes(b, 5);
-    int chk_expected = lfsr_digest8_reflect(&chk_calc, 1, 0x31, 0x31);
+    int32_t chk_expected = lfsr_digest8_reflect(&chk_calc, 1, 0x31, 0x31);
 
     if (chk_expected != chk_digest)
         return DECODE_FAIL_MIC;
@@ -79,17 +80,17 @@ static int sharp_spc775_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "model",            "",                 DATA_STRING, "Sharp-SPC775",
             "id",               "",                 DATA_INT,    id,
             "battery_ok",       "Battery",          DATA_INT,    !battery_low,
-            "temperature_C",    "Temperature",      DATA_FORMAT, "%.01f C",  DATA_DOUBLE, temp_c,
+            "temperature_C",    "Temperature",      DATA_FORMAT, "%.1f C",  DATA_DOUBLE, temp_c,
             "humidity",         "Humidity",         DATA_FORMAT, "%u %%",    DATA_INT,    humidity,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

@@ -42,19 +42,18 @@ RMS18, Radio Shack 61-2675-T
 
 #include "decoder.h"
 
-static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    data_t *data;
     uint8_t *b = bitbuffer->bb[1];
 
-    uint8_t arrbKnownConstBitMask[4]  = {0x0B, 0x0B, 0x07, 0x07};
-    uint8_t arrbKnownConstBitValue[4] = {0x00, 0x0B, 0x00, 0x07};
+    uint8_t const arrbKnownConstBitMask[4]  = {0x0B, 0x0B, 0x07, 0x07};
+    uint8_t const arrbKnownConstBitValue[4] = {0x00, 0x0B, 0x00, 0x07};
 
     // Row [0] is sync pulse
     // Validate length
     if (bitbuffer->bits_per_row[1] != 32) { // Don't waste time on a wrong length package
         if (bitbuffer->bits_per_row[1] != 0)
-            decoder_logf(decoder, 1, __func__, "DECODE_ABORT_LENGTH, Received message length=%i", bitbuffer->bits_per_row[1]);
+            decoder_logf(decoder, 1, __func__, "DECODE_ABORT_LENGTH, Received message length=%d", bitbuffer->bits_per_row[1]);
         return DECODE_ABORT_LENGTH;
     }
 
@@ -76,7 +75,7 @@ static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // We have received a valid message, decode it
 
-    unsigned code = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    uint32_t code = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
 
     uint8_t bHouseCode  = 0;
     uint8_t bDeviceCode = 0;
@@ -99,14 +98,14 @@ static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bDeviceCode |= (b[2] & 0x40) >> 4;
     bDeviceCode |= (b[2] & 0x08) >> 2;
     bDeviceCode |= (b[2] & 0x10) >> 4;
-    bDeviceCode += 1;
+    bDeviceCode ++;
 
-    char housecode[2] = {0};
+    uint8_t housecode[2] = {0};
     *housecode = bHouseCode + 'A';
 
-    int state = (b[2] & 0x20) == 0x00;
+    int32_t state = (b[2] & 0x20) == 0x00;
 
-    char const *event_str = "UNKNOWN";         // human-readable event
+    uint8_t const *event_str = "UNKNOWN";         // human-readable event
 
     if ((b[2] & 0x80) == 0x80) {         // Special event bit
         bDeviceCode = 0;                 // No device for special events
@@ -131,10 +130,10 @@ static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // debug output
-    decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "id=%s%i event_str=%s", housecode, bDeviceCode, event_str);
+    decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "id=%s%d event_str=%s", housecode, bDeviceCode, event_str);
 
     /* clang-format off */
-    data = data_make(
+    data_t *data = data_make(
             "model",        "",             DATA_STRING, "X10-RF",
             "id",           "",             DATA_INT,    bDeviceCode,
             "channel",      "",             DATA_STRING, housecode,
@@ -144,12 +143,12 @@ static int x10_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "channel",
         "id",

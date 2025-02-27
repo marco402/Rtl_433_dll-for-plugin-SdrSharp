@@ -16,6 +16,6 @@
 
 struct mg_mgr;
 
-struct data_output *data_output_mqtt_create(struct mg_mgr *mgr, char *param, char const *dev_hint);
+struct data_output *data_output_mqtt_create(struct mg_mgr *mgr, uint8_t *param, uint8_t const *dev_hint);
 
 #endif /* INCLUDE_OUTPUT_MQTT_H_ */

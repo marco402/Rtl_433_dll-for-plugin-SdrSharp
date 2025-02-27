@@ -32,7 +32,7 @@ Temp, not 2's complement but a dedicated sign-bit, i.e. 1 bit sign, 11 bit temp.
 
 #include "decoder.h"
 
-static int fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0x0a}; // 8 bits, 0xf5 inverted
 
@@ -40,22 +40,25 @@ static int fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t b[14];
 
     // find a proper row
-    int row = bitbuffer_find_repeated_row(bitbuffer, 2, 14 * 8); // expected: 3 rows of 113 bits
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 14 * 8); // expected: 3 rows of 113 bits
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned offset = bitbuffer_search(bitbuffer, row, 0, preamble, 8);
-    if (offset + 14 * 8 > bitbuffer->bits_per_row[row]) {
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, 8);
+    if (bit_offset + 14 * 8 > bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_LENGTH;
     }
 
     // invert and align the row
     bitbuffer_invert(bitbuffer);
-    bitbuffer_extract_bytes(bitbuffer, row, offset, b, 14 * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 14 * 8);
 
     // verify the checksums
-    int sum = add_bytes(b, 12);
+    int32_t sum = add_bytes(b, 12);
     if (sum == 0) {
         return DECODE_FAIL_SANITY; // discard all zeros
     }
@@ -68,17 +71,17 @@ static int fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // get weather sensor data
     // 1x PRE:8h ID:16h ?8h DIR:4h TEMP:12d HUM:8d AVG?8d GUST?8d 24h SUM8h CHK8h TRAIL:3b
-    int device_id     = (b[1] << 8) | (b[2]);
-    int flags         = (b[3] & 0xfe);
-    int battery_low   = (b[3] & 0x01);
+    int32_t device_id     = (b[1] << 8) | (b[2]);
+    int32_t flags         = (b[3] & 0xfe);
+    int32_t battery_low   = (b[3] & 0x01);
     float dir         = (b[4] >> 4) * 22.5f;
-    int temp_sign     = (b[4] & 0x08) ? -1 : 1;
-    int temp_raw      = ((b[4] & 0x07) << 8) | b[5];
+    int32_t temp_sign     = (b[4] & 0x08) ? -1 : 1;
+    int32_t temp_raw      = ((b[4] & 0x07) << 8) | b[5];
     float temperature = temp_sign * temp_raw * 0.1f;
-    int humidity      = (b[6]);
+    int32_t humidity      = (b[6]);
     float speed       = (b[7] * 0.43f) * 3.6f; // m/s -> km/h
     float gust        = (b[8] * 0.43f) * 3.6f; // m/s -> km/h
-    int rain_raw      = (b[9] << 16) | (b[10] << 8) | b[11]; // raw tip count
+    int32_t rain_raw      = (b[9] << 16) | (b[10] << 8) | b[11]; // raw tip count
 
     /* clang-format off */
     data = data_make(
@@ -96,11 +99,11 @@ static int fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

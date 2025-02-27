@@ -53,33 +53,33 @@ Packet nibbles:
 
 #include "decoder.h"
 
-static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    unsigned id;
-    int code;
+    uint32_t id;
+    int32_t code;
     float pressure_psi;
-    int temperature_c, temperature_valid;
-    int psibits;
-    int moving;
-    int learn;
-    int unknown;
-    int unknown_3;
+    int32_t temperature_c, temperature_valid;
+    int32_t psibits;
+    int32_t moving;
+    int32_t learn;
+    int32_t unknown;
+    int32_t unknown_3;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
 
     // require 64 data bits
-    if (packet_bits.bits_per_row[0] < 64) {
+    if (packet_bits.bits_per_row[row] < 64) {  // to see
         return 0;
     }
-    b = packet_bits.bb[0];
+    b = packet_bits.bb[row];
 
     if (((b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + b[6]) & 0xff) != b[7]) {
         return 0;
     }
 
-    id = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    id = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
 
     /* Extract and log code to aid in debugging. */
     code = b[4] << 16 | b[5] << 8 | b[6];
@@ -152,13 +152,13 @@ static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
     /* Low-order 2 bits are variously 01, 10. */
     unknown_3 = b[6] & 0x3;
 
-    char id_str[9];
+    uint8_t id_str[9];
     snprintf(id_str, sizeof(id_str), "%08x", id);
-    char code_str[7];
+    uint8_t code_str[7];
     snprintf(code_str, sizeof(code_str), "%06x", code);
-    char unknown_str[3];
+    uint8_t unknown_str[3];
     snprintf(unknown_str, sizeof(unknown_str), "%02x", unknown);
-    char unknown_3_str[2];
+    uint8_t unknown_3_str[2];
     snprintf(unknown_3_str, sizeof(unknown_3_str), "%01x", unknown_3);
 
     /* clang-format off */
@@ -177,40 +177,41 @@ static int tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned 
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_ford_decode() */
-static int tpms_ford_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_ford_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // full preamble is 55 55 55 56 (inverted: aa aa aa a9)
     uint8_t const preamble_pattern[2] = {0xaa, 0xa9}; // 16 bits
 
-    int row;
-    unsigned bitpos;
-    int ret    = 0;
-    int events = 0;
+    int32_t row;
+    uint32_t bit_offset;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     bitbuffer_invert(bitbuffer);
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        bitpos = 0;
+        bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
-        while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
+        while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset,
                 preamble_pattern, 16)) + 144 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = tpms_ford_decode(decoder, bitbuffer, row, bitpos + 16);
+            ret = tpms_ford_decode(decoder, bitbuffer, row, bit_offset + 16, startPulses, package_type);
             if (ret > 0)
                 events += ret;
-            bitpos += 15;
+            bit_offset += 15;
         }
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

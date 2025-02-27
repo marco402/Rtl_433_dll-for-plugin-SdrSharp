@@ -45,27 +45,28 @@ https://github.com/jonoxer/CentAReceiver
 #define COMPARE_BITS  83
 #define COMPARE_BYTES ((COMPARE_BITS + 7) / 8)
 
-static int cmr113_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t cmr113_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int start, bit;
+    int32_t row = 0;
+    int32_t start, bit;
     uint8_t buf[4];
     uint8_t b1[COMPARE_BYTES], b2[COMPARE_BYTES];
     bitbuffer_t b = {0};
     double current[3];
     data_t *data;
 
-    if ((bitbuffer->bits_per_row[0] < 350) || (bitbuffer->bits_per_row[0] > 450))
+    if ((bitbuffer->bits_per_row[row] < 350) || (bitbuffer->bits_per_row[row] > 450))
         return DECODE_ABORT_LENGTH;
 
-    bitbuffer_extract_bytes(bitbuffer, 0, 0, buf, 32);
+    bitbuffer_extract_bytes(bitbuffer, row, 0, buf, 32);
     if ((buf[0] != 0xb0) || (buf[1] != 0x00) || (buf[2] != 0x00))
         return DECODE_ABORT_EARLY;
 
     start = 0;
     bit = 0;
     bitbuffer_clear(&b);
-    while ((start + 3) < bitbuffer->bits_per_row[0]) {
-        bitbuffer_extract_bytes(bitbuffer, 0, start, buf, 3);
+    while ((start + 3) < bitbuffer->bits_per_row[row]) {
+        bitbuffer_extract_bytes(bitbuffer, row, start, buf, 3);
         if ((buf[0] >> 6) == 0x00) { // top two bits are 0b00 = no toggle
             start += 2;
             bitbuffer_add_bit(&b, bit);
@@ -74,24 +75,24 @@ static int cmr113_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             bit = 1 - bit; // toggle
             bitbuffer_add_bit(&b, bit);
         } else if (start == 0)
-            start += 1; // first bit doesn't decode
+            start ++; // first bit doesn't decode
         else
             // we don't have enough bits
             return DECODE_ABORT_LENGTH;
     }
 
-    if (b.bits_per_row[0] < 2 * COMPARE_BITS + 2)
+    if (b.bits_per_row[row] < 2 * COMPARE_BITS + 2)
         return DECODE_ABORT_LENGTH;
 
     // Compare the repeated section to ensure data integrity
-    bitbuffer_extract_bytes(&b, 0, 0, b1, COMPARE_BITS);
-    bitbuffer_extract_bytes(&b, 0, COMPARE_BITS + 2, b2, COMPARE_BITS);
+    bitbuffer_extract_bytes(&b, row, 0, b1, COMPARE_BITS);
+    bitbuffer_extract_bytes(&b, row, COMPARE_BITS + 2, b2, COMPARE_BITS);
     if (memcmp(b1, b2, COMPARE_BYTES) != 0)
         return DECODE_FAIL_MIC;
 
     // Data is all good, so extract 3 phases of current
-    for (int i = 0; i < 3; i++) {
-        bitbuffer_extract_bytes(&b, 0, 36 + i * 10, buf, 10);
+    for (int32_t i = 0; i < 3; i++) {
+        bitbuffer_extract_bytes(&b, row, 36 + i * 10, buf, 10);
         reflect_bytes(buf, 2);
         current[i] = ((float)buf[0] + ((buf[1] & 0x3) << 8)) * 0.1;
     }
@@ -104,12 +105,14 @@ static int cmr113_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "current_3_A",  "Current 3",    DATA_FORMAT, "%.1f A", DATA_DOUBLE, current[2],
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "current_1_A",
         "current_2_A",

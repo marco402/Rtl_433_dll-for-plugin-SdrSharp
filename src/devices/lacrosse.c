@@ -47,12 +47,12 @@ Notes:
 #define LACROSSE_TX_BITLEN        44
 #define LACROSSE_NYBBLE_CNT        11
 
-static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int events = 0;
-    int result = 0;
+    int32_t events = 0;
+    int32_t result = 0;
 
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         // break out the message nybbles into separate bytes
         // The LaCrosse protocol is based on 4 bit nybbles.
         uint8_t *pRow = bitbuffer->bb[row];
@@ -70,14 +70,14 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             continue; // DECODE_ABORT_EARLY
         }
 
-        for (int i = 0; i < LACROSSE_NYBBLE_CNT; i++) {
+        for (int32_t i = 0; i < LACROSSE_NYBBLE_CNT; i++) {
             msg_nybbles[i] = 0;
         }
 
         // Move nybbles into a byte array
         // Compute parity and checksum at the same time.
         uint8_t parity = 0;
-        for (int i = 0; i < 44; i++) {
+        for (int32_t i = 0; i < 44; i++) {
             uint8_t rbyte_no = i / 8;
             uint8_t rbit_no = 7 - (i % 8);
             uint8_t mnybble_no = i / 4;
@@ -101,7 +101,7 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
         // Validate Checksum (4 bits in last nybble)
         uint8_t checksum = 0;
-        for (int i = 0; i < 10; i++) {
+        for (int32_t i = 0; i < 10; i++) {
             checksum = (checksum + msg_nybbles[i]) & 0x0F;
         }
 
@@ -121,14 +121,14 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         uint8_t sensor_id      = (msg_nybbles[3] << 3) + (msg_nybbles[4] >> 1);
         uint16_t msg_value_raw = (msg_nybbles[5] << 8) | (msg_nybbles[6] << 4) | msg_nybbles[7];
         float msg_value        = msg_nybbles[5] * 10 + msg_nybbles[6] + msg_nybbles[7] * 0.1f;
-        int msg_value_int      = msg_nybbles[8] * 10 + msg_nybbles[9];
+        int32_t msg_value_int      = msg_nybbles[8] * 10 + msg_nybbles[9];
 
         // Check Repeated data values as another way of verifying
         // message integrity.
         if (msg_nybbles[5] != msg_nybbles[8]
                 || msg_nybbles[6] != msg_nybbles[9]) {
             decoder_logf(decoder, 1, __func__,
-                    "Sensor %02x, type: %d: message value mismatch int(%3.1f) != %d?\n",
+                    "Sensor %02x, type: %d: message value mismatch int32_t(%.1f) != %d?\n",
                     sensor_id, msg_type, msg_value, msg_value_int);
             result = DECODE_FAIL_SANITY;
             continue; // DECODE_FAIL_SANITY
@@ -144,7 +144,7 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",    DATA_STRING, "PARITY",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
         else if (msg_type == 0x0E) {
@@ -156,7 +156,7 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",    DATA_STRING, "PARITY",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
             events++;
         }
         else  {
@@ -174,7 +174,7 @@ static int lacrossetx_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return result;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

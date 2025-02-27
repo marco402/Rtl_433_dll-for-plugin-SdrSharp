@@ -53,31 +53,31 @@ Decoder written by Dmitriy Kozyrev, 2020
 #define INKBIRD_ITH20R_CRC_INIT 0x86F4  // reflected 0x2f61
 
 
-static int inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0xaa, 0x2d, 0xd4};
 
     data_t *data;
     uint8_t msg[19];
 
     if ((bitbuffer->num_rows != 1)
-            || (bitbuffer->bits_per_row[0] < 187)
-            /*|| (bitbuffer->bits_per_row[0] > 14563)*/) {
-        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);
+            || (bitbuffer->bits_per_row[row] < 187)
+            /*|| (bitbuffer->bits_per_row[row] > 14563)*/) {
+        decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH; // Unrecognized data
     }
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof (preamble_pattern) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof (preamble_pattern) * 8);
 
-    if (start_pos == bitbuffer->bits_per_row[0]) {
+    if (bit_offset == bitbuffer->bits_per_row[row]) {
         return DECODE_FAIL_SANITY;  // Not found preamble
     }
 
-    start_pos += sizeof (preamble_pattern) * 8;
-    unsigned len = bitbuffer->bits_per_row[0] - start_pos;
+    bit_offset += sizeof (preamble_pattern) * 8;
+    uint32_t len = bitbuffer->bits_per_row[row] - bit_offset;
 
-    decoder_logf(decoder, 2, __func__, "start_pos=%u len=%u", start_pos, len);
+    decoder_logf(decoder, 2, __func__, "bit_offset=%u len=%u", bit_offset, len);
 
     if (((len + 7) / 8) < sizeof (msg)) {
         decoder_logf(decoder, 1, __func__, "%u too short", len);
@@ -86,7 +86,7 @@ static int inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     // truncate any excessive bits
     len = MIN(len, sizeof (msg) * 8);
 
-    bitbuffer_extract_bytes(bitbuffer, 0, start_pos, msg, len);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, msg, len);
 
     // CRC check
     uint16_t crc_calculated = crc16lsb(msg, 16, INKBIRD_ITH20R_CRC_POLY, INKBIRD_ITH20R_CRC_INIT);
@@ -100,7 +100,7 @@ static int inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     uint32_t subtype = (msg[3] << 24 | msg[2] << 16 | msg[1] << 8 | msg[0]);
-    int sensor_num = msg[4];
+    int32_t sensor_num = msg[4];
     uint16_t word56 = (msg[6] << 8 | msg[5]);
     float battery_ok = msg[7] * 0.01f;
     uint16_t sensor_id = (msg[9] << 8 | msg[8]);
@@ -124,11 +124,12 @@ static int inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

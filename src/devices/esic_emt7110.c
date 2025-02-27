@@ -40,8 +40,9 @@ A message is ca 131-132 bits including preamble.
 
 #include "decoder.h"
 
-static int esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row             = 0;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4};
 
     data_t *data;
@@ -49,28 +50,28 @@ static int esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
-    if ((bitbuffer->bits_per_row[0] < 120) || (bitbuffer->bits_per_row[0] > 140))
+    if ((bitbuffer->bits_per_row[row] < 120) || (bitbuffer->bits_per_row[row] > 140))
         return DECODE_ABORT_LENGTH;
 
-    unsigned offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof (preamble) * 8);
-    offset += sizeof(preamble) * 8; // skip preamble
-    if (offset > bitbuffer->bits_per_row[0])
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble, sizeof (preamble) * 8);
+    bit_offset += sizeof(preamble) * 8; // skip preamble
+    if (bit_offset > bitbuffer->bits_per_row[row])
         return DECODE_ABORT_EARLY;
-    bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 96);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 96);
 
-    int chk = add_bytes(b, 12);
+    int32_t chk = add_bytes(b, 12);
     if (chk & 0xff)
         return DECODE_FAIL_MIC;
 
-    uint32_t id      = ((unsigned)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
-    int pairing      = (b[4] & 0x80) >> 7;
-    int connected    = (b[4] & 0x40) >> 6;
-    int power_raw    = ((b[4] & 0x3f) << 8) | (b[5]);
+    uint32_t id      = ((uint32_t)b[0] << 24) | (b[1] << 16) | (b[2] << 8) | (b[3]);
+    int32_t pairing      = (b[4] & 0x80) >> 7;
+    int32_t connected    = (b[4] & 0x40) >> 6;
+    int32_t power_raw    = ((b[4] & 0x3f) << 8) | (b[5]);
     float power_w    = power_raw * 0.5f;
-    int current_ma   = (b[6] << 8) | (b[7]);
+    int32_t current_ma   = (b[6] << 8) | (b[7]);
     float current_a   = current_ma * 0.001f;
     float voltage_v  = (b[8] + 256) * 0.5f;
-    int energy_raw   = ((b[9] & 0x3f) << 8) | (b[10]);
+    int32_t energy_raw   = ((b[9] & 0x3f) << 8) | (b[10]);
     float energy_kwh = energy_raw * 0.01f;
 
     /* clang-format off */
@@ -87,11 +88,11 @@ static int esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "power_W",

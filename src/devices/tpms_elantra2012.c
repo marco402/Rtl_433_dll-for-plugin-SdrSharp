@@ -8,6 +8,9 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 */
+
+#include "decoder.h"
+
 /**
 FSK 8 byte Manchester encoded TPMS with CRC8 checksum.
 Seen on Hyundai Elantra, Honda Civic.
@@ -47,40 +50,31 @@ Preamble is 111 0001 0101 0101 (0x7155).
 
 */
 
-#include "decoder.h"
-
-static int tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    uint8_t *b;
-    uint32_t id;
-    int flags;
-    int pressure_kpa;
-    int temperature_c;
-    int triggered, battery_low, storage;
-
     bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 64);
     // require 64 data bits
     if (packet_bits.bits_per_row[0] < 64) {
         return DECODE_ABORT_LENGTH;
     }
-    b = packet_bits.bb[0];
+    uint8_t *b = packet_bits.bb[0];
 
     if (crc8(b, 8, 0x07, 0x00)) {
         return DECODE_FAIL_MIC;
     }
 
-    id            = ((uint32_t)b[2] << 24) | (b[3] << 16) | (b[4] << 8) | (b[5]);
-    flags         = b[6];
-    pressure_kpa  = b[0] + 60;
-    temperature_c = b[1] - 50;
-    storage       = (b[6] & 0x04) >> 2;
-    battery_low   = (b[6] & 0x02) >> 1;
-    triggered     = (b[6] & 0x01) >> 0;
+    uint32_t id       = ((uint32_t)b[2] << 24) | (b[3] << 16) | (b[4] << 8) | (b[5]);
+    int32_t flags         = b[6];
+    int32_t pressure_kpa  = b[0] + 60;
+    int32_t temperature_c = b[1] - 50;
+    int32_t storage       = (b[6] & 0x04) >> 2;
+    int32_t battery_low   = (b[6] & 0x02) >> 1;
+    int32_t triggered     = (b[6] & 0x01) >> 0;
 
-    char id_str[9];
+    uint8_t id_str[9];
     snprintf(id_str, sizeof(id_str), "%08x", id);
-    char flags_str[3];
+    uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%x", flags);
 
     /* clang-format off */
@@ -98,22 +92,22 @@ static int tpms_elantra2012_decode(r_device *decoder, bitbuffer_t *bitbuffer, un
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
 /** @sa tpms_elantra2012_decode() */
-static int tpms_elantra2012_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_elantra2012_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Note that there is a (de)sync preamble of long/short, short/short, triple/triple,
     // i.e. 104 44, 52 48, 144 148 us pulse/gap.
     /* preamble = 111000101010101 0x71 0x55 */
     uint8_t const preamble_pattern[] = {0x71, 0x55}; // 16 bits
 
-    int row;
-    unsigned bitpos;
-    int ret    = 0;
-    int events = 0;
+    int32_t row;
+    uint32_t bitpos;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
         bitpos = 0;
@@ -121,7 +115,7 @@ static int tpms_elantra2012_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
                         preamble_pattern, 16)) + 128 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = tpms_elantra2012_decode(decoder, bitbuffer, row, bitpos + 16);
+            ret = tpms_elantra2012_decode(decoder, bitbuffer, row, bitpos + 16, startPulses,package_type);
             if (ret > 0)
                 events += ret;
             bitpos += 15;
@@ -131,7 +125,7 @@ static int tpms_elantra2012_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",
@@ -150,7 +144,7 @@ r_device const tpms_elantra2012 = {
         .modulation  = FSK_PULSE_PCM,
         .short_width = 49,  // 12-13 samples @250k
         .long_width  = 49,  // FSK
-        .reset_limit = 150, // Maximum gap size before End Of Message [us].
+        .reset_limit = 200, // Maximum gap size before End Of Message [us].
         .decode_fn   = &tpms_elantra2012_callback,
         .fields      = output_fields,
 };

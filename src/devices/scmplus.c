@@ -25,31 +25,32 @@ Units: "Some meter types transmit consumption in 1 kWh units, while others use m
 
 */
 
-static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     uint8_t b[16];
     data_t *data;
-    unsigned sync_index;
+    uint32_t bit_offset;
     const uint8_t scmplus_frame_sync[] = {0x16, 0xA3, 0x1E};
 
-    if (bitbuffer->bits_per_row[0] < 128) {
+    if (bitbuffer->bits_per_row[row] < 128) {
         return (DECODE_ABORT_LENGTH);
     }
 
-    sync_index = bitbuffer_search(bitbuffer, 0, 0, scmplus_frame_sync, 24);
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, scmplus_frame_sync, 24);
 
-    if (sync_index >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         return DECODE_ABORT_EARLY;
     }
 
-    if ((bitbuffer->bits_per_row[0] - sync_index) < 128) {
+    if ((bitbuffer->bits_per_row[row] - bit_offset) < 128) {
         return DECODE_ABORT_LENGTH;
     }
 
-    decoder_logf(decoder, 1, __func__, "row len=%hu sync_index=%u", bitbuffer->bits_per_row[0], sync_index);
+    decoder_logf(decoder, 1, __func__, "row len=%hu sync_index=%u", bitbuffer->bits_per_row[row], bit_offset);
 
     // bitbuffer_debug(bitbuffer);
-    bitbuffer_extract_bytes(bitbuffer, 0, sync_index, b, 16 * 8);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 16 * 8);
 
     // uint32_t t_16; // temp vars
     // uint32_t t_32;
@@ -73,10 +74,10 @@ static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint32_t consumption_data;
     uint16_t physical_tamper;
 
-    char crc_str[8];
-    char protocol_id_str[5];
-    char endpoint_type_str[5];
-    char physical_tamper_str[8];
+    uint8_t crc_str[8];
+    uint8_t protocol_id_str[5];
+    uint8_t endpoint_type_str[5];
+    uint8_t physical_tamper_str[8];
 
     // protocol_id = b[2];
     snprintf(protocol_id_str, sizeof(protocol_id_str), "0x%02X", b[2]); // protocol_id);  // b[2]
@@ -102,7 +103,7 @@ static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     // Least significant nibble of endpoint_type is  equivalent to SCM's endpoint type field
     // id info from https://github.com/bemasher/rtlamr/wiki/Compatible-Meters
-    char const *meter_type;
+    uint8_t const *meter_type;
 
     switch (b[3] & 0x0f) {
     case 4:
@@ -141,22 +142,22 @@ static int scmplus_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data = data_make(
             "model",            "",                 DATA_STRING, "SCMplus",
             "id",               "",                 DATA_INT,    endpoint_id,
-            "ProtocolID",       "Protocol_ID",      DATA_STRING, protocol_id_str, // TODO: this should be int
-            "EndpointType",     "Endpoint_Type",    DATA_STRING, endpoint_type_str, // TODO: this should be int
+            "ProtocolID",       "Protocol_ID",      DATA_STRING, protocol_id_str, // TODO: this should be int32_t
+            "EndpointType",     "Endpoint_Type",    DATA_STRING, endpoint_type_str, // TODO: this should be int32_t
             "EndpointID",       "Endpoint_ID",      DATA_INT,    endpoint_id, // TODO: remove this (see "id")
             "Consumption",      "",                 DATA_INT,    consumption_data,
-            "Tamper",           "",                 DATA_STRING, physical_tamper_str, // TODO: should be int
+            "Tamper",           "",                 DATA_STRING, physical_tamper_str, // TODO: should be int32_t
             "PacketCRC",        "crc",              DATA_STRING, crc_str, // TODO: remove this
             "MeterType",        "Meter_Type",       DATA_STRING, meter_type,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "ProtocolID",

@@ -38,8 +38,9 @@ Data format is:
 
 #include "decoder.h"
 
-static int philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     bitbuffer_invert(bitbuffer);
 
     // Correct number of rows?
@@ -49,14 +50,14 @@ static int philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Correct bit length?
-    if (bitbuffer->bits_per_row[0] != 40) {
-        if (bitbuffer->bits_per_row[0] != 0) {
-            decoder_logf(decoder, 1, __func__, "wrong number of bits (%d)", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->bits_per_row[row] != 40) {
+        if (bitbuffer->bits_per_row[row] != 0) {
+            decoder_logf(decoder, 1, __func__, "wrong number of bits (%d)", bitbuffer->bits_per_row[row]);
         }
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *b = bitbuffer->bb[0];
+    uint8_t *b = bitbuffer->bb[row];
 
     // No need to decode/extract values for simple test
     if (!b[0] && !b[2] && !b[3] && !b[4]) {
@@ -77,7 +78,7 @@ static int philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Channel
-    int channel = (b[1]);
+    int32_t channel = (b[1]);
     switch (channel) {
     case 0x36:
         channel = 3;
@@ -95,7 +96,7 @@ static int philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     decoder_logf(decoder, 1, __func__, "channel decoded is %d", channel);
 
     // Temperature
-    int temp_raw = ((b[3] & 0x3f) << 8) | b[2];
+    int32_t temp_raw = ((b[3] & 0x3f) << 8) | b[2];
     float temp_c = (temp_raw / 353.0f) - 9.2f; // TODO: this is very likely wrong
     decoder_logf(decoder, 1, __func__, "temperature: raw: %d %08X converted: %.2f", temp_raw, temp_raw, temp_c);
 
@@ -107,12 +108,13 @@ static int philips_aj7010_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "time",
         "model",
         "channel",

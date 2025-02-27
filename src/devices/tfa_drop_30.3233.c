@@ -117,17 +117,19 @@ Afterwards, messages are sent every 45s.
 #define TFA_DROP_STARTBYTE 0x3 /* Inverted already */
 #define TFA_DROP_MINREPEATS 2
 
-static int tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_invert(bitbuffer);
-
-    int row_index = bitbuffer_find_repeated_row(bitbuffer, TFA_DROP_MINREPEATS,
+	uint32_t nbRepeat = TFA_DROP_MINREPEATS;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat,
             TFA_DROP_BITLEN);
-    if (row_index < 0 || bitbuffer->bits_per_row[row_index] > TFA_DROP_BITLEN + 16) {
+    if (row < 0 || bitbuffer->bits_per_row[row] > TFA_DROP_BITLEN + 16) {
         return DECODE_ABORT_LENGTH;
     }
 
-    uint8_t *row_data = bitbuffer->bb[row_index];
+    uint8_t *row_data = bitbuffer->bb[row];
 
     /*
      * Reject rows that don't start with the correct start byte.
@@ -152,14 +154,14 @@ static int tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     /*
      * Mask first nibble in row_data[0] it is a constant message prefix.
      */
-    int sensor_id = (row_data[0] & 0x0f) << 16 | row_data[1] << 8 | row_data[2];
+    int32_t sensor_id = (row_data[0] & 0x0f) << 16 | row_data[1] << 8 | row_data[2];
 
     uint16_t rain_counter = row_data[6] << 8 | row_data[4];
     rain_counter = rain_counter + 10; // wrapping intentional
 
     float rain_mm = rain_counter * 0.254f;
 
-    int battery_low = (row_data[3] & 0x80) >> 7;
+    int32_t battery_low = (row_data[3] & 0x80) >> 7;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -170,13 +172,13 @@ static int tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",        "Integrity",  DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
-
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "battery_ok",

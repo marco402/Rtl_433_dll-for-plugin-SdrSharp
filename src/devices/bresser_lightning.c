@@ -25,7 +25,7 @@ Preamble: aa aa 2d d4
 Data layout:
     DIGEST:8h8h ID:8h8h CTR:12h BATT:1b ?3b STYPE:4h STARTUP:1b CH:3d KM:8d ?8h8h
 
-Based on bresser_7in1.c
+Based on bresser_7in1.c but msg length is 10 byte
 
 The data (not including STYPE, STARTUP, CH and maybe ID) has a whitening of 0xaa.
 CH is always 0.
@@ -33,21 +33,21 @@ CH is always 0.
 First two bytes are an LFSR-16 digest, generator 0x8810 key 0xabf9 with a final xor 0x899e
 */
 
-static int bresser_lightning_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t bresser_lightning_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0x2d, 0xd4};
-    uint8_t msg[25];
+    uint8_t msg[10];  // not 25
 
     /* clang-format off */
     if (   bitbuffer->num_rows != 1
-        || bitbuffer->bits_per_row[0] < 160
+        || bitbuffer->bits_per_row[0] < 112
         || bitbuffer->bits_per_row[0] > 440) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);
         return DECODE_ABORT_EARLY; // Unrecognized data
     }
     /* clang-format on */
 
-    unsigned start_pos = bitbuffer_search(bitbuffer, 0, 0,
+    uint32_t start_pos = bitbuffer_search(bitbuffer, 0, 0,
             preamble_pattern, sizeof(preamble_pattern) * 8);
 
     if (start_pos >= bitbuffer->bits_per_row[0]) {
@@ -55,7 +55,7 @@ static int bresser_lightning_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
     start_pos += sizeof(preamble_pattern) * 8;
 
-    unsigned len = bitbuffer->bits_per_row[0] - start_pos;
+    uint32_t len = bitbuffer->bits_per_row[0] - start_pos;
     if (len < sizeof(msg) * 8) {
         decoder_logf(decoder, 2, __func__, "%u too short", len);
         return DECODE_ABORT_LENGTH; // message too short
@@ -65,30 +65,31 @@ static int bresser_lightning_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     decoder_log_bitrow(decoder, 2, __func__, msg, sizeof(msg) * 8, "MSG");
 
-    int s_type      = msg[6] >> 4;
-    int chan        = msg[6] & 0x07;
-    int battery_low = (msg[5] & 0x08) >> 3;
-    int nstartup    = (msg[6] & 0x08) >> 3;
+    int32_t s_type      = msg[6] >> 4;
+    int32_t chan        = msg[6] & 0x07;
+    int32_t battery_low = (msg[5] & 0x08) >> 3;
+    int32_t nstartup    = (msg[6] & 0x08) >> 3;
 
     // data de-whitening
-    for (unsigned i = 0; i < sizeof(msg); ++i) {
+    for (uint32_t i = 0; i < sizeof(msg); ++i) {
         msg[i] ^= 0xaa;
     }
     decoder_log_bitrow(decoder, 2, __func__, msg, sizeof(msg) * 8, "XOR");
 
-    // LFSR-16 digest, generator 0x8810 key 0xba95 final xor 0x6df1
-    int chk    = (msg[0] << 8) | msg[1];
-    int digest = lfsr_digest16(&msg[2], 23, 0x8810, 0xba95);
-    if ((chk ^ digest) != 0x6df1) {
+    // LFSR-16 digest, generator 0x8810 key 0xabf9 with a final xor 0x899e
+    int32_t chk    = (msg[0] << 8) | msg[1];
+    int32_t digest = lfsr_digest16(&msg[2], 8, 0x8810, 0xabf9);
+    if ((chk ^ digest) != 0x899e) {
         decoder_logf(decoder, 2, __func__, "Digest check failed %04x vs %04x (%04x)", chk, digest, chk ^ digest);
         return DECODE_FAIL_MIC;
     }
 
-    int sensor_id   = (msg[2] << 8) | (msg[3]);
-    int distance_km = msg[7];
-    int count       = (msg[4] << 4) | (msg[5] & 0xf0) >> 4;
-    int unknown1    = ((msg[5] & 0x0f) << 8) | msg[6];
-    int unknown2    = (msg[8] << 8) | msg[9];
+    int32_t sensor_id   = (msg[2] << 8) | (msg[3]);
+    int32_t distance_km = msg[7];
+    // Counter encoded as BCD with most significant digit counting up to 15! -> Maximum value: 1599
+    int32_t count       = (msg[4] >> 4) * 100 + (msg[4] & 0xf) * 10 + (msg[5] >> 4);
+    int32_t unknown1    = ((msg[5] & 0x0f) << 8) | msg[6];
+    int32_t unknown2    = (msg[8] << 8) | msg[9];
 
     // Sanity checks
     if ((s_type != SENSOR_TYPE_LIGHTNING) || (chan != 0)) {
@@ -101,24 +102,24 @@ static int bresser_lightning_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "id",               "",                     DATA_FORMAT, "%08x",      DATA_INT,    sensor_id,
             "startup",          "Startup",              DATA_COND,   !nstartup,   DATA_INT,    !nstartup,
             "battery_ok",       "Battery",              DATA_INT,    !battery_low,
-            "distance_km",      "storm_distance_km",    DATA_INT,    distance_km,
-            "strike_count",     "strike_count",         DATA_INT,    count,
-            "unknown1",         "Unknown1",             DATA_FORMAT, "%08x",      DATA_INT,    unknown1,
-            "unknown2",         "Unknown2",             DATA_FORMAT, "%08x",      DATA_INT,    unknown2,
+            "storm_dist_km",    "Storm Distance",       DATA_FORMAT, "%d km",     DATA_INT,    distance_km,
+            "strike_count",     "Strike Count",         DATA_INT,    count,
+            "unknown1",         "Unknown1",             DATA_FORMAT, "%03x",      DATA_INT,    unknown1,
+            "unknown2",         "Unknown2",             DATA_FORMAT, "%04x",      DATA_INT,    unknown2,
             "mic",              "Integrity",            DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "startup",
         "battery_ok",
-        "distance_km",
+        "storm_dist_km",
         "strike_count",
         "unknown1",
         "unknown2",

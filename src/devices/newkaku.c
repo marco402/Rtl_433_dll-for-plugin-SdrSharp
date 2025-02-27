@@ -19,12 +19,9 @@ start pulse: 1T high, 10.44T low
 
 #include "decoder.h"
 
-static int newkaku_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t newkaku_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t *b = bitbuffer->bb[0];
-
-    if (b[0] != 0x65 && b[0] != 0x59) // always starts with 0110 0101 or 0101 1001
-        return DECODE_ABORT_EARLY;
 
     /* Reject missing sync */
     if (bitbuffer->syncs_before_row[0] != 1)
@@ -42,7 +39,7 @@ static int newkaku_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     bitbuffer_t databits = {0};
     // note: not manchester encoded but actually ternary
-    unsigned pos = bitbuffer_manchester_decode(bitbuffer, 0, 0, &databits, 80);
+    uint32_t pos = bitbuffer_manchester_decode(bitbuffer, 0, 0, &databits, 80);
     bitbuffer_invert(&databits);
 
     /* Reject codes when Manchester decoding fails */
@@ -69,11 +66,11 @@ static int newkaku_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "unit",

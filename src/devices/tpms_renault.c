@@ -26,21 +26,21 @@ Packet nibbles:
 
 #include "decoder.h"
 
-static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    int flags;
-    unsigned id;
-    int pressure_raw, temp_c, unknown;
+    int32_t flags;
+    uint32_t id;
+    int32_t pressure_raw, temp_c, unknown;
     double pressure_kpa;
 
-    bitbuffer_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
     // require 72 data bits
-    if (packet_bits.bits_per_row[0] < 72) {
+    if (packet_bits.bits_per_row[row] < 72) {  // to see
         return 0;
     }
-    b = packet_bits.bb[0];
+    b = packet_bits.bb[row];
 
     // 0x83; 0x107 FOP-8; ATM-8; CRC-8P
     if (crc8(b, 8, 0x07, 0x00) != b[8]) {
@@ -54,11 +54,11 @@ static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
     temp_c       = b[2] - 30;
     unknown      = b[7] << 8 | b[6]; // little-endian, fixed 0xffff?
 
-    char flags_str[3];
+    uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%02x", flags);
-    char id_str[7];
+    uint8_t id_str[7];
     snprintf(id_str, sizeof(id_str), "%06x", id);
-    char code_str[5];
+    uint8_t code_str[5];
     snprintf(code_str, sizeof(code_str), "%04x", unknown);
 
     /* clang-format off */
@@ -73,40 +73,41 @@ static int tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsign
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
 /** @sa tpms_renault_decode() */
-static int tpms_renault_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_renault_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // full preamble is 55 55 55 56 (inverted: aa aa aa a9)
     uint8_t const preamble_pattern[2] = {0xaa, 0xa9}; // 16 bits
 
-    int row;
-    unsigned bitpos;
-    int ret    = 0;
-    int events = 0;
+    int32_t row;
+    uint32_t bit_offset;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     bitbuffer_invert(bitbuffer);
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        bitpos = 0;
+        bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
-        while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos,
+        while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset,
                 preamble_pattern, 16)) + 160 <=
                 bitbuffer->bits_per_row[row]) {
-            ret = tpms_renault_decode(decoder, bitbuffer, row, bitpos + 16);
+            ret = tpms_renault_decode(decoder, bitbuffer, row, bit_offset + 16, startPulses, package_type);
             if (ret > 0)
                 events += ret;
-            bitpos += 15;
+            bit_offset += 15;
         }
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

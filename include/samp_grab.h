@@ -17,24 +17,24 @@
 typedef struct samp_grab {
     uint32_t *frequency;
     uint32_t *samp_rate;
-    int *sample_size;
+    int32_t *sample_size;
 
-    unsigned sg_counter;
-    char *sg_buf;
-    unsigned sg_size;
-    unsigned sg_index;
-    unsigned sg_len;
+    uint32_t sg_counter;
+    uint8_t *sg_buf;
+    uint32_t sg_size;
+    uint32_t sg_index;
+    uint32_t sg_len;
 } samp_grab_t;
 
-samp_grab_t *samp_grab_create(unsigned size);
+samp_grab_t *samp_grab_create(uint32_t size);
 
 void samp_grab_free(samp_grab_t *g);
 
-void samp_grab_push(samp_grab_t *g, unsigned char *iq_buf, uint32_t len);
+void samp_grab_push(samp_grab_t *g, uint8_t *iq_buf, uint32_t len);
 
 void samp_grab_reset(samp_grab_t *g);
 
 /// grab_end is counted in samples from end of buf.
-void samp_grab_write(samp_grab_t *g, unsigned grab_len, unsigned grab_end);
+void samp_grab_write(samp_grab_t *g, uint32_t grab_len, uint32_t grab_end);
 
 #endif /* INCLUDE_SAMP_GRAB_H_ */

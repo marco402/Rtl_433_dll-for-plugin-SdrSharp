@@ -10,7 +10,7 @@
 
     License: GPL v2+ (or at your choice, any other OSI-approved Open Source license)
 */
-/** @fn int ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Protocol of the SimpliSafe Sensors.
 
 @sa ss_sensor_parser()
@@ -28,13 +28,13 @@ All bytes are sent with least significant bit FIRST (1000 0111 = 0xE1)
 
 #include "decoder.h"
 
-static void ss_get_id(char *id, uint8_t *b)
+static void ss_get_id(uint8_t *id, uint8_t *b)
 {
-    char *p = id;
+    uint8_t *p = id;
 
     // Change to least-significant-bit last (protocol uses least-significant-bit first) for hex representation:
     for (uint16_t k = 3; k <= 7; k++) {
-        char c = b[k];
+        uint8_t c = b[k];
         c = reverse8(c);
         // If the character is not representable with a valid-ish ascii character, replace with ?.
         // This probably means the message is invalid.
@@ -43,7 +43,7 @@ static void ss_get_id(char *id, uint8_t *b)
           sprintf(p++, "%c", '?');
           continue;
         }
-        sprintf(p++, "%c", (char)c);
+        sprintf(p++, "%c", (uint8_t)c);
     }
     *p = '\0';
 }
@@ -51,7 +51,7 @@ static void ss_get_id(char *id, uint8_t *b)
 /**
 SimpliSafe protocol for sensors.
 */
-static int ss_sensor_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
+static int32_t ss_sensor_parser(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, int32_t startPulses, uint16_t package_type,uint32_t nbRepeat)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[row];
@@ -64,12 +64,12 @@ static int ss_sensor_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
     uint8_t state = reverse8(b[9]);
     uint8_t csum = reverse8(b[10]);
     if (((seq + state) & 0xff) != csum)
-      return DECODE_FAIL_MIC;
+        return DECODE_FAIL_MIC;
 
-    char id[6];
+    uint8_t id[6];
     ss_get_id(id, b);
 
-    char extradata[30];
+    uint8_t extradata[30];
     if (state == 1) {
         snprintf(extradata, sizeof(extradata), "Contact Open");
     } else if (state == 2) {
@@ -91,32 +91,32 @@ static int ss_sensor_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
 /**
 SimpliSafe protocol for pinentry.
 */
-static int ss_pinentry_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row)
+static int32_t ss_pinentry_parser(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, int32_t startPulses, uint16_t package_type,uint32_t nbRepeat)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[row];
     // In a keypad message the pin is encoded in bytes 10 and 11 with the the digits each using 4 bits
     // However the bits are low order to high order
-    int digits[5];
-    int pina = reverse8(b[10]);
-    int pinb = reverse8(b[11]);
+    int32_t digits[5];
+    int32_t pina = reverse8(b[10]);
+    int32_t pinb = reverse8(b[11]);
 
     digits[0] = (pina & 0xf);
     digits[1] = ((pina & 0xf0) >> 4);
     digits[2] = (pinb & 0xf);
     digits[3] = ((pinb & 0xf0) >> 4);
 
-    char id[6];
+    uint8_t id[6];
     ss_get_id(id, b);
 
-    char extradata[30];
+    uint8_t extradata[30];
     snprintf(extradata, sizeof(extradata), "Disarm Pin: %x%x%x%x", digits[0], digits[1], digits[2], digits[3]);
 
     /* clang-format off */
@@ -128,18 +128,18 @@ static int ss_pinentry_parser(r_device *decoder, bitbuffer_t *bitbuffer, int row
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
 /**
 SimpliSafe protocol for keypad commands.
 */
-static int ss_keypad_commands(r_device *decoder, bitbuffer_t *bitbuffer, int row)
+static int32_t ss_keypad_commands(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, int32_t startPulses, uint16_t package_type,uint32_t nbRepeat)
 {
     data_t *data;
     uint8_t *b = bitbuffer->bb[row];
-    char extradata[30]; // = "Arming: ";
+    uint8_t extradata[30]; // = "Arming: ";
 
     if (b[10] == 0x6a) {
         snprintf(extradata, sizeof(extradata), "Arm System - Away");
@@ -155,7 +155,7 @@ static int ss_keypad_commands(r_device *decoder, bitbuffer_t *bitbuffer, int row
         snprintf(extradata, sizeof(extradata), "Unknown Keypad: %02x", b[10]);
     }
 
-    char id[6];
+    uint8_t id[6];
     ss_get_id(id, b);
 
     /* clang-format off */
@@ -167,14 +167,17 @@ static int ss_keypad_commands(r_device *decoder, bitbuffer_t *bitbuffer, int row
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static int ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Require two identical rows.
-    int row = bitbuffer_find_repeated_row(bitbuffer, 2, 90);
+	uint32_t nbRepeat = 2;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 90);
     if (row < 0)
         return DECODE_ABORT_EARLY;
 
@@ -186,18 +189,18 @@ static int ss_sensor_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     bitbuffer_invert(bitbuffer);
 
     if (b[2] == 0x88) {
-        return ss_sensor_parser(decoder, bitbuffer, row);
+        return ss_sensor_parser(decoder, bitbuffer, row, startPulses, package_type, nbRepeat);
     } else if (b[2] == 0x66) {
-        return ss_pinentry_parser(decoder, bitbuffer, row);
+        return ss_pinentry_parser(decoder, bitbuffer, row, startPulses, package_type, nbRepeat);
     } else if (b[2] == 0x44) {
-        return ss_keypad_commands(decoder, bitbuffer, row);
+        return ss_keypad_commands(decoder, bitbuffer, row, startPulses, package_type, nbRepeat);
     } else {
         decoder_logf(decoder, 1, __func__, "Unknown Message Type: %02x", b[2]);
         return DECODE_ABORT_EARLY;
     }
 }
 
-static char const *const sensor_output_fields[] = {
+static uint8_t const *const sensor_output_fields[] = {
         "model",
         "id",
         "seq",

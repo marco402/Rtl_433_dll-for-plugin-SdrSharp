@@ -30,22 +30,22 @@ Packet nibbles:
 
 #include "decoder.h"
 
-static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned row, unsigned bitpos)
+static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
-    unsigned id;
-    int mode;
-    int pressure_raw;
+    uint32_t id;
+    int32_t mode;
+    int32_t pressure_raw;
     double pressure;
-    int temperature;
-    int battery_level;
-    int flags;
-    int crc;
+    int32_t temperature;
+    int32_t battery_level;
+    int32_t flags;
+    int32_t crc;
     double ratio;
     double offset;
 
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
 
     if (packet_bits.bits_per_row[row] < 64) {
         return DECODE_ABORT_LENGTH; // too short to be a whole packet
@@ -54,7 +54,7 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
 
     b = packet_bits.bb[row];
 
-    id            = (unsigned)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    id            = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
     pressure_raw  = b[4];
     temperature   = b[5];
     mode          = b[6] >> 6 & 0x3;
@@ -87,7 +87,7 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
     }
     pressure = ((double)pressure_raw - offset) * ratio;
 
-    char id_str[9 + 1];
+    uint8_t id_str[9 + 1];
     snprintf(id_str, sizeof(id_str), "%08x", id);
 
     /* clang-format off */
@@ -106,7 +106,8 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+        
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
@@ -114,33 +115,32 @@ static int tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, unsigned r
 Wrapper for the AVE tpms.
 @sa tpms_ave_decode()
 */
-static int tpms_ave_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t tpms_ave_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble_pattern[] = {0xcc, 0xcc, 0xcc, 0xcd}; // Raw pattern, before differential Manchester coding
 
-    int row;
-    unsigned bitpos;
-    int ret    = 0;
-    int events = 0;
+    int32_t row;
+    uint32_t bit_offset;
+    int32_t ret    = 0;
+    int32_t events = 0;
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        bitpos = 0;
+        bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
-        while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 32)) + 132 <=
-                bitbuffer->bits_per_row[0]) {
-            ret = tpms_ave_decode(decoder, bitbuffer, row, bitpos + 32);
+        while ((bit_offset = bitbuffer_search(bitbuffer, 0, bit_offset, preamble_pattern, 32)) + 132 <= bitbuffer->bits_per_row[row]) {
+            ret = tpms_ave_decode(decoder, bitbuffer, row, bit_offset + 32, startPulses, package_type);
             if (ret > 0) {
                 events += ret;
-                bitpos += 132;
+                bit_offset += 132;
             }
-            bitpos += 31;
+            bit_offset += 31;
         }
     }
 
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

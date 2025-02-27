@@ -18,11 +18,11 @@ Note that this is actually Manchester coded and should be changed.
 */
 #include "decoder.h"
 
-static char const *const command_code[] = {"boot", "unlock" , "lock",};
+static uint8_t const *const command_code[] = {"boot", "unlock", "lock",};
 
-static char const *get_command_codes(const uint8_t *bytes)
+static uint8_t const *get_command_codes(const uint8_t *bytes)
 {
-    unsigned char command = bytes[46] - 0xAA;
+    uint8_t command = bytes[46] - 0xAA;
     if (command < (sizeof(command_code) / sizeof(command_code[0]))) {
         return command_code[command];
     } else {
@@ -30,14 +30,14 @@ static char const *get_command_codes(const uint8_t *bytes)
     }
 }
 
-static int hondaremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t hondaremote_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t *b;
-    char const *code;
+    uint8_t const *code;
     uint16_t device_id;
 
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         b = bitbuffer->bb[row];
         // Validate package
         if (((bitbuffer->bits_per_row[row] < 385) || (bitbuffer->bits_per_row[row] > 394)) ||
@@ -55,13 +55,13 @@ static int hondaremote_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "code",

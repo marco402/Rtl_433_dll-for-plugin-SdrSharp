@@ -76,7 +76,7 @@ To get raw data:
 #define DEVICE_TYPE_REMOTE 0xa
 #define DEVICE_TYPE_BRIDGE 0xb
 
-static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const message_preamble[] = {
             /*0xaa, 0xaa,*/ 0xaa, 0xaa, // preamble
@@ -91,13 +91,13 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_ABORT_EARLY;
     }
 
-    int row = 0;
+    int32_t row = 0;
     // Validate message and reject it as fast as possible : check for preamble
-    unsigned start_pos = bitbuffer_search(bitbuffer, row, 0, message_preamble, sizeof(message_preamble) * 8);
+    uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, message_preamble, sizeof(message_preamble) * 8);
 
-    if (start_pos < bitbuffer->bits_per_row[row]) {
+    if (bit_offset < bitbuffer->bits_per_row[row]) {
         // Save bitcount of total message including preamble
-        dataframe_bitcount = (bitbuffer->bits_per_row[row] - start_pos - sizeof(message_preamble) * 8) & 0xFE;
+        dataframe_bitcount = (bitbuffer->bits_per_row[row] - bit_offset - sizeof(message_preamble) * 8) & 0xFE;
     }
     else {
         return DECODE_ABORT_EARLY; // no preamble detected
@@ -109,7 +109,7 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Extract raw line
-    bitbuffer_extract_bytes(bitbuffer, row, start_pos + sizeof(message_preamble) * 8, msg, dataframe_bitcount);
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset + sizeof(message_preamble) * 8, msg, dataframe_bitcount);
     decoder_log_bitrow(decoder, 2, __func__, msg, dataframe_bitcount, "frame data");
 
     // Check CRC if available
@@ -125,11 +125,11 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     }
 
     // Data output
-    int has_crc = dataframe_bitcount == DATAFRAME_BITCOUNT_INCL_CRC;
-    int id      = (msg[ID_OFFSET] << 20) | (msg[ID_OFFSET + 1] << 12) | (msg[ID_OFFSET + 2] << 4) | (msg[ID_OFFSET + 3] >> 4);
-    int token   = (msg[MESSAGE_TOKEN_OFFSET] << 8) | (msg[MESSAGE_TOKEN_OFFSET + 1]);
+    int32_t has_crc = dataframe_bitcount == DATAFRAME_BITCOUNT_INCL_CRC;
+    int32_t id      = (msg[ID_OFFSET] << 20) | (msg[ID_OFFSET + 1] << 12) | (msg[ID_OFFSET + 2] << 4) | (msg[ID_OFFSET + 3] >> 4);
+    int32_t token   = (msg[MESSAGE_TOKEN_OFFSET] << 8) | (msg[MESSAGE_TOKEN_OFFSET + 1]);
 
-    int device_type = DEVICE_TYPE_UNKNOWN;
+    int32_t device_type = DEVICE_TYPE_UNKNOWN;
     if ((msg[COMMAND_ID_OFFSET] & 0xF) == 0x5) {
         device_type = DEVICE_TYPE_SHUTTER;
     }
@@ -144,7 +144,7 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         }
     }
 
-    char const *cmd_str = "unknown";
+    uint8_t const *cmd_str = "unknown";
     switch (msg[COMMAND_ID_OFFSET]) {
     case COMMAND_ID_STOP:
         cmd_str = "Stop"; break;
@@ -201,7 +201,7 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
 
 // You can use this defines to clone / generate all commands for other bridges
 #define GENERATE_COMMANDS_FOR_CURRENT_CHANNEL 0
@@ -284,7 +284,7 @@ static int rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

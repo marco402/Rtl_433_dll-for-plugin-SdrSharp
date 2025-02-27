@@ -7,7 +7,7 @@
     (at your option) any later version.
 
 */
-/** @fn int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 AlectoV1 Weather Sensor decoder.
 Documentation also at http://www.tfd.hu/tfdhu/files/wsprotocol/auriol_protocol_v20.pdf
 
@@ -76,10 +76,10 @@ Format for Winddirection & Windgust:
 #include "decoder.h"
 
 // return 1 if the checksum passes and 0 if it fails
-static int alecto_checksum(uint8_t *b)
+static int32_t alecto_checksum(uint8_t *b)
 {
-    int csum = 0;
-    for (int i = 0; i < 4; i++) {
+    int32_t csum = 0;
+    for (int32_t i = 0; i < 4; i++) {
         uint8_t tmp = reverse8(b[i]);
         csum += (tmp & 0xf) + ((tmp & 0xf0) >> 4);
     }
@@ -96,14 +96,14 @@ static uint8_t bcd_decode8(uint8_t x)
     return ((x & 0xF0) >> 4) * 10 + (x & 0x0F);
 }
 
-static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     bitrow_t *bb = bitbuffer->bb;
     uint8_t *b = bitbuffer->bb[1];
-    int temp_raw, humidity;
+    int32_t temp_raw, humidity;
     float temp_c;
     data_t *data;
-    unsigned bits = bitbuffer->bits_per_row[1];
+    uint32_t bits = bitbuffer->bits_per_row[1];
 
     if (bits != 36)
         return DECODE_ABORT_LENGTH;
@@ -118,20 +118,20 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         return DECODE_FAIL_MIC;
     }
 
-    int battery_low = (b[1] & 0x80) >> 7;
-    int msg_type    = (b[1] & 0x60) >> 5;
-    //int button      = (b[1] & 0x10) >> 4;
-    int msg_rain    = (b[1] & 0x0f) == 0x0c;
-    //int msg_wind    = (b[1] & 0x0f) == 0x08 && b[2] == 0;
-    //int msg_gust    = (b[1] & 0x0e) == 0x0e;
-    int channel     = (b[0] & 0xc) >> 2;
-    int sensor_id   = reverse8(b[0]);
+    int32_t battery_low = (b[1] & 0x80) >> 7;
+    int32_t msg_type    = (b[1] & 0x60) >> 5;
+    //int32_t button      = (b[1] & 0x10) >> 4;
+    int32_t msg_rain    = (b[1] & 0x0f) == 0x0c;
+    //int32_t msg_wind    = (b[1] & 0x0f) == 0x08 && b[2] == 0;
+    //int32_t msg_gust    = (b[1] & 0x0e) == 0x0e;
+    int32_t channel     = (b[0] & 0xc) >> 2;
+    int32_t sensor_id   = reverse8(b[0]);
 
     //decoder_logf(decoder, 0, __func__, "AlectoV1 type : %d rain : %d wind : %d gust : %d", msg_type, msg_rain, msg_wind, msg_gust);
 
     if (msg_type == 0x3 && !msg_rain) {
         // Wind sensor
-        int skip = -1;
+        int32_t skip = -1;
         // Untested code written according to the specification, may not decode correctly
         if ((b[1] & 0xe) == 0x8 && b[2] == 0) {
             skip = 0;
@@ -142,7 +142,7 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
         if (skip >= 0) {
             double speed  = reverse8(bb[1 + skip][3]);
             double gust   = reverse8(bb[5 + skip][3]);
-            int direction = (reverse8(bb[5 + skip][2]) << 1) | (bb[5 + skip][1] & 0x1);
+            int32_t direction = (reverse8(bb[5 + skip][2]) << 1) | (bb[5 + skip][1] & 0x1);
 
             /* clang-format off */
             data = data_make(
@@ -156,7 +156,7 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                     "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
                     NULL);
             /* clang-format on */
-            decoder_output_data(decoder, data);
+            decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
             return 1;
         }
     }
@@ -171,11 +171,11 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "id",           "House Code",   DATA_INT,    sensor_id,
                 "channel",      "Channel",      DATA_INT,    channel,
                 "battery_ok",   "Battery",      DATA_INT,    !battery_low,
-                "rain_mm",      "Total Rain",   DATA_FORMAT, "%.02f mm", DATA_DOUBLE, rain_mm,
+                "rain_mm",      "Total Rain",   DATA_FORMAT, "%.2f mm", DATA_DOUBLE, rain_mm,
                 "mic",          "Integrity",    DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
         return 1;
     }
 
@@ -183,7 +183,7 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             && bb[2][0] == bb[3][0] && bb[3][0] == bb[4][0]
             && bb[4][0] == bb[5][0] && bb[5][0] == bb[6][0]
             && (bb[3][4] & 0xf) == 0 && (bb[5][4] & 0xf) == 0) {
-        //static char * temp_states[4] = {"stable", "increasing", "decreasing", "invalid"};
+        //static uint8_t const *const temp_states[4] = {"stable", "increasing", "decreasing", "invalid"};
         temp_raw = (int16_t)((reverse8(b[1]) & 0xf0) | (reverse8(b[2]) << 8)); // sign-extend
         temp_c   = (temp_raw >> 4) * 0.1f;
         humidity = bcd_decode8(reverse8(b[3]));
@@ -196,19 +196,19 @@ static int alectov1_callback(r_device *decoder, bitbuffer_t *bitbuffer)
                 "id",            "House Code",  DATA_INT,    sensor_id,
                 "channel",       "Channel",     DATA_INT,    channel,
                 "battery_ok",    "Battery",     DATA_INT,    !battery_low,
-                "temperature_C", "Temperature", DATA_FORMAT, "%.02f C", DATA_DOUBLE, temp_c,
+                "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
                 "humidity",      "Humidity",    DATA_FORMAT, "%u %%",   DATA_INT, humidity,
                 "mic",           "Integrity",   DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 1, 0, startPulses, package_type);
         return 1;
     }
 
     return DECODE_FAIL_SANITY;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

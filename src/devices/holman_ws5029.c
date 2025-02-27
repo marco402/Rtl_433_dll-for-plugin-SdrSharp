@@ -11,7 +11,7 @@
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
  */
-/** @fn int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 AOK Electronic Limited weather station.
 
 Known Rebrand compatible with:
@@ -87,28 +87,26 @@ $ rtl_433 -f 917M -X 'name=AOK,modulation=FSK_PCM,short=100,long=100,preamble={4
 
 #include "decoder.h"
 
-static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    int const wind_dir_degr[] = {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 315, 338};
+    int32_t const wind_dir_degr[] = {0, 23, 45, 68, 90, 113, 135, 158, 180, 203, 225, 248, 270, 293, 315, 338};
     uint8_t const preamble[] = {0xAA, 0xAA, 0xAA, 0x98, 0xF3, 0xA5};
 
     data_t *data;
     uint8_t b[18];
 
     if (bitbuffer->num_rows != 1) {
-        if (decoder->verbose) {
-            decoder_logf(decoder, 1, __func__, "Wrong number of rows (%d)", bitbuffer->num_rows);
-        }
+        decoder_logf(decoder, 1, __func__, "Wrong number of rows (%d)", bitbuffer->num_rows);
         return DECODE_ABORT_EARLY;
     }
 
-    unsigned bits = bitbuffer->bits_per_row[0];
+    uint32_t bits = bitbuffer->bits_per_row[0];
 
     if (bits < 192 ) {                 // too small
         return DECODE_ABORT_LENGTH;
     }
 
-    unsigned pos = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof (preamble) * 8);
+    uint32_t pos = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof (preamble) * 8);
 
     if (pos >= bits) {
         return DECODE_ABORT_EARLY;
@@ -123,20 +121,20 @@ static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     uint8_t chk_digest = b[12];
     uint8_t chk_calc = xor_bytes(b, 12);
     // reverse Galois algorithm then (gen = 0x00, key = 0x31) PR #2419
-    int chk_expected = lfsr_digest8_reflect(&chk_calc, 1, 0x00, 0x31);
+    int32_t chk_expected = lfsr_digest8_reflect(&chk_calc, 1, 0x00, 0x31);
 
     if (chk_expected != chk_digest) {
         return DECODE_FAIL_MIC;
     }
 
-    int device_id     = (b[0] << 8) | b[1];
-    int temp_raw      = (int16_t)((b[2] << 8) | (b[3] & 0xf0)); // uses sign-extend
+    int32_t device_id     = (b[0] << 8) | b[1];
+    int32_t temp_raw      = (int16_t)((b[2] << 8) | (b[3] & 0xf0)); // uses sign-extend
     float temp_c      = (temp_raw >> 4) * 0.1f;
-    int humidity      = ((b[3] & 0x0f) << 4) | ((b[4] & 0xf0) >> 4);
-    int rain_raw      = ((b[4] & 0x0f) << 8) | b[5];
+    int32_t humidity      = ((b[3] & 0x0f) << 4) | ((b[4] & 0xf0) >> 4);
+    int32_t rain_raw      = ((b[4] & 0x0f) << 8) | b[5];
     float speed_kmh   = (float)b[6];
-    int direction_deg = wind_dir_degr[(b[7] & 0xf0) >> 4];
-    int light_lux    = ((b[8] & 0x7F) << 10) | (b[9] << 2) | ((b[10] & 0xC0) >> 6);
+    int32_t direction_deg = wind_dir_degr[(b[7] & 0xf0) >> 4];
+    int32_t light_lux    = ((b[8] & 0x7F) << 10) | (b[9] << 2) | ((b[10] & 0xC0) >> 6);
 
     if (bits < 200 && light_lux == 0) {                 // model without UV LUX
         float rain_mm     = rain_raw * 0.79f;
@@ -154,14 +152,14 @@ static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
     else if (bits < 221) {                         // model with UV LUX
         float rain_mm    = rain_raw * 1.0f;
-        int uv_index     = ((b[7] & 0x07) << 1) | ((b[8] & 0x80) >> 7);
-        int battery_low  = ((b[10] & 0x30) >> 4);
-        int counter      = ((b[10] & 0x0f) << 8 | b[11]);
+        int32_t uv_index     = ((b[7] & 0x07) << 1) | ((b[8] & 0x80) >> 7);
+        int32_t battery_low  = ((b[10] & 0x30) >> 4);
+        int32_t counter      = ((b[10] & 0x0f) << 8 | b[11]);
         /* clang-format off */
         data = data_make(
                 "model",            "",                 DATA_STRING, "AOK-5056",
@@ -179,13 +177,13 @@ static int holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
         return 1;
     }
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",
@@ -211,7 +209,7 @@ r_device const holman_ws5029pcm = {
         .fields      = output_fields,
 };
 
-/** @fn int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 Holman Industries WS5029 weather station using PWM.
 
 Package format: (invert)
@@ -239,42 +237,45 @@ $ rtl_433 -f 433.92M -X "n=Holman-WS5029-PWM,m=FSK_PWM,s=488,l=976,g=2000,r=6000
 
 */
 
-static uint8_t xor_shift_bytes(uint8_t const message[], unsigned num_bytes, uint8_t shift_up)   // see #2419 for more details about the xor_shift_bytes , used by PWM device
+static uint8_t xor_shift_bytes(uint8_t const message[], uint32_t num_bytes, uint8_t shift_up)   // see #2419 for more details about the xor_shift_bytes , used by PWM device
 {
     uint8_t result0 = 0;
-    for (unsigned i = 0; i < num_bytes; i += 2) {
+    for (uint32_t i = 0; i < num_bytes; i += 2) {
         result0 ^= message[i];
     }
     uint8_t result1 = 0;
-    for (unsigned i = 1; i < num_bytes; i += 2) {
+    for (uint32_t i = 1; i < num_bytes; i += 2) {
         result1 ^= message[i];
     }
     uint8_t resultx = 0;
-    for (unsigned j = 0; j < 7; ++j) {
+    for (uint32_t j = 0; j < 7; ++j) {
         if (shift_up & (1 << j))
             resultx ^= result0 << (j + 1);
     }
     return result0 ^ result1 ^ resultx;
 }
 
-static int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {0x55, 0x5a, 0x67}; // Preamble/Device inverted
 
     data_t *data;
     uint8_t *b;
     uint16_t temp_raw;
-    int id, humidity, wind_dir, battery_low;
+    int32_t id, humidity, wind_dir, battery_low;
     float temp_c, rain_mm, speed_kmh;
 
     // Data is inverted, but all these checks can be performed
     // and validated prior to inverting the buffer. Invert
     // only if we have a valid row to process.
-    int r = bitbuffer_find_repeated_row(bitbuffer, 3, 96);
-    if (r < 0 || bitbuffer->bits_per_row[r] != 96)
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 96);
+    if (row < 0 || bitbuffer->bits_per_row[row] != 96)
         return DECODE_ABORT_LENGTH;
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     // Test for preamble / device code
     if (memcmp(b, preamble, 3))
@@ -285,7 +286,7 @@ static int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 
     uint8_t chk_digest = b[10];
     // xor_shift_bytes , see PR #2419
-    int chk_calc = xor_shift_bytes(b, 10, 0x18);
+    int32_t chk_calc = xor_shift_bytes(b, 10, 0x18);
     //fprintf(stderr, "%s: 11th byte %02x chk_calc %02x \n", __func__, chk_digest, chk_calc );
 
     if (chk_calc != chk_digest) {
@@ -295,7 +296,7 @@ static int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     id          = b[3];                                                // changes on each power cycle
     battery_low = (b[4] & 0x80);                                       // High bit is low battery indicator
     temp_raw    = (int16_t)(((b[4] & 0x0f) << 12) | (b[5] << 4));      // uses sign-extend
-    temp_c      = (temp_raw >> 4) * 0.1f;                              // Convert sign extended int to float
+    temp_c      = (temp_raw >> 4) * 0.1f;                              // Convert sign extended int32_t to float
     humidity    = b[6];                                                // Simple 0-100 RH
     rain_mm     = ((b[7] << 4) + (b[8] >> 4)) * 0.79f;                 // Multiplier tested empirically over 618 pulses
     speed_kmh   = (float)(((b[8] & 0xF) << 4) + (b[9] >> 4));          // In discrete kph
@@ -310,12 +311,12 @@ static int holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "humidity",         "Humidity",         DATA_FORMAT, "%u %%",       DATA_INT,    humidity,
             "rain_mm",          "Total rainfall",   DATA_FORMAT, "%.1f mm",    DATA_DOUBLE, rain_mm,
             "wind_avg_km_h",    "Wind avg speed",   DATA_FORMAT, "%.1f km/h",  DATA_DOUBLE, speed_kmh,
-            "wind_dir_deg",     "Wind Direction",   DATA_INT,    (int)(wind_dir * 22.5),
+            "wind_dir_deg",     "Wind Direction",   DATA_INT,    (int32_t)(wind_dir * 22.5),
             "mic",              "Integrity",        DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 

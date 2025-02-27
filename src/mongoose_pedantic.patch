@@ -9,7 +9,7 @@ index 03cc04e..b885270 100644
  #ifdef MG_MODULE_LINES
  #line 1 "mongoose/src/mg_common.h"
  #endif
-@@ -6750,3 +6753,5 @@ struct mg_iface *mg_socks_mk_iface(struct mg_mgr *, const char *proxy_addr);
+@@ -6750,3 +6753,5 @@ struct mg_iface *mg_socks_mk_iface(struct mg_mgr *, const uint8_t *proxy_addr);
  
  #endif
  #endif
@@ -19,7 +19,7 @@ diff --git a/include/mongoose.h b/include/mongoose.h
 index 316f5f9..03cc04e 100644
 --- a/include/mongoose.h
 +++ b/include/mongoose.h
-@@ -352,10 +352,8 @@ unsigned int sleep(unsigned int seconds);
+@@ -352,10 +352,8 @@ uint32_t sleep(uint32_t seconds);
  /* https://stackoverflow.com/questions/16647819/timegm-cross-platform */
  #define timegm _mkgmtime
  
@@ -36,7 +36,7 @@ diff --git a/src/mongoose.c b/src/mongoose.c
 index fe0df63..160df87 100644
 --- a/src/mongoose.c
 +++ b/src/mongoose.c
-@@ -4330,19 +4330,27 @@ int mg_socketpair(sock_t sp[2], int sock_type) {
+@@ -4330,19 +4330,27 @@ int32_t mg_socketpair(sock_t sp[2], int32_t sock_type) {
    sa2 = sa;
  
    if ((sock = socket(AF_INET, sock_type, 0)) == INVALID_SOCKET) {
@@ -64,25 +64,25 @@ index fe0df63..160df87 100644
    } else {
      mg_set_close_on_exec(sp[0]);
      mg_set_close_on_exec(sp[1]);
-@@ -7271,7 +7279,8 @@ static void mg_http_construct_etag(char *buf, size_t buf_len,
+@@ -7271,7 +7279,8 @@ static void mg_http_construct_etag(uint8_t *buf, size_t buf_len,
  
  #ifndef WINCE
- static void mg_gmt_time_string(char *buf, size_t buf_len, time_t *t) {
+ static void mg_gmt_time_string(uint8_t *buf, size_t buf_len, time_t *t) {
 -  strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(t));
 +  struct tm tm;
 +  strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", gmtime_r(t, &tm));
  }
  #else
  /* Look wince_lib.c for WindowsCE implementation */
-@@ -7886,6 +7895,7 @@ static void mg_print_dir_entry(struct mg_connection *nc, const char *file_name,
-   int is_dir = S_ISDIR(stp->st_mode);
-   const char *slash = is_dir ? "/" : "";
+@@ -7886,6 +7895,7 @@ static void mg_print_dir_entry(struct mg_connection *nc, const uint8_t *file_name,
+   int32_t is_dir = S_ISDIR(stp->st_mode);
+   const uint8_t *slash = is_dir ? "/" : "";
    struct mg_str href;
 +  struct tm tm;
  
    if (is_dir) {
      snprintf(size, sizeof(size), "%s", "[DIRECTORY]");
-@@ -7904,7 +7914,7 @@ static void mg_print_dir_entry(struct mg_connection *nc, const char *file_name,
+@@ -7904,7 +7914,7 @@ static void mg_print_dir_entry(struct mg_connection *nc, const uint8_t *file_name,
        snprintf(size, sizeof(size), "%.1fG", (double) fsize / 1073741824);
      }
    }

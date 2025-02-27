@@ -11,14 +11,14 @@
 
 #include "decoder.h"
 
-/** @fn int enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 EnOcean Radio Protocol 1.
 
 - 868.3Mhz ASK, 125kbps, inverted, 8/12 coding
 - Spec: https://www.enocean.com/erp1/
 */
 
-static int decode_8of12(uint8_t const *b, int pos, int end, bitbuffer_t *out)
+static int32_t decode_8of12(uint8_t const *b, int32_t pos, int32_t end, bitbuffer_t *out)
 {
     if (pos + 12 > end)
         return DECODE_ABORT_LENGTH;
@@ -45,38 +45,40 @@ static int decode_8of12(uint8_t const *b, int pos, int end, bitbuffer_t *out)
     return (bitrow_get_bit(b, pos + 10) << 1) | bitrow_get_bit(b, pos + 11);
 }
 
-static int enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
+    uint32_t bit_offset = 0;
     if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
     bitbuffer_invert(bitbuffer);
 
     uint8_t preamble[2] = {0x55, 0x20};
-    unsigned start      = bitbuffer_search(bitbuffer, 0, 0, preamble, 11);
-    if (start >= bitbuffer->bits_per_row[0])
+    bit_offset      = bitbuffer_search(bitbuffer, row, 0, preamble, 11);
+    if (bit_offset >= bitbuffer->bits_per_row[row])
         return DECODE_FAIL_SANITY;
 
-    unsigned pos = start + 11;
-    unsigned len = bitbuffer->bits_per_row[0] - start;
-    unsigned end = start + len;
+    uint32_t pos = bit_offset + 11;
+    uint32_t len = bitbuffer->bits_per_row[row] - bit_offset;
+    uint32_t end = bit_offset + len;
 
     bitbuffer_t bytes = {0};
     uint8_t more      = 0x01;
     do {
-        more = decode_8of12(bitbuffer->bb[0], pos, end, &bytes);
+        more = decode_8of12(bitbuffer->bb[row], pos, end, &bytes);
         pos += 12;
     } while (pos < end && more == 0x01);
 
-    if (bytes.bits_per_row[0] < 16)
+    if (bytes.bits_per_row[row] < 16)
         return DECODE_ABORT_LENGTH;
 
-    uint8_t chk = crc8(bytes.bb[0], (bytes.bits_per_row[0] - 1) / 8, 0x07, 0x00);
-    if (chk != bitrow_get_byte(bytes.bb[0], bytes.bits_per_row[0] - 8))
+    uint8_t chk = crc8(bytes.bb[row], (bytes.bits_per_row[row] - 1) / 8, 0x07, 0x00);
+    if (chk != bitrow_get_byte(bytes.bb[0], bytes.bits_per_row[row] - 8))
         return DECODE_FAIL_MIC;
 
-    char tstr[256];
-    bitrow_snprint(bytes.bb[0], bytes.bits_per_row[0], tstr, sizeof(tstr));
+    uint8_t tstr[256];
+    bitrow_snprint(bytes.bb[row], bytes.bits_per_row[row], tstr, sizeof(tstr));
 
     /* clang-format off */
     data_t *data = data_make(
@@ -85,12 +87,14 @@ static int enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",      "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "telegram",
         "mic",

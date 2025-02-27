@@ -50,38 +50,39 @@ LTV-WR1
 
 #include "decoder.h"
 
-static int lacrosse_wr1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t lacrosse_wr1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xd2, 0xaa, 0x2d, 0xd4};
 
     data_t *data;
     uint8_t b[11];
     uint32_t id;
-    int flags, seq, offset, chk;
-    int raw_wind, direction, raw_rain1, raw_rain2;
+    int32_t flags, seq, chk;
+    uint32_t bit_offset = 0;
+    int32_t raw_wind, direction, raw_rain1, raw_rain2;
     float speed_kmh;
     // float rain_mm;
 
-    if (bitbuffer->bits_per_row[0] < 120) {
-        decoder_logf(decoder, 1, __func__, "Packet too short: %d bits", bitbuffer->bits_per_row[0]);
+    if (bitbuffer->bits_per_row[row] < 120) {
+        decoder_logf(decoder, 1, __func__, "Packet too short: %d bits", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
-    } else if (bitbuffer->bits_per_row[0] > 156) {
-        decoder_logf(decoder, 1, __func__, "Packet too long: %d bits", bitbuffer->bits_per_row[0]);
+    } else if (bitbuffer->bits_per_row[row] > 156) {
+        decoder_logf(decoder, 1, __func__, "Packet too long: %d bits", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH;
     } else {
-        decoder_logf(decoder, 1, __func__, "packet length: %d", bitbuffer->bits_per_row[0]);
+        decoder_logf(decoder, 1, __func__, "packet length: %d", bitbuffer->bits_per_row[row]);
     }
 
-    offset = bitbuffer_search(bitbuffer, 0, 0,
-            preamble_pattern, sizeof(preamble_pattern) * 8);
+    bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, sizeof(preamble_pattern) * 8);
 
-    if (offset >= bitbuffer->bits_per_row[0]) {
+    if (bit_offset >= bitbuffer->bits_per_row[row]) {
         decoder_log(decoder, 1, __func__, "Sync word not found");
         return DECODE_ABORT_EARLY;
     }
 
-    offset += sizeof(preamble_pattern) * 8;
-    bitbuffer_extract_bytes(bitbuffer, 0, offset, b, 11 * 8);
+    bit_offset += sizeof(preamble_pattern) * 8;
+    bitbuffer_extract_bytes(bitbuffer, row, bit_offset, b, 11 * 8);
 
     chk = crc8(b, 11, 0x31, 0x00);
     if (chk) {
@@ -118,11 +119,11 @@ static int lacrosse_wr1_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "seq",

@@ -30,7 +30,7 @@ X = unknown, possibly channel
 #define MYDEVICE_BITLEN      16
 #define MYDEVICE_MINREPEATS  3
 
-char const *button_map[] = {
+uint8_t const *button_map[] = {
 /*  0 */ "Undefined",
 /*  1 */ "Undefined",
 /*  2 */ "Swap",
@@ -97,22 +97,23 @@ char const *button_map[] = {
 /* 63 */ "Info"
 };
 
-static int dish_remote_6_3_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t dish_remote_6_3_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
-    int r; // a row index
     uint8_t *b; // bits of a row
     uint8_t button;
-    char const *button_string;
+    uint8_t const *button_string;
 
     decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "");
-
-    r = bitbuffer_find_repeated_row(bitbuffer, MYDEVICE_MINREPEATS, MYDEVICE_BITLEN);
-    if (r < 0 || bitbuffer->bits_per_row[r] > MYDEVICE_BITLEN) {
+	uint32_t nbRepeat = MYDEVICE_MINREPEATS;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, MYDEVICE_BITLEN);
+    if (row < 0 || bitbuffer->bits_per_row[row] > MYDEVICE_BITLEN) {
         return DECODE_ABORT_LENGTH;
     }
 
-    b = bitbuffer->bb[r];
+    b = bitbuffer->bb[row];
 
     /* Check fixed bits to prevent misreads */
     if ((b[0] & 0x03) != 0x02 || (b[1] & 0xe8) != 0xa8) {
@@ -128,12 +129,13 @@ static int dish_remote_6_3_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "button",   "",     DATA_STRING, button_string,
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "button",
         NULL,

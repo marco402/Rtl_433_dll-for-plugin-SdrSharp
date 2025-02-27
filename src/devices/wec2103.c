@@ -41,31 +41,31 @@ Example datagram:
 - Example: 82.4F->824->1724->0x6bc
 */
 
-static int wec2103_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t wec2103_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     if (bitbuffer->num_rows != 6 || bitbuffer->bits_per_row[2] != 42) {
         return DECODE_ABORT_LENGTH;
     }
-
+	int32_t row = 3;
     uint8_t b[5];
-    bitbuffer_extract_bytes(bitbuffer, 3, 0, b, 40);
+    bitbuffer_extract_bytes(bitbuffer, row, 0, b, 40);
 
-    int crc_received = b[1] >> 4;
+    int32_t crc_received = b[1] >> 4;
     b[1] = (b[1] & 0x0F) | ((b[4] & 0x0f) << 4);
-    int crc_calculated = crc4(b, sizeof(b) - 1, 3, 0) ^ (b[4] >> 4);
+    int32_t crc_calculated = crc4(b, sizeof(b) - 1, 3, 0) ^ (b[4] >> 4);
     if (crc_calculated != crc_received) {
         decoder_logf(decoder, 0, __func__, "CRC check failed (0x%X != 0x%X)", crc_calculated, crc_received);
         return DECODE_FAIL_MIC;
     }
 
-    int temp_raw    = (b[2] << 4) | ((b[3] & 0xf0) >> 4);
-    int device_id   = b[0];
-    int channel     = b[4] & 0x0f;
-    int flags       = b[1] & 0xf;
+    int32_t temp_raw    = (b[2] << 4) | ((b[3] & 0xf0) >> 4);
+    int32_t device_id   = b[0];
+    int32_t channel     = b[4] & 0x0f;
+    int32_t flags       = b[1] & 0xf;
     float temp_f    = (temp_raw - 900) * 0.1f;
-    int humidity    = ((b[3] & 0x0f) * 10) + ((b[4] & 0xf0) >> 4);
-    int button      = (b[1] & 0x08) >> 3;
-    int battery_low = (b[1] & 0x04) >> 3;
+    int32_t humidity    = ((b[3] & 0x0f) * 10) + ((b[4] & 0xf0) >> 4);
+    int32_t button      = (b[1] & 0x08) >> 3;
+    int32_t battery_low = (b[1] & 0x04) >> 3;
 
     /* clang-format off */
     data_t *data = data_make(
@@ -74,18 +74,18 @@ static int wec2103_decode(r_device *decoder, bitbuffer_t *bitbuffer)
             "channel",          "Channel",      DATA_INT,    channel,
             "battery_ok",       "Battery",      DATA_INT,    !battery_low,
             "button",           "Button",       DATA_INT,    button,
-            "temperature_F",    "Temperature",  DATA_FORMAT, "%.02f F", DATA_DOUBLE, temp_f,
+            "temperature_F",    "Temperature",  DATA_FORMAT, "%.2f F", DATA_DOUBLE, temp_f,
             "humidity",         "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "flags",            "Flags",        DATA_INT,    flags,
             "mic",              "Integrity",    DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

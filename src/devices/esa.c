@@ -32,7 +32,7 @@ static uint8_t decrypt_esa(uint8_t *b)
     b[pos++] ^= 0xff;
 
     crc -= (b[pos] << 8) | b[pos + 1];
-    return crc;
+    return (uint8_t)crc;
 }
 
 /**
@@ -40,20 +40,21 @@ ELV Energy Counter ESA 1000/2000.
 
 @todo Documentation needed.
 */
-static int esa_cost_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t esa_cost_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+    int32_t row = 0;
     data_t *data;
     uint8_t b[MAXMSG];
 
-    unsigned is_retry, sequence_id, deviceid, impulses;
-    unsigned impulse_constant, impulses_val, impulses_total;
+    uint32_t is_retry, sequence_id, deviceid, impulses;
+    uint32_t impulse_constant, impulses_val, impulses_total;
     float energy_total_val, energy_impulse_val;
 
-    if (bitbuffer->bits_per_row[0] != 160 || bitbuffer->num_rows != 1)
+    if (bitbuffer->bits_per_row[row] != 160 || bitbuffer->num_rows != 1)
         return DECODE_ABORT_LENGTH;
 
     // remove first two bytes?
-    bitbuffer_extract_bytes(bitbuffer, 0, 16, b, 160 - 16);
+    bitbuffer_extract_bytes(bitbuffer, row, 16, b, 160 - 16);
 
     if (decrypt_esa(b))
         return DECODE_FAIL_MIC; // checksum fail
@@ -63,7 +64,7 @@ static int esa_cost_callback(r_device *decoder, bitbuffer_t *bitbuffer)
     deviceid           = (b[1]);
     impulses           = (b[3] << 8) | b[4];
     impulse_constant   = ((b[14] << 8) | b[15]) ^ b[1];
-    impulses_total     = ((unsigned)b[5] << 24) | (b[6] << 16) | (b[7] << 8) | b[8];
+    impulses_total     = ((uint32_t)b[5] << 24) | (b[6] << 16) | (b[7] << 8) | b[8];
     impulses_val       = (b[9] << 8) | b[10];
     energy_total_val   = 1.0f * impulses_total / impulse_constant;
     energy_impulse_val = 1.0f * impulses_val / impulse_constant;
@@ -82,12 +83,13 @@ static int esa_cost_callback(r_device *decoder, bitbuffer_t *bitbuffer)
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
+    uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "impulses",

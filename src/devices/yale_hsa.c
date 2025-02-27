@@ -60,23 +60,23 @@ Get Raw data with:
 
 */
 
-static int yale_hsa_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t yale_hsa_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     // Require at least 6 rows
     if (bitbuffer->num_rows < 6)
         return DECODE_ABORT_EARLY;
 
     uint8_t msg[6] = {0};
-    for (int row = 0; row < bitbuffer->num_rows; ++row) {
+    for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         // Find one full message
-        int ok = 0;
-        for (int i = 0; i < 6; ++i, ++row) {
+        int32_t ok = 0;
+        for (int32_t i = 0; i < 6; ++i, ++row) {
             if (bitbuffer->bits_per_row[row] != 13)
                 break; // wrong length
             uint8_t *b = bitbuffer->bb[row];
             if ((b[0] & 0xf0) != 0x50)
                 break; // wrong sync
-            int eom = (b[0] & 0x08);
+            int32_t eom = (b[0] & 0x08);
             if ((i < 5 && eom) || (i == 5 && !eom))
                 break; // wrong end-of-message
             bitbuffer_extract_bytes(bitbuffer, row, 5, &msg[i], 8);
@@ -87,22 +87,22 @@ static int yale_hsa_decode(r_device *decoder, bitbuffer_t *bitbuffer)
         if (!ok) {
             for (; row < bitbuffer->num_rows; ++row) {
                 uint8_t *b = bitbuffer->bb[row];
-                int eom    = (b[0] & 0x08);
+                int32_t eom    = (b[0] & 0x08);
                 if (eom)
                     break; // end-of-message
             }
             continue;
         }
         // Message found
-        int chk = add_bytes(msg, 6);
+        int32_t chk = add_bytes(msg, 6);
         if (chk & 0xff)
             continue; // bad checksum
 
         // Get the data
-        int id    = (msg[0] << 8) | (msg[1]);
-        int stype = (msg[2]);
-        int state = (msg[3]);
-        int event = (msg[4]);
+        int32_t id    = (msg[0] << 8) | (msg[1]);
+        int32_t stype = (msg[2]);
+        int32_t state = (msg[3]);
+        int32_t event = (msg[4]);
 
         /* clang-format off */
         data_t *data = data_make(
@@ -114,14 +114,15 @@ static int yale_hsa_decode(r_device *decoder, bitbuffer_t *bitbuffer)
                 "mic",          "Integrity",    DATA_STRING, "CHECKSUM",
                 NULL);
         /* clang-format on */
+        uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data);
+        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
         return 1;
     }
     return 0;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "stype",

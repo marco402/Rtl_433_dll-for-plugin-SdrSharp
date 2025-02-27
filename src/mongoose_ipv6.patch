@@ -11,10 +11,10 @@ diff --git a/src/mg_net_if_socket.c b/src/mg_net_if_socket.c
 index 607e2b53..51c0788f 100644
 --- a/src/mg_net_if_socket.c
 +++ b/src/mg_net_if_socket.c
-@@ -37,7 +37,7 @@ static int mg_is_error(void) {
+@@ -37,7 +37,7 @@ static int32_t mg_is_error(void) {
  void mg_socket_if_connect_tcp(struct mg_connection *nc,
                                const union socket_address *sa) {
-   int rc, proto = 0;
+   int32_t rc, proto = 0;
 -  nc->sock = socket(AF_INET, SOCK_STREAM, proto);
 +  nc->sock = socket(sa->sa.sa_family, SOCK_STREAM, proto);
    if (nc->sock == INVALID_SOCKET) {

@@ -10,7 +10,7 @@
 #ifdef HAVE_win_alarm /* rest of file */
 
 static HANDLE alarm_hnd = INVALID_HANDLE_VALUE;
-static int    alarm_countdown;
+static int32_t    alarm_countdown;
 
 /**
  * The timer-callback that performs the countdown.
@@ -65,7 +65,7 @@ static void alarm_create(void)
  *  @param[in] seconds  the number of seconds to countdown before a `raise(SIGALRM)` is done.<br>
  *                      if `seconds == 0` the `alarm_handler()` will do nothing.
  */
-int win_alarm(unsigned seconds)
+int32_t win_alarm(uint32_t seconds)
 {
   alarm_countdown = seconds;
   alarm_create();
@@ -76,8 +76,8 @@ int win_alarm(unsigned seconds)
 /*
  * Just so this compilation unit isn't empty.
  */
-int win_alarm(unsigned seconds);
-int win_alarm(unsigned seconds)
+int32_t win_alarm(uint32_t seconds);
+int32_t win_alarm(uint32_t seconds)
 {
    (void) seconds;
    return (0);

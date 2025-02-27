@@ -17,6 +17,6 @@
 struct mg_mgr;
 struct r_cfg;
 
-struct data_output *data_output_http_create(struct mg_mgr *mgr, const char *host, const char *port, struct r_cfg *cfg);
+struct data_output *data_output_http_create(struct mg_mgr *mgr, const uint8_t *host, const uint8_t *port, struct r_cfg *cfg);
 
 #endif /* INCLUDE_HTTP_SERVER_H_ */

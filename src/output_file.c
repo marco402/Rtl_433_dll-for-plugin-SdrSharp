@@ -23,12 +23,12 @@ History : V1.00 2021-04-01 - First release
 #include "r_util.h"
 #include "logger.h"
 #include "fatal.h"
-
+#include "decoder_util.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
+#include "r_device.h"
 /* JSON printer */
 
 typedef struct {
@@ -36,12 +36,12 @@ typedef struct {
     FILE *file;
 } data_output_json_t;
 
-static void R_API_CALLCONV print_json_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV print_json_array(data_output_t *output, data_array_t *array, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_json_t *json = (data_output_json_t *)output;
 
     fprintf(json->file, "[");
-    for (int c = 0; c < array->num_values; ++c) {
+    for (int32_t c = 0; c < array->num_values; ++c) {
         if (c)
             fprintf(json->file, ", ");
         print_array_value(output, array, format, c);
@@ -49,7 +49,7 @@ static void R_API_CALLCONV print_json_array(data_output_t *output, data_array_t 
     fprintf(json->file, "]");
 }
 
-static void R_API_CALLCONV print_json_data(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV print_json_data(data_output_t *output, data_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_json_t *json = (data_output_json_t *)output;
@@ -59,16 +59,16 @@ static void R_API_CALLCONV print_json_data(data_output_t *output, data_t *data, 
     while (data) {
         if (separator)
             fprintf(json->file, ", ");
-        output->print_string(output, data->key, NULL);
+        output->print_string(output, data->key, NULL, NULL);
         fprintf(json->file, " : ");
         print_value(output, data->type, data->value, data->format);
         separator = true;
-        data = data->next;
+        data      = data->next;
     }
     fputc('}', json->file);
 }
 
-static void R_API_CALLCONV print_json_string(data_output_t *output, const char *str, char const *format)
+static void R_API_CALLCONV print_json_string(data_output_t *output, const uint8_t *str, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_json_t *json = (data_output_json_t *)output;
@@ -102,7 +102,7 @@ static void R_API_CALLCONV print_json_string(data_output_t *output, const char *
     fprintf(json->file, "\"");
 }
 
-static void R_API_CALLCONV print_json_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV print_json_double(data_output_t *output, double data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_json_t *json = (data_output_json_t *)output;
@@ -110,7 +110,7 @@ static void R_API_CALLCONV print_json_double(data_output_t *output, double data,
     fprintf(json->file, "%.3f", data);
 }
 
-static void R_API_CALLCONV print_json_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV print_json_int(data_output_t *output, int32_t data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_json_t *json = (data_output_json_t *)output;
@@ -118,12 +118,12 @@ static void R_API_CALLCONV print_json_int(data_output_t *output, int data, char 
     fprintf(json->file, "%d", data);
 }
 
-static void R_API_CALLCONV data_output_json_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_json_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_json_t *json = (data_output_json_t *)output;
 
     if (json && json->file) {
-        json->output.print_data(output, data, NULL);
+        json->output.print_data(output, data, NULL, NULL);
         fputc('\n', json->file);
         fflush(json->file);
     }
@@ -137,7 +137,7 @@ static void R_API_CALLCONV data_output_json_free(data_output_t *output)
     free(output);
 }
 
-struct data_output *data_output_json_create(int log_level, FILE *file)
+struct data_output *data_output_json_create(int32_t log_level, FILE *file)
 {
     data_output_json_t *json = calloc(1, sizeof(data_output_json_t));
     if (!json) {
@@ -160,7 +160,7 @@ struct data_output *data_output_json_create(int log_level, FILE *file)
 
 /* Pretty Key-Value printer */
 
-static int kv_color_for_key(char const *key)
+static int32_t kv_color_for_key(uint8_t const *key)
 {
     if (!key || !*key)
         return TERM_COLOR_RESET;
@@ -177,7 +177,7 @@ static int kv_color_for_key(char const *key)
     return TERM_COLOR_GREEN;
 }
 
-static int kv_break_before_key(char const *key)
+static int32_t kv_break_before_key(uint8_t const *key)
 {
     if (!key || !*key)
         return 0;
@@ -186,7 +186,7 @@ static int kv_break_before_key(char const *key)
     return 0;
 }
 
-static int kv_break_after_key(char const *key)
+static int32_t kv_break_after_key(uint8_t const *key)
 {
     if (!key || !*key)
         return 0;
@@ -199,30 +199,28 @@ typedef struct {
     struct data_output output;
     FILE *file;
     void *term;
-    int color;
-    int ring_bell;
-    int term_width;
-    int data_recursion;
-    int column;
+    int32_t color;
+    int32_t ring_bell;
+    int32_t term_width;
+    int32_t data_recursion;
+    int32_t column;
 } data_output_kv_t;
 
 #define KV_SEP "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ "
 
-static void R_API_CALLCONV print_kv_data(data_output_t *output, data_t *data, char const *format)
+	static void R_API_CALLCONV print_kv_data(data_output_t *output, data_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_kv_t *kv = (data_output_kv_t *)output;
-
-    int color = kv->color;
-    int ring_bell = kv->ring_bell;
-    int is_log = 0;
-
+    int32_t color     = kv->color;
+    int32_t ring_bell = kv->ring_bell;
+    int32_t is_log    = 0;
     // top-level: update width and print separator
     if (!kv->data_recursion) {
         // collect well-known top level keys
         data_t *data_src = NULL;
-        data_t *data_lvl  = NULL;
-        data_t *data_msg  = NULL;
+        data_t *data_lvl = NULL;
+        data_t *data_msg = NULL;
         for (data_t *d = data; d; d = d->next) {
             if (!strcmp(d->key, "src"))
                 data_src = d;
@@ -232,177 +230,77 @@ static void R_API_CALLCONV print_kv_data(data_output_t *output, data_t *data, ch
                 data_msg = d;
         }
         is_log = data_src && data_lvl && data_msg;
-
-        kv->term_width = term_get_columns(kv->term); // update current term width
-        if (!is_log) {
-        if (color)
-            term_set_fg(kv->term, TERM_COLOR_BLACK);
-        if (ring_bell)
-            term_ring_bell(kv->term);
-#ifdef DLL_RTL_433
-        //start of message
-        fprintf(kv->file, "%s\n", "@@@@@@@@@@"); //output->file
-#else
-        char sep[] = KV_SEP KV_SEP KV_SEP KV_SEP;
-        if (kv->term_width < (int)sizeof(sep))
-            sep[kv->term_width > 0 ? kv->term_width - 1 : 40] = '\0';
-        fprintf(kv->file, "%s\n", sep);
-        if (color)
-            term_set_fg(kv->term, TERM_COLOR_RESET);
-#endif
-        }
-
-        // print special log format
-        if (is_log) {
-            int level = 0;
-            if (data_lvl->type == DATA_INT) {
-                level = data_lvl->value.v_int;
-            }
-            term_color_t src_bg = TERM_COLOR_RESET;
-            term_color_t src_fg = TERM_COLOR_RESET;
-            if (level == LOG_FATAL) {
-                src_bg = TERM_COLOR_BRIGHT_BLACK;
-                src_fg = TERM_COLOR_WHITE;
-            } else if (level == LOG_CRITICAL) {
-                src_bg = TERM_COLOR_BRIGHT_GREEN;
-                src_fg = TERM_COLOR_BLACK;
-            } else if (level == LOG_ERROR) {
-                src_bg = TERM_COLOR_BRIGHT_RED;
-                src_fg = TERM_COLOR_WHITE;
-            } else if (level == LOG_WARNING) {
-                src_bg = TERM_COLOR_BRIGHT_YELLOW;
-                src_fg = TERM_COLOR_BLACK;
-            } else if (level == LOG_NOTICE) {
-                src_bg = TERM_COLOR_BRIGHT_CYAN;
-                src_fg = TERM_COLOR_BLACK;
-            } else if (level == LOG_INFO) {
-                src_bg = TERM_COLOR_BRIGHT_BLUE;
-                src_fg = TERM_COLOR_WHITE;
-            } else if (level == LOG_DEBUG) {
-                src_bg = TERM_COLOR_BRIGHT_MAGENTA;
-                src_fg = TERM_COLOR_WHITE;
-            } else if (level == LOG_TRACE) {
-                src_bg = TERM_COLOR_BRIGHT_BLACK;
-                src_fg = TERM_COLOR_WHITE;
-            }
-            term_set_bg(kv->term, src_bg, src_bg); // hides the brackets
-            fprintf(kv->file, "[");
-            term_set_bg(kv->term, 0, src_fg);
-            print_value(output, data_src->type, data_src->value, data_src->format);
-            term_set_bg(kv->term, 0, src_bg); // hides the brackets
-            fprintf(kv->file, "]");
-            term_set_fg(kv->term, TERM_COLOR_RESET);
-            // fprintf(kv->file, " (");
-            // print_value(output, data_lvl->type, data_lvl->value, data_lvl->format);
-            // fprintf(kv->file, ") ");
-            fprintf(kv->file, " ");
-            print_value(output, data_msg->type, data_msg->value, data_msg->format);
-            // force break on next key
-            kv->column = kv->term_width;
-        }
     }
-    // nested data object: break before
-    else {
-        if (color)
-            term_set_fg(kv->term, TERM_COLOR_RESET);
-        fprintf(kv->file, "\n");
-        kv->column = 0;
-    }
-
-    ++kv->data_recursion;
+    uint16_t i    = 0;
+    uint8_t cara[LENLINES] = {""};
     for (; data; data = data->next) {
         // skip logging keys
-        if (is_log && (!strcmp(data->key, "time") || !strcmp(data->key, "src") || !strcmp(data->key, "lvl")
-                || !strcmp(data->key, "msg") || !strcmp(data->key, "num_rows"))) {
+        if (is_log && (!strcmp(data->key, "time") || !strcmp(data->key, "src") || !strcmp(data->key, "lvl") || !strcmp(data->key, "msg") || !strcmp(data->key, "num_rows"))) {
             continue;
         }
-
-        // break before some known keys
-        if (kv->column > 0 && kv_break_before_key(data->key)) {
-            fprintf(kv->file, "\n");
-            kv->column = 0;
-        }
-        // break if not enough width left
-        else if (kv->column >= kv->term_width - 26) {
-            fprintf(kv->file, "\n");
-            kv->column = 0;
-        }
-        // pad to next alignment if there is enough width left
-        else if (kv->column > 0 && kv->column < kv->term_width - 26) {
-            kv->column += fprintf(kv->file, "%*s", 25 - kv->column % 26, " ");
-        }
-
-        // print key
-        char *key = *data->pretty_key ? data->pretty_key : data->key;
-        kv->column += fprintf(kv->file, "%-10s: ", key);
-        // print value
-        if (color)
-            term_set_fg(kv->term, kv_color_for_key(data->key));
-        print_value(output, data->type, data->value, data->format);
-        if (color)
-            term_set_fg(kv->term, TERM_COLOR_RESET);
-
-        // force break after some known keys
-        if (kv->column > 0 && kv_break_after_key(data->key)) {
-            kv->column = kv->term_width; // force break;
-        }
+        uint8_t *key = *data->pretty_key ? data->pretty_key : data->key;
+		snprintf(cara, LENLINES, "%-10s: ", key);
+		strcpy((char *)ptrDeviceToPlugin->Key_Device[i], cara);
+		traitementValue(data->type, data->value, data->format, cara);
+		strcpy((char *)ptrDeviceToPlugin->Value_Device[i], cara);
+        i++;
+		if (i == nbLine)
+			//realloc to nbline+NBLINES
+		{
+			ptrDeviceToPlugin->Key_Device = (uint8_t **)realloc(ptrDeviceToPlugin->Key_Device, (nbLine+ NBLINES) * sizeof(intptr_t));
+			for (int32_t i = nbLine; i < nbLine+ NBLINES; i++)
+				ptrDeviceToPlugin->Key_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+			ptrDeviceToPlugin->Value_Device = (uint8_t **)realloc(ptrDeviceToPlugin->Value_Device, (nbLine+ NBLINES) * sizeof(intptr_t));
+			for (int32_t i = nbLine; i < nbLine+ NBLINES; i++)
+				ptrDeviceToPlugin->Value_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+			nbLine += NBLINES;
+		}
     }
+	{ 
+		ptrDeviceToPlugin->nbInfosDevice = i;
+		fctInfosToPlugin(ptrDeviceToPlugin);
+	}
     --kv->data_recursion;
-    //****************************
-#ifdef DLL_RTL_433
-    //end of message
-    fprintf(kv->file, "%s\n", "**********"); //output->file
-#endif
-    //****************************
-
-    // top-level: always end with newline
-    if (!kv->data_recursion && kv->column > 0) {
-        //fprintf(kv->file, "\n"); // data_output_print() already adds a newline
-        kv->column = 0;
-    }
 }
-
-static void R_API_CALLCONV print_kv_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV print_kv_array(data_output_t *output, data_array_t *array, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_kv_t *kv = (data_output_kv_t *)output;
 
     //fprintf(kv->file, "[ ");
-    for (int c = 0; c < array->num_values; ++c) {
+    for (int32_t c = 0; c < array->num_values; ++c) {
         if (c)
             fprintf(kv->file, ", ");
         print_array_value(output, array, format, c);
     }
     //fprintf(kv->file, " ]");
 }
-
-static void R_API_CALLCONV print_kv_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV print_kv_double(data_output_t *output, double data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_kv_t *kv = (data_output_kv_t *)output;
 
     kv->column += fprintf(kv->file, format ? format : "%.3f", data);
 }
-
-static void R_API_CALLCONV print_kv_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV print_kv_int(data_output_t *output, int32_t data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_kv_t *kv = (data_output_kv_t *)output;
 
     kv->column += fprintf(kv->file, format ? format : "%d", data);
 }
-
-static void R_API_CALLCONV print_kv_string(data_output_t *output, const char *data, char const *format)
+static void R_API_CALLCONV print_kv_string(data_output_t *output, const uint8_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_kv_t *kv = (data_output_kv_t *)output;
 
     kv->column += fprintf(kv->file, format ? format : "%s", data);
 }
-
-static void R_API_CALLCONV data_output_kv_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_kv_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
+	if (!ptrDeviceToPlugin)
+		return;
     data_output_kv_t *kv = (data_output_kv_t *)output;
 
     if (kv && kv->file) {
-        kv->output.print_data(output, data, NULL);
-        fputc('\n', kv->file);
+        kv->output.print_data(output, data, NULL,ptrDeviceToPlugin );
+        //fputc('\n', kv->file);--------->out to execute window
         fflush(kv->file);
     }
 }
@@ -419,7 +317,7 @@ static void R_API_CALLCONV data_output_kv_free(data_output_t *output)
 
     free(output);
 }
-struct data_output *data_output_kv_create(int log_level, FILE *file)
+struct data_output *data_output_kv_create(int32_t log_level, FILE *file)
 {
     data_output_kv_t *kv = calloc(1, sizeof(data_output_kv_t));
     if (!kv) {
@@ -437,8 +335,8 @@ struct data_output *data_output_kv_create(int log_level, FILE *file)
     kv->output.output_free  = data_output_kv_free;
     kv->file                = file;
 
-    kv->term = term_init(file);
-    kv->color = term_has_color(kv->term);
+ /*   kv->term  = term_init(file);
+    kv->color = term_has_color(kv->term);*/
 
     kv->ring_bell = 0; // TODO: enable if requested...
 
@@ -450,11 +348,11 @@ struct data_output *data_output_kv_create(int log_level, FILE *file)
 typedef struct {
     struct data_output output;
     FILE *file;
-    const char **fields;
-    const char *separator;
+    const uint8_t **fields;
+    const uint8_t *separator;
 } data_output_csv_t;
 
-static void R_API_CALLCONV print_csv_data(data_output_t *output, data_t *data, char const *format)
+static void R_API_CALLCONV print_csv_data(data_output_t *output, data_t *data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_csv_t *csv = (data_output_csv_t *)output;
@@ -463,7 +361,7 @@ static void R_API_CALLCONV print_csv_data(data_output_t *output, data_t *data, c
     for (bool separator = false; data; data = data->next) {
         if (separator)
             fprintf(csv->file, "; "); // NOTE: distinct from csv->separator
-        output->print_string(output, data->key, NULL);
+        output->print_string(output, data->key, NULL, NULL);
         fprintf(csv->file, ": ");
         print_value(output, data->type, data->value, data->format);
         separator = true;
@@ -471,18 +369,18 @@ static void R_API_CALLCONV print_csv_data(data_output_t *output, data_t *data, c
     fputc('}', csv->file);
 }
 
-static void R_API_CALLCONV print_csv_array(data_output_t *output, data_array_t *array, char const *format)
+static void R_API_CALLCONV print_csv_array(data_output_t *output, data_array_t *array, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_csv_t *csv = (data_output_csv_t *)output;
 
-    for (int c = 0; c < array->num_values; ++c) {
+    for (int32_t c = 0; c < array->num_values; ++c) {
         if (c)
             fprintf(csv->file, ";");
         print_array_value(output, array, format, c);
     }
 }
 
-static void R_API_CALLCONV print_csv_string(data_output_t *output, const char *str, char const *format)
+static void R_API_CALLCONV print_csv_string(data_output_t *output, const uint8_t *str, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_csv_t *csv = (data_output_csv_t *)output;
@@ -495,33 +393,33 @@ static void R_API_CALLCONV print_csv_string(data_output_t *output, const char *s
     }
 }
 
-static int compare_strings(const void *a, const void *b)
+static int32_t compare_strings(const void *a, const void *b)
 {
-    return strcmp(*(char **)a, *(char **)b);
+    return strcmp(*(uint8_t **)a, *(uint8_t **)b);
 }
 
-static void R_API_CALLCONV data_output_csv_start(struct data_output *output, char const *const *fields, int num_fields)
+static void R_API_CALLCONV data_output_csv_start(struct data_output *output, uint8_t const *const *fields, int32_t num_fields)
 {
     data_output_csv_t *csv = (data_output_csv_t *)output;
 
-    int csv_fields = 0;
-    int i, j;
-    const char **allowed = NULL;
-    int *use_count = NULL;
-    int num_unique_fields;
+    int32_t csv_fields = 0;
+    int32_t i, j;
+    const uint8_t **allowed = NULL;
+    int32_t *use_count       = NULL;
+    int32_t num_unique_fields;
     if (!csv)
         goto alloc_error;
 
     csv->separator = ",";
 
-    allowed = calloc(num_fields, sizeof(const char *));
+    allowed = calloc(num_fields, sizeof(const uint8_t *));
     if (!allowed) {
         WARN_CALLOC("data_output_csv_start()");
         goto alloc_error;
     }
-    memcpy((void *)allowed, fields, sizeof(const char *) * num_fields);
+    memcpy((void *)allowed, fields, sizeof(const uint8_t *) * num_fields);
 
-    qsort((void *)allowed, num_fields, sizeof(char *), compare_strings);
+    qsort((void *)allowed, num_fields, sizeof(uint8_t *), compare_strings);
 
     // overwrite duplicates
     i = 0;
@@ -539,7 +437,7 @@ static void R_API_CALLCONV data_output_csv_start(struct data_output *output, cha
     }
     num_unique_fields = i;
 
-    csv->fields = calloc(num_unique_fields + 1, sizeof(const char *));
+    csv->fields = calloc(num_unique_fields + 1, sizeof(const uint8_t *));
     if (!csv->fields) {
         WARN_CALLOC("data_output_csv_start()");
         goto alloc_error;
@@ -552,9 +450,9 @@ static void R_API_CALLCONV data_output_csv_start(struct data_output *output, cha
     }
 
     for (i = 0; i < num_fields; ++i) {
-        const char **field = bsearch(&fields[i], allowed, num_unique_fields, sizeof(const char *),
+        const uint8_t **field   = bsearch(&fields[i], allowed, num_unique_fields, sizeof(const uint8_t *),
                 compare_strings);
-        int *field_use_count = use_count + (field - allowed);
+        int32_t *field_use_count = use_count + (field - allowed);
         if (field && !*field_use_count) {
             csv->fields[csv_fields] = fields[i];
             ++csv_fields;
@@ -580,7 +478,7 @@ alloc_error:
     free(csv);
 }
 
-static void R_API_CALLCONV print_csv_double(data_output_t *output, double data, char const *format)
+static void R_API_CALLCONV print_csv_double(data_output_t *output, double data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_csv_t *csv = (data_output_csv_t *)output;
@@ -588,7 +486,7 @@ static void R_API_CALLCONV print_csv_double(data_output_t *output, double data, 
     fprintf(csv->file, "%.3f", data);
 }
 
-static void R_API_CALLCONV print_csv_int(data_output_t *output, int data, char const *format)
+static void R_API_CALLCONV print_csv_int(data_output_t *output, int32_t data, uint8_t const *format, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     UNUSED(format);
     data_output_csv_t *csv = (data_output_csv_t *)output;
@@ -596,13 +494,13 @@ static void R_API_CALLCONV print_csv_int(data_output_t *output, int data, char c
     fprintf(csv->file, "%d", data);
 }
 
-static void R_API_CALLCONV data_output_csv_print(data_output_t *output, data_t *data)
+static void R_API_CALLCONV data_output_csv_print(data_output_t *output, data_t *data, defDeviceToPlugin *ptrDeviceToPlugin)
 {
     data_output_csv_t *csv = (data_output_csv_t *)output;
 
-    const char **fields = csv->fields;
+    const uint8_t **fields = csv->fields;
 
-    int regular = 0; // skip "states" output
+    int32_t regular = 0; // skip "states" output
     for (data_t *d = data; d; d = d->next) {
         if (!strcmp(d->key, "msg") || !strcmp(d->key, "codes") || !strcmp(d->key, "model")) {
             regular = 1;
@@ -612,8 +510,8 @@ static void R_API_CALLCONV data_output_csv_print(data_output_t *output, data_t *
     if (!regular)
         return;
 
-    for (int i = 0; fields[i]; ++i) {
-        const char *key = fields[i];
+    for (int32_t i = 0; fields[i]; ++i) {
+        const uint8_t *key = fields[i];
         data_t *found   = NULL;
         if (i)
             fprintf(csv->file, "%s", csv->separator);
@@ -637,7 +535,7 @@ static void R_API_CALLCONV data_output_csv_free(data_output_t *output)
     free(csv);
 }
 
-struct data_output *data_output_csv_create(int log_level, FILE *file)
+struct data_output *data_output_csv_create(int32_t log_level, FILE *file)
 {
     data_output_csv_t *csv = calloc(1, sizeof(data_output_csv_t));
     if (!csv) {
@@ -658,3 +556,17 @@ struct data_output *data_output_csv_create(int log_level, FILE *file)
 
     return (struct data_output *)csv;
 }
+//static uint8_t * R_API_CALLCONV get_print_double(double data, uint8_t const *format)
+//{
+//    return fprintf("%.3f", data);
+//}
+//
+//static uint8_t *R_API_CALLCONV get_print_int(int32_t data, uint8_t const *format)
+//{
+//    return fprintf("%d", data);
+//}
+//
+//static uint8_t *R_API_CALLCONV get_print_string(const uint8_t *data, uint8_t const *format)
+//{
+//    return fprintf("%s", data);
+//}

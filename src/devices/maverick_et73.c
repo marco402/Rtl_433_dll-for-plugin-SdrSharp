@@ -43,16 +43,19 @@ Layout appears to be:
 
 #include "decoder.h"
 
-static int maverick_et73_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+static int32_t maverick_et73_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-  int temp1_raw, temp2_raw, row;
+  int32_t temp1_raw, temp2_raw;
     float temp1_c, temp2_c;
     uint8_t *bytes;
-    unsigned int device;
+    uint32_t device;
     data_t *data;
 
     // The device transmits many rows, let's check for 3 matching.
-    row = bitbuffer_find_repeated_row(bitbuffer, 3, 48);
+	uint32_t nbRepeat = 3;
+	
+		
+    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 48);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
@@ -81,16 +84,16 @@ static int maverick_et73_decode(r_device *decoder, bitbuffer_t *bitbuffer)
     data = data_make(
             "model",            "",                 DATA_STRING, "Maverick-ET73",
             "id",               "Random Id",        DATA_INT, device,
-            "temperature_1_C",  "Temperature 1",    DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp1_c,
-            "temperature_2_C",  "Temperature 2",    DATA_FORMAT, "%.01f C", DATA_DOUBLE, temp2_c,
+            "temperature_1_C",  "Temperature 1",    DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp1_c,
+            "temperature_2_C",  "Temperature 2",    DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp2_c,
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data);
+    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_1_C",
@@ -99,7 +102,7 @@ static char const *const output_fields[] = {
 };
 
 r_device const maverick_et73 = {
-        .name        = "Maverick et73",
+        .name        = "Maverick ET73",
         .modulation  = OOK_PULSE_PPM,
         .short_width = 1050,
         .long_width  = 2050,
