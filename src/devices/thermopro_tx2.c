@@ -54,7 +54,8 @@ static int32_t thermopro_tx2_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     if (bitbuffer->bits_per_row[0] <= 8 && bitbuffer->bits_per_row[0] != 0)
         return DECODE_ABORT_EARLY; // Alecto/Auriol-v2 has 8 sync bits, reduce false positive
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36); // only 3 repeats will give false positives for Alecto/Auriol-v2
     if (row < 0)

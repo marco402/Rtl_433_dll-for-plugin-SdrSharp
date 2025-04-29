@@ -58,7 +58,8 @@ Decoded example:
 static int32_t emos_e6016_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 120 - 8); // ignores the repeat byte
     if (row < 0) {

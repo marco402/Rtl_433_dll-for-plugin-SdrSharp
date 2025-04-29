@@ -43,7 +43,7 @@ static int32_t tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 80);
 
     // make sure we decoded the expected number of bits
-    if (packet_bits.bits_per_row[row] < 80) {
+    if (packet_bits.bits_per_row[row] < 80) {  // to see why not row=0?
         // decoder_logf(decoder, 0, __func__, "bit_offset=%u bit_offset=%u = %u", bit_offset, bit_offset, (bit_offset - bit_offset));
         return 0; // DECODE_FAIL_SANITY;
     }
@@ -80,7 +80,7 @@ static int32_t tpms_porsche_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

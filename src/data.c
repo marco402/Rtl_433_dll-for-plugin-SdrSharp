@@ -352,7 +352,58 @@ R_API data_t *data_hex(data_t *first, uint8_t const *key, uint8_t const *pretty_
 
 	return data_append(first, key, pretty_key, DATA_FORMAT, NULL, DATA_STRING, buf, NULL);
 }
+//also to flex.c
+R_API void getRow(uint8_t *row_bytes, uint8_t *bits, int32_t num_bits)
+{
+	int32_t browlen = ((num_bits + 7) / 8);
+	browlen = (browlen > (MAXROWCODE / 2)) ? (MAXROWCODE / 2) : browlen;//*2 for hexa
+	if (browlen == (MAXROWCODE / 2))
+		browlen = browlen;
 
+	row_bytes[0] = '\0';
+	// print byte-wide
+	for (int32_t col = 0;col< browlen; ++col) {  //col < (num_bits + 7) / 8
+		sprintf(&row_bytes[2 * col], "%02x", bits[col]);
+	}
+	// remove last nibble if needed
+	int32_t lastBit = 2 * (num_bits + 3) / 8;
+	if(lastBit <= (browlen*2))
+		row_bytes[lastBit] = '\0';
+}
+
+//R_API void getRow( uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf, uint32_t nbBits)
+//{
+//	if (!format || !*format) {
+//		format = "%02x";
+//	}
+//
+//	uint8_t *p = buf;
+//	//*p = '{'; p++;
+//	//p += sprintf(p, "%d", nbBits);
+//	//*p = '}'; p++;
+//	for (uint32_t i = 0; i < len; i++) {
+//		p += sprintf(p, format, val[i]);
+//	}
+//	*p = '\0';
+//	return ;
+//}
+//R_API void getRowBarre( uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf, uint32_t nbBits)
+//{
+//	if (!format || !*format) {
+//		format = "%02x";
+//	}
+//
+//	uint8_t *p = buf;
+//	//*p = '{'; p++;
+//	//p += sprintf(p, "%d", nbBits);
+//	//*p = '}'; p++;
+//	for (uint32_t i = 0; i < len; i++) {
+//		p += sprintf(p, format, val[i]);
+//		*p = ~*p;
+//	}
+//	*p = '\0';
+//	return ;
+//}
 R_API void data_array_free(data_array_t *array)
 {
     array_element_release_fn release = dmt[array->type].array_element_release;

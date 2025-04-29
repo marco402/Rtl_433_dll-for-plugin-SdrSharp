@@ -52,7 +52,7 @@ static int32_t tfa_14_1504_v2_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
 {
     uint8_t const preamble[] = {0xaa, 0xaa, 0x5c};
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
     uint32_t const row = 0;

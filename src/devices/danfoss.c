@@ -97,7 +97,7 @@ static int32_t danfoss_cfr_callback(r_device *decoder, bitbuffer_t *bitbuffer, i
             uint8_t nibble_h = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n * 12 + bit_offset) >> 2);
             uint8_t nibble_l = danfoss_decode_nibble(bitrow_get_byte(bitbuffer->bb[0], n * 12 + bit_offset + 6) >> 2);
             if (nibble_h > 0xF || nibble_l > 0xF) {
-                decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Danfoss: 6b/4b decoding error");
+                decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Danfoss: 6b/4b decoding error", 0, 0);
                 return DECODE_FAIL_SANITY;
             }
             bytes[n] = (nibble_h << 4) | nibble_l;

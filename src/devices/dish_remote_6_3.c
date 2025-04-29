@@ -104,9 +104,10 @@ static int32_t dish_remote_6_3_callback(r_device *decoder, bitbuffer_t *bitbuffe
     uint8_t button;
     uint8_t const *button_string;
 
-    decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "", 0, 0);
 	uint32_t nbRepeat = MYDEVICE_MINREPEATS;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, MYDEVICE_BITLEN);
     if (row < 0 || bitbuffer->bits_per_row[row] > MYDEVICE_BITLEN) {

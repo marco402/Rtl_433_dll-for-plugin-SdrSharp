@@ -76,7 +76,7 @@ static int32_t wt450_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
     }
 
     if (b[0] >> 4 != 0xC) {
-        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "wrong preamble");
+        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "wrong preamble", 0, 0);
         return DECODE_ABORT_EARLY;
     }
 

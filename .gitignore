@@ -60,7 +60,9 @@ vs17_dll_plugin/Debug/*
 vs17_dll_plugin/Debug_4.5/*
 vs17_dll_plugin/Debug_x32/*
 vs17_dll_plugin/Debug_1788_c/*
+vs17_dll_plugin/debug_V1632/*
 vs17_dll_plugin/debug_V1602/*
+vs17_dll_plugin/release_V1632/*
 vs17_dll_plugin/debug_framework/*
 vs17_dll_plugin/Release/*
 vs17_dll_plugin/Release_x32/*

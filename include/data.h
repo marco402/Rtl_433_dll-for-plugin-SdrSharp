@@ -165,6 +165,11 @@ R_API data_t *data_hex(data_t *first, uint8_t const *key, uint8_t const *pretty_
     @return The constructed data array object, typically placed inside a data_t or NULL
             if there was a memory allocation error.
 */
+R_API void getRow(uint8_t *row_bytes, uint8_t *bits, int32_t num_bits);
+
+//R_API void getRow(uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf, uint32_t nbBits);
+
+//R_API void getRowBarre(uint8_t const *format, uint8_t const *val, uint32_t len, uint8_t *buf, uint32_t nbBits);
 R_API data_array_t *data_array(int32_t num_values, data_type_t type, void const *ptr);
 
 /** Releases a data array. */

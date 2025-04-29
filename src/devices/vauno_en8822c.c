@@ -49,7 +49,8 @@ Sample Data:
 static int32_t vauno_en8822c_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 42);
     if (row < 0) {

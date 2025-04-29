@@ -165,7 +165,8 @@ static int32_t flex_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
     // discard unless min_repeats, min_bits
     // TODO: check max_repeats, max_bits
 	uint32_t nbRepeat = params->min_repeats;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, params->min_bits);
     if (row < 0)
@@ -260,7 +261,7 @@ static int32_t flex_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
         }
     }
 
-    decoder_log_bitbuffer(decoder, 1, params->name, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 1, params->name, bitbuffer, "", 0, 0);
 
     // discard duplicates
     if (params->unique) {
@@ -280,7 +281,7 @@ static int32_t flex_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
         render_getters(data, bitbuffer->bb[row], params);
         uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
+        decoder_output_data(decoder, data, bitbuffer, 0, nbRepeat, startPulses, package_type);
         return 1;
     }
 

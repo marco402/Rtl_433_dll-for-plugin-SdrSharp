@@ -268,7 +268,7 @@ static int32_t minim_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
     uint8_t const preamble2[] = { 0x55, 0x55, 0x7b, 0xb9 };
     const uint32_t preamble_len = 8 * sizeof(preamble1);
 
-    if (bitbuffer->num_rows != 1)
+    if (bitbuffer->bits_per_row[1] != 0)
         return DECODE_ABORT_LENGTH;
 
     uint32_t row = 0; // we expect only one row

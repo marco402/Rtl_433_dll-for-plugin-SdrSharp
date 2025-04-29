@@ -55,7 +55,8 @@ static int32_t tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer, in
     uint8_t *b;
     bitbuffer_t databits = {0};
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 48 * 2 + 12); // expected are 4 rows, require 2
     if (row < 0)
@@ -68,8 +69,8 @@ static int32_t tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer, in
         return DECODE_ABORT_LENGTH; // short buffer or preamble not found
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 48);
-//row = 0;
-    if (databits.bits_per_row[row] < 48)    // to see
+row = 0;
+    if (databits.bits_per_row[row] < 48)
         return DECODE_ABORT_LENGTH; // payload malformed MC
     
     b = databits.bb[row];
@@ -100,7 +101,7 @@ static int32_t tfa_303196_callback(r_device *decoder, bitbuffer_t *bitbuffer, in
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
+    decoder_output_data(decoder, data, &databits, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 

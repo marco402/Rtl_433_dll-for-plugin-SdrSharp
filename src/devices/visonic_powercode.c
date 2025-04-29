@@ -53,7 +53,8 @@ static int32_t visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffe
 
     // 37 bits expected, 6 packet repetitions, accept 4
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 37);
 

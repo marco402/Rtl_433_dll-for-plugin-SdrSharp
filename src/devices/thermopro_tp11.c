@@ -27,7 +27,8 @@ static int32_t thermopro_tp11_sensor_callback(r_device *decoder, bitbuffer_t *bi
 {
     // Compare first four bytes of rows that have 32 or 33 bits.
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 32);
     if (row < 0)

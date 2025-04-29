@@ -39,7 +39,8 @@ static int32_t wssensor_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     // the signal should have 23 repeats
     // require at least 4 received repeats
 	uint32_t nbRepeat = WS_MINREPEATS;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, WS_REPEATS);
     if (row < 0 || bitbuffer->bits_per_row[row] != WS_PACKETLEN)

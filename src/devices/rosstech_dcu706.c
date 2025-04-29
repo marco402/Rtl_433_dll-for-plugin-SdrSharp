@@ -44,7 +44,7 @@ static int32_t rosstech_dcu706_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     // We need 55 bits
     uint8_t msg[7];
 
-    if (bitbuffer->num_rows != 1
+    if (bitbuffer->bits_per_row[1] != 0
             || bitbuffer->bits_per_row[0] < 55
             || bitbuffer->bits_per_row[0] > 300) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);

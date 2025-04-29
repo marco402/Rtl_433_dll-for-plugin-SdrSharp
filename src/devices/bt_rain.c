@@ -38,7 +38,8 @@ static int32_t bt_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
     int32_t temp_raw;
     float temp_c, rainrate;
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, NUM_BITS);
     if (row < 0)

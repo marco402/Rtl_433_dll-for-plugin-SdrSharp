@@ -47,7 +47,8 @@ static int32_t bresser_3ch_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     // int32_t status, test;
     float temp_f;
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
     if (row < 0 || bitbuffer->bits_per_row[row] > 42) {

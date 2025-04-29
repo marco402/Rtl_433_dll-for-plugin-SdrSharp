@@ -13,7 +13,7 @@ baseband_low_pass_filter @7
 envelope_detect @8
 baseband_demod_FM @9
 pulse_detect_package @10
-
+pulse_analyzerPlugin @11
 
 
 

@@ -165,7 +165,7 @@ static int32_t acurite_rain_896_decode(r_device *decoder, bitbuffer_t *bitbuffer
     total_rain *= 0.5; // Sensor reports number of bucket tips.  Each bucket tip is .5mm
 
     decoder_logf(decoder, 2, __func__, "Total Rain is %.1fmm", total_rain);
-    decoder_log_bitrow(decoder, 2, __func__, b, bitbuffer->bits_per_row[0], "Raw Message ");
+    //decoder_log_bitrow(decoder, 2, __func__, b, bitbuffer->bits_per_row[0], "Raw Message ");
 
     /* clang-format off */
     data_t *data = data_make(
@@ -449,8 +449,8 @@ static int32_t acurite_6045_decode(r_device *decoder, bitbuffer_t *bitbuffer, ui
 	 * to the structured data output to allow future analysis without
 	 * having to enable debug for long running rtl_433 processes.
 	 */
-	char raw_str[31];
-	data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);
+/*	char raw_str[31];
+	data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);*/
 
     decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
@@ -907,8 +907,8 @@ static int32_t acurite_atlas_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 	// message that could possibly hold some data. Add the raw message hex to
 	// to the structured data output to allow future analysis without
 	// having to enable debug for long running rtl_433 processes.
-	char raw_str[31];
-	data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);
+	//char raw_str[31];
+	//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);
 
     decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
 
@@ -1001,8 +1001,8 @@ static int32_t acurite_tower_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 		// later analysis of unexpected/possibly undecoded data
 		/* clang-format off */
 		data = data_int(data, "exception", "Data Exception", NULL, exception);
-		char buf_str[31];
-		data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_TXR_BYTELEN, buf_str);
+		//char buf_str[31];
+		//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_TXR_BYTELEN, buf_str);
 		/* clang-format on */
     }
 
@@ -1135,8 +1135,8 @@ static int32_t acurite_515_decode(r_device *decoder, bitbuffer_t *bitbuffer, uin
 		// later analysis of unexpected/possibly undecoded data
 		/* clang-format off */
 		data = data_int(data, "exception", "Data Exception", NULL, exception);
-		char buf_str[31];
-		data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_515_BYTELEN, buf_str);
+		//char buf_str[31];
+		//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_515_BYTELEN, buf_str);
 		/* clang-format on */
 
     }
@@ -1629,6 +1629,8 @@ static int32_t acurite_606_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     int32_t button;       // the reset button: 1: pressed
     int32_t sensor_id;    // the sensor ID - basically a random number that gets reset whenever the battery is removed
 	uint32_t nbRepeat = 3;
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 32); // expected are 6 rows
     if (row < 0)
         return DECODE_ABORT_EARLY;
@@ -1688,7 +1690,8 @@ We'll read the packet after the sync and treat the next sync as a trailing 0 bit
 static int32_t acurite_590tx_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 25); // expected are min 3 rows
     if (row < 0)
@@ -1762,7 +1765,8 @@ static int32_t acurite_00275rm_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     // This sensor repeats a signal three times. Combine as fallback.
     uint8_t *b_rows[3] = {0};
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t n_rows         = 0;
     for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
@@ -1909,7 +1913,7 @@ static uint8_t const *const acurite_txr_output_fields[] = {
         "lux",
         "active",
         "exception",
-        "raw_msg",
+        //"raw_msg",
         "rfi",
         "mic",
         NULL,

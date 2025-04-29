@@ -100,7 +100,7 @@ static int32_t oil_smart_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &databits, row, 0, startPulses, package_type);
     return 1;
 }
 

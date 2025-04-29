@@ -51,7 +51,7 @@ minutes switch to sending in operatioinal mode every two minutes.
 
 static int32_t tpms_gm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
 

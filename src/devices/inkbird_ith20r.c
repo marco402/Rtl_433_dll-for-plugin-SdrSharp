@@ -61,7 +61,7 @@ static int32_t inkbird_ith20r_callback(r_device *decoder, bitbuffer_t *bitbuffer
     data_t *data;
     uint8_t msg[19];
 
-    if ((bitbuffer->num_rows != 1)
+    if ((bitbuffer->bits_per_row[1] != 0)
             || (bitbuffer->bits_per_row[row] < 187)
             /*|| (bitbuffer->bits_per_row[row] > 14563)*/) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);

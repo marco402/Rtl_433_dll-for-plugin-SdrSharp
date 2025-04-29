@@ -52,7 +52,8 @@ Data format:
 static int32_t rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 41);
     if (row < 0 || bitbuffer->bits_per_row[row] != 41)
@@ -76,7 +77,7 @@ static int32_t rubicson_pool_48942_decode(r_device *decoder, bitbuffer_t *bitbuf
     int32_t battery_low = b[2] >> 7;
     float temp_c = ((((b[2] & 0x7F) << 4) | (b[3] >> 4)) - 1024) * 0.1f;
 
-    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "", 0, 0);
 
     /* clang-format off */
     data_t *data = data_make(

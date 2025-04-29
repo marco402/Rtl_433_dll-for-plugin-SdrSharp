@@ -135,7 +135,8 @@ static int32_t bresser_7in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     data_t *data;
     uint8_t msg[25];
 
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 240 - 80) {
+    //if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 240 - 80) {
+    if (bitbuffer->bits_per_row[1] != 0|| bitbuffer->bits_per_row[0] < 240 - 80) {
         decoder_logf(decoder, 2, __func__, "to few bits (%u)", bitbuffer->bits_per_row[0]);
         return DECODE_ABORT_LENGTH; // unrecognized
     }

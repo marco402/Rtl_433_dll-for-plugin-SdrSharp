@@ -47,7 +47,8 @@ static int32_t thermopro_tx2c_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
 {
     // Compare first four bytes of rows that have 45 or 36 bits.
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)

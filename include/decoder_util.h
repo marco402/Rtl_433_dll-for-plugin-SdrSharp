@@ -28,6 +28,12 @@
 #define _Printf_format_string_
 #endif
 uint16_t nbLine;
+#if LISTEDEVICES
+	void listDevices(struct r_cfg *cfg);
+#endif
+#if ANALYZER
+	void testUnKnown(int32_t length, int32_t startPulses, int32_t package_type, r_device *decoder);
+#endif
 /// Create a new r_device, copy from dev_template if not NULL.
 ///
 /// A user data memory of `user_data_size` bytes will be allocated if not `0`.
@@ -39,6 +45,10 @@ r_device *decoder_create(r_device const *dev_template, uint32_t user_data_size);
 void *decoder_user_data(r_device *decoder);
 
 void initDeviceToPlugin();
+
+void razKeyValueDeviceToPlugin();
+
+void AddKeyValueDevice(char * key, char *  value);
 /// Output data.
 void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type);
 
@@ -64,7 +74,7 @@ void decoder_logf(r_device *decoder, int32_t level, uint8_t const *func, _Printf
         ;
 
 /// Output a log message with the content of the bitbuffer.
-void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, uint8_t const *msg);
+void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, bitbuffer_t *bitbuffer, uint8_t const *msg, int32_t startPulses, uint16_t package_type);
 
 /// Output a formatted log message with the content of the bitbuffer.
 void decoder_logf_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const uint8_t *format, ...)

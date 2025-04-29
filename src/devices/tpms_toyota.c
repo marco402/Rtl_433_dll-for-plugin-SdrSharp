@@ -41,7 +41,8 @@ static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     if (bit_offset - bit_offset < 144) {
         return 0;
     }
-    b = packet_bits.bb[0];
+	row = 0; 
+    b = packet_bits.bb[row];
 
     crc = b[8];
     if (crc8(b, 8, 0x07, 0x80) != crc) {
@@ -75,7 +76,7 @@ static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     /* clang-format on */
 
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

@@ -46,7 +46,7 @@ Format string:
 
 static int32_t gasmate_ba1008_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         decoder_log(decoder, 2, __func__, "Row check fail");
         return DECODE_ABORT_LENGTH;
     }

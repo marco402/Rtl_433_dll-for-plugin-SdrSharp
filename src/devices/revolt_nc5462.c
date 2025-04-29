@@ -56,7 +56,7 @@ static int32_t revolt_nc5462_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     int32_t row = 0;
     bitbuffer_invert(bitbuffer);
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
     if (bitbuffer->bits_per_row[row] != 104) {

@@ -54,7 +54,8 @@ static int32_t geevon_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     // invert all the bits
     bitbuffer_invert(bitbuffer);
 	uint32_t nbRepeat = bitbuffer->num_rows > 5 ? 5 : 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     // find the most common row, nominal we expect 5 packets
     int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 72);

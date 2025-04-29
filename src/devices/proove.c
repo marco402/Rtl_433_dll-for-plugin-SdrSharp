@@ -90,7 +90,7 @@ static int32_t proove_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &databits, 0, 0, startPulses, package_type);
     return 1;
 }
 

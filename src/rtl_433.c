@@ -27,6 +27,7 @@ History : V1.00 2021-04-01 - First release
  All text above must be included in any redistribution.
 */
 //05/2024    doublon entre solight(85) et rubicson(2)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -108,6 +109,7 @@ History : V1.00 2021-04-01 - First release
 #define usleep(us) Sleep((us) / 1000)
 #endif
 #ifdef DLL_RTL_433
+bool _sourceIsFile = false;
 static r_cfg_t g_cfg;
 intptr_t cfg;
 typedef void(__stdcall *prt_call_back_message)(uint8_t *); 
@@ -126,6 +128,7 @@ uint32_t _disabled                               = DEFAULT_DISABLED; //process d
 //bool _sourceIsFile = false;
 int32_t start    = 0;
 int32_t startFsk = 0;
+bool TreatUnknown = false;
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
 {
     switch (dwReason) {
@@ -158,13 +161,18 @@ export void __stdcall stop_sdr(void *ctx) // necessary function compilation cons
 }
 export void __stdcall rtl_433_call_main(prt_call_back_message ptr_message, prt_call_back_init ptr_init, prt_call_back_CBStructDevices ptr_StructDevices, uint32_t param_samp_rate, int32_t param_sample_size, uint32_t disabled,bool sourceIsFile, int32_t argc, uint8_t *argv[])
 {
+#if ANALYZE
+	TreatUnknown = false;
+#else
+	TreatUnknown = false;
+#endif
     PTRCallBackMessage = ptr_message;
     PTRCallBackInfosDevices = ptr_StructDevices;
     initDeviceToPlugin();  //x64 comment line all main ok comment NativeMethods.receive_buffer_cb
     cfg = (intptr_t)&g_cfg;
     setPtrInit(ptr_init, cfg);
 	_disabled = disabled;   // disabled=1--> valid device with .disabled = 1;  0=default rtl433
-	//_sourceIsFile = false;   // sourceIsFile;
+	_sourceIsFile = sourceIsFile;
     _param_samp_rate   = param_samp_rate;
     _param_sample_size = param_sample_size * 2;
     start    = 0;
@@ -469,6 +477,7 @@ _Noreturn static void help_write(void)
             "\tforced overrides: am:s16:path/filename.ext\n");
     exit(0);
 }
+int32_t nbUnknown = 0;
 static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
 {
     r_cfg_t *cfg           = ctx;
@@ -617,13 +626,14 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
         while (package_type && process_frame) {
             int32_t p_events = 0; // Sensor events successfully detected per package
             package_type = pulse_detect_package(demod->pulse_detect, demod->am_buf, demod->buf.fm, (int32_t)n_samples, cfg->samp_rate, cfg->input_pos, &demod->pulse_data, &demod->fsk_pulse_data, fpdm, &start, &startFsk); //
-            if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses) {                                                                                                                                  //if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses)
+            if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses) {                                                                                                           //if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses)
                 //fprintf(stderr, "startPulses  %d \n", start);
-                //fprintf(stderr, "num_pulses  %d \n", demod->pulse_data.num_pulses);
+                //fprintf(stderr, "num_pulses ook %d \n", demod->pulse_data.num_pulses);
                 startPulses = start;
             }
             else {
                 //fprintf(stderr, "startPulses  %d \n", startFsk);
+				//fprintf(stderr, "num_pulses fsk %d \n", demod->fsk_pulse_data.num_pulses);
                 startPulses = startFsk;
             }
             //start -= n_samples;
@@ -662,9 +672,14 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
                     data_t *data = pulse_data_print_data(&demod->pulse_data);
                     event_occurred_handler(cfg, data);
                 }
-                if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) {
-                    r_device device = {.log_fn = log_device_handler, .output_ctx = cfg};
-                    pulse_analyzer(&demod->pulse_data, package_type, &device);
+#if !_DEBUG
+                if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) //{
+#else
+				if (TreatUnknown && p_events > 0)
+#endif
+				{
+                    r_device device = {.log_fn = log_device_handler, .output_ctx = cfg, .verbose_bits = 1};
+                    pulse_analyzer(&demod->pulse_data, package_type, &device, startPulses);
                 }
             }
             else if (package_type == PULSE_DATA_FSK) {
@@ -692,12 +707,71 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
                     data_t *data = pulse_data_print_data(&demod->fsk_pulse_data);
                     event_occurred_handler(cfg, data);
                 }
-                if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) {
-                    r_device device = {.log_fn = log_device_handler, .output_ctx = cfg};
-                    pulse_analyzer(&demod->fsk_pulse_data, package_type, &device);
+#if !_DEBUG
+               if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) // {
+#else
+				if (TreatUnknown && p_events > 0)
+#endif
+				{
+                    r_device device = {.log_fn = log_device_handler, .output_ctx = cfg, .verbose_bits = 1 };
+                    pulse_analyzer(&demod->fsk_pulse_data, package_type, &device, startPulses);
                 }
             } // if (package_type == ...
             d_events += p_events;
+			//fprintf(stderr, "d_events %d \n", d_events);
+			//int32_t lengthPulses = 0;
+			//int32_t lengthGap = 0;
+			//if(TreatUnknown && demod->frame_event_count == 0 )
+			//{
+			//	if (demod->pulse_data.num_pulses > 20) {                                                                                                           //if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses)
+			//		//fprintf(stderr, "num_pulses ook %d \n", demod->pulse_data.num_pulses);
+			//		//fprintf(stderr, "d_events %d \n", d_events);
+			//		//fprintf(stderr, "startPulses %d \n", startPulses);
+
+			//		for (uint32_t n = 0; n < demod->pulse_data.num_pulses; n++)
+			//		{
+			//			lengthPulses += demod->pulse_data.pulse[n];
+			//			lengthGap += demod->pulse_data.gap[n];
+			//		}
+			//		if (lengthPulses > 0 && lengthGap > 0)
+			//		{
+			//			if ((lengthPulses > lengthGap && lengthPulses / lengthGap < 10) || (lengthGap > lengthPulses &&  lengthGap / lengthPulses < 10))
+			//			{
+			//				struct timeval now_tv;
+			//				get_time_now(&now_tv);
+
+			//				testUnKnown(lengthPulses + lengthGap, startPulses, PULSE_DATA_OOK, nbUnknown, demod->pulse_data.num_pulses, cfg);
+			//				nbUnknown += 1;
+			//			}
+			//		}
+			//	}
+			//	else if (demod->fsk_pulse_data.num_pulses > 20) {                                                                                                           //if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses)
+
+			//		//fprintf(stderr, "d_events %d \n", d_events);
+			//		//fprintf(stderr, "startPulses %d \n", startPulses);
+			//		//fprintf(stderr, "num_pulses fsk %d \t", demod->fsk_pulse_data.num_pulses);
+			//		//fprintf(stderr, "nbUnknown %d \n", nbUnknown);
+			//		for (uint32_t n=0; n < demod->fsk_pulse_data.num_pulses; n++)
+			//		{
+			//			lengthPulses += demod->pulse_data.pulse[n];
+			//			lengthGap += demod->pulse_data.gap[n];
+			//		}
+			//		if (lengthPulses > 0 && lengthGap > 0)
+			//		{
+			//			if ((lengthPulses > lengthGap && lengthPulses / lengthGap < 10) || (lengthGap > lengthPulses &&  lengthGap / lengthPulses < 10))
+			//			{
+			//				/*struct timeval now_tv;
+			//				get_time_now(&now_tv);*/
+
+			//				testUnKnown(lengthPulses + lengthGap, startPulses, PULSE_DATA_FSK, nbUnknown, demod->fsk_pulse_data.num_pulses, cfg);
+			//				nbUnknown += 1;
+			//			}
+			//		}
+
+			//	}
+			//}
+
+
         } // while (package_type)...
         start -= (int32_t)n_samples;
         startFsk -= (int32_t)n_samples;
@@ -1274,12 +1348,12 @@ static void parse_conf_option(r_cfg_t *cfg, int32_t opt, uint8_t *arg)
         }
 
         if (n < 0 && !cfg->no_default_devices) {
-            register_all_protocols(cfg, 0); // register all defaults
+            register_all_protocols(cfg, 0, _sourceIsFile); // register all defaults
         }
         cfg->no_default_devices = 1;
 
         if (n >= 1) {
-            register_protocol(cfg, &cfg->devices[n - 1], arg_param(arg));
+            register_protocol(cfg, &cfg->devices[n - 1], _sourceIsFile, arg_param(arg));
         }
         else if (n <= -1) {
             unregister_protocol(cfg, &cfg->devices[-n - 1]);
@@ -1294,7 +1368,7 @@ static void parse_conf_option(r_cfg_t *cfg, int32_t opt, uint8_t *arg)
             flex_create_device(NULL);
 
         flex_device = flex_create_device(arg);
-        register_protocol(cfg, flex_device, "");
+        register_protocol(cfg, flex_device, _sourceIsFile, "");
         break;
     case 'q':
         fprintf(stderr, "quiet option (-q) is default and deprecated. See -v to increase verbosity\n");
@@ -1671,16 +1745,21 @@ int32_t main(int32_t argc, uint8_t **argv)
 #ifdef DLL_RTL_433
         if (cfg->verbosity)
             fprintf(stderr, "start devices list");
-        register_all_protocols(cfg, _disabled); // register f(parameter)
+        register_all_protocols(cfg, _disabled,_sourceIsFile	); // register f(parameter)
         if (cfg->verbosity)
             fprintf(stderr, "end devices list");
 #else
         register_all_protocols(cfg, 0); // register all defaults
 #endif
     }
-	cfg->verbosity = 0;    //no verbose
+#if LISTEDEVICES
+	listDevices(cfg);
+	return;
+#endif
+ 	cfg->verbosity = 0;    //no verbose
     // check if we need FM demod
-    for (void **iter = demod->r_devs.elems; iter && *iter; ++iter) {
+    for (void **iter = demod->r_devs.elems; iter && *iter; ++iter)
+	{
         r_device *r_dev = *iter;
         if (r_dev->modulation >= FSK_DEMOD_MIN_VAL) {
             demod->enable_FM_demod = 1;
@@ -1691,7 +1770,7 @@ int32_t main(int32_t argc, uint8_t **argv)
 	if (cfg->demod->dumper.len) {
 		demod->enable_FM_demod = 1;
 	}
-    {
+    //{
         uint8_t decoders_str[1024];
         decoders_str[0] = '\0';
         if (cfg->verbosity <= LOG_NOTICE) {
@@ -1720,7 +1799,7 @@ int32_t main(int32_t argc, uint8_t **argv)
         print_logf(LOG_CRITICAL, "Protocols", "Registered %zu out of %u device decoding protocols%s",
                 demod->r_devs.len, cfg->num_r_devices, decoders_str);
 #endif
-    }
+    //}
 
     uint8_t const **well_known = well_known_output_fields(cfg);
     start_outputs(cfg, well_known);
@@ -1919,18 +1998,22 @@ int32_t main(int32_t argc, uint8_t **argv)
                         }
                     }
 
-                    if (demod->pulse_data.fsk_f2_est) {
+                    //if (demod->pulse_data.fsk_f2_est) {
                         run_fsk_demods(&demod->r_devs, &demod->pulse_data, 0, 0);
-                    }
-                    else {
+                    //}
+                    //else {
                         int32_t p_events = run_ook_demods(&demod->r_devs, &demod->pulse_data, 0, 0);
                         if (cfg->verbosity >= LOG_DEBUG)
                             pulse_data_print(&demod->pulse_data);
-                        if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) {
-                            r_device device = {.log_fn = log_device_handler, .output_ctx = cfg};
-                            pulse_analyzer(&demod->pulse_data, PULSE_DATA_OOK, &device);
+#if !_DEBUG
+                        if (demod->analyze_pulses && (cfg->grab_mode <= 1 || (cfg->grab_mode == 2 && p_events == 0) || (cfg->grab_mode == 3 && p_events > 0))) //{
+#else
+						if (TreatUnknown && p_events > 0)
+#endif
+						{
+                            r_device device = {.log_fn = log_device_handler, .output_ctx = cfg,.verbose_bits = 1 };
+                            pulse_analyzer(&demod->pulse_data, PULSE_DATA_OOK, &device, 0);
                         }
-                    }
                 }
 
                 if (in_file != stdin)

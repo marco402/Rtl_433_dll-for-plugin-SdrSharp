@@ -68,7 +68,7 @@ static int32_t tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
     int32_t unknown_3;
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
-
+	row = 0;
     // require 64 data bits
     if (packet_bits.bits_per_row[row] < 64) {  // to see
         return 0;
@@ -178,7 +178,7 @@ static int32_t tpms_ford_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

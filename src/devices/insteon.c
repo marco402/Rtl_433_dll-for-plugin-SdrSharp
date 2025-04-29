@@ -219,7 +219,7 @@ static int32_t parse_insteon_pkt(r_device *decoder, bitbuffer_t *bitbuffer, uint
         bitbuffer_clear(&i_bits);
         bitbuffer_clear(&d_bits);
         next_pos = bitbuffer_manchester_decode(bitbuffer, row, start_pos, &i_bits, 5);
-        next_pos = bitbuffer_manchester_decode(bitbuffer, row, next_pos, &d_bits, 8);
+        next_pos = bitbuffer_manchester_decode(bitbuffer, row, next_pos, &d_bits, 8); 
 
         y = (next_pos - start_pos);
         if (y != 26) {
@@ -365,7 +365,7 @@ static int32_t parse_insteon_pkt(r_device *decoder, bitbuffer_t *bitbuffer, uint
             NULL);
 
     /* clang-format on */
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);  // to see plugin
 
     // Return 1 if message successfully decoded
     return 1;
@@ -403,7 +403,7 @@ static int32_t insteon_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32
         }
         // decoder_logf(decoder, 1, __func__, "New row=%d len=%d",  row, bitbuffer->bits_per_row[row]);
 
-        while (1) {
+         while (1) {
             uint32_t search_index = bit_index;
             int32_t ret;
 

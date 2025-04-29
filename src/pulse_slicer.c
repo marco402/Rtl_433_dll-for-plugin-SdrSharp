@@ -54,14 +54,16 @@ static int32_t account_event(r_device *device, bitbuffer_t *bits, uint8_t const 
             max_bits = bits->bits_per_row[row];
         }
     }
-
+#if ANALYZE
+	device->verbose = 2;
+#endif
     // Debug printout
     if (!device->decode_fn || (device->verbose && ret > 0) || (device->verbose > 1 && max_bits > 16) || (device->verbose > 2)) {
-        decoder_log_bitbuffer(device, ret > 0 ? 1 : 2, demod_name, bits, device->name);
+        decoder_log_bitbuffer(device, ret > 0 ? 1 : 2, demod_name, bits, device->name, startPulses, package_type);
     }
 
     return ret;
-}
+ }
 
 int32_t pulse_slicer_pcm(pulse_data_t const *pulses, r_device *device, int32_t startPulses, uint16_t package_type)
 {

@@ -49,7 +49,7 @@ static int32_t rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
     int32_t row                     = 0;
     uint8_t const preamble_pattern[] = {0xaa, 0xa9}; // with sync perhaps aaaa 6666 9556
 
-    if (bitbuffer->num_rows != 1
+    if (bitbuffer->bits_per_row[1] != 0
             || bitbuffer->bits_per_row[row] < 232 // 24 MC bits + some preamble
             || bitbuffer->bits_per_row[row] > 3000) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);
@@ -113,7 +113,7 @@ static int32_t rainpoint_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &msg, row, 0, startPulses, package_type);
     return 1;
 }
 

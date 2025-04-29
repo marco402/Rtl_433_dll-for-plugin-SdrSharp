@@ -52,7 +52,7 @@ static int32_t mueller_hotrod_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
 {
     uint8_t const preamble_pattern[] = {0xfe, 0xb1, 0x00};
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         decoder_log(decoder, 2, __func__, "Row check failed");
         return DECODE_ABORT_EARLY;
     }

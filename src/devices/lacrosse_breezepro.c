@@ -113,7 +113,7 @@ static int32_t lacrosse_breezepro_decode(r_device *decoder, bitbuffer_t *bitbuff
         return DECODE_FAIL_MIC;
     }
 
-    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "", 0, 0);
 
     id        = (b[0] << 16) | (b[1] << 8) | b[2];
     flags     = (b[3] & 0xf1); // masks off seq bits

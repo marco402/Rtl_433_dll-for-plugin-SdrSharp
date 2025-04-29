@@ -60,8 +60,8 @@ static int32_t current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     if (packet.bits_per_row[0] < 64) {
         return DECODE_ABORT_EARLY;
     }
-
-    b = packet.bb[0];
+	int32_t row = 0; 
+    b = packet.bb[row];
     // Read data
     // Meter (b[0] = 0000xxxx) bits 5 and 4 are "unknown", but always 0 to date.
     if ((b[0] & 0xf0) == 0) {
@@ -88,7 +88,7 @@ static int32_t current_cost_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
                 NULL);
         /* clang-format on */
 
-        decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
+        decoder_output_data(decoder, data, &packet, row, 0, startPulses, package_type);
         return 1;
     }
     // Counter (b[0] = 0100xxxx) bits 5 and 4 are "unknown", but always 0 to date.

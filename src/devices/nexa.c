@@ -67,7 +67,7 @@ static int32_t nexa_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
     /* clang-format on */
     uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &databits, row, 0, startPulses, package_type);
     return 1;
 }
 

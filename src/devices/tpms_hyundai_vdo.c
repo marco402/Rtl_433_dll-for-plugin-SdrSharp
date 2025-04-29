@@ -54,7 +54,7 @@ static int32_t tpms_hyundai_vdo_decode(r_device *decoder, bitbuffer_t *bitbuffer
     int32_t crc;
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 80);
-
+	row = 0;
     if (packet_bits.bits_per_row[row] < 80) {  //to see
         return DECODE_FAIL_SANITY; // too short to be a whole packet
     }
@@ -97,7 +97,7 @@ static int32_t tpms_hyundai_vdo_decode(r_device *decoder, bitbuffer_t *bitbuffer
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

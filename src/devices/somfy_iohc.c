@@ -98,7 +98,7 @@ static int32_t somfy_iohc_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
 
     uint8_t b[1 + 31 + 2]; // Length, payload, CRC
 
-    if (bitbuffer->num_rows != 1)
+    if (bitbuffer->bits_per_row[1] != 0)
         return DECODE_ABORT_EARLY;
 
     uint32_t bit_offset = bitbuffer_search(bitbuffer, row, 0, preamble_pattern, 24) + 24;

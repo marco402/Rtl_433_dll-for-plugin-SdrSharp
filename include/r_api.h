@@ -34,13 +34,13 @@ void r_free_cfg(r_cfg_t *cfg);
 
 /* device decoder protocols */
 
-void register_protocol(struct r_cfg *cfg, struct r_device *r_dev, uint8_t *arg);
+void register_protocol(struct r_cfg *cfg, struct r_device *r_dev, bool _sourceIsFile, uint8_t *arg);
 
 void free_protocol(struct r_device *r_dev);
 
 void unregister_protocol(struct r_cfg *cfg, struct r_device *r_dev);
 
-void register_all_protocols(struct r_cfg *cfg, uint32_t disabled);
+void register_all_protocols(struct r_cfg *cfg, uint32_t disabled,bool _sourceIsFile);
 
 /* output helper */
 

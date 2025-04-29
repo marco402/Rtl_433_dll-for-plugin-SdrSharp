@@ -76,7 +76,8 @@ static int32_t smoke_gs558_callback(r_device *decoder, bitbuffer_t *bitbuffer, i
             bitbuffer->bits_per_row[row] = 24;
     }
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 24);
 

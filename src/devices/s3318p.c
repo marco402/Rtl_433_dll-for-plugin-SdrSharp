@@ -71,7 +71,8 @@ static int32_t s3318p_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     // the signal should have 6 repeats with a sync pulse between
     // require at least 4 received repeats
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 42);
     if (row < 0 || bitbuffer->bits_per_row[row] != 42)

@@ -101,7 +101,7 @@ static int32_t celsia_czc1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
         ipos++;
     }
 
-    decoder_log_bitbuffer(decoder, 2, __func__, &decoded_bits, "Extracted data");
+    decoder_log_bitbuffer(decoder, 2, __func__, &decoded_bits, "Extracted data",0,0);
     uint8_t *b = decoded_bits.bb[row];
 
     uint8_t crc = crc8(b, 8, 0x31, 0xd7);

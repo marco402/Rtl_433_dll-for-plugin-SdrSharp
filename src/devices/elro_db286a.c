@@ -28,7 +28,8 @@ static int32_t elro_db286a_callback(r_device *decoder, bitbuffer_t *bitbuffer, i
 {
     // 33 bits expected, 5 minimum packet repetitions (14 expected)
 	uint32_t nbRepeat = 5;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 33);
 

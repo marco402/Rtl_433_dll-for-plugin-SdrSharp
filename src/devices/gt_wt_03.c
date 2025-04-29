@@ -92,8 +92,8 @@ static int32_t gt_wt_03_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     int32_t row = 0;
     uint8_t *b;
 	uint32_t nbRepeat = bitbuffer->num_rows / 2 + 1;
-	
-		
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
     // nominal 1 row or 23 rows, require more than half to match
     if (bitbuffer->num_rows > 1)
         row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 41);

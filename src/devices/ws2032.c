@@ -41,7 +41,8 @@ static int32_t fineoffset_ws2032_decode(r_device *decoder, bitbuffer_t *bitbuffe
 
     // find a proper row
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 14 * 8); // expected: 3 rows of 113 bits
     if (row < 0) {

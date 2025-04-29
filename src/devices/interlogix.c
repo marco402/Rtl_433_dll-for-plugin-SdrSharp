@@ -111,7 +111,7 @@ static int32_t interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     uint8_t const *f4_latch_state;
     uint8_t const *f5_latch_state;
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
 
@@ -206,7 +206,7 @@ static int32_t interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
             "switch3",     "Switch3 State", DATA_STRING, f3_latch_state,
             "switch4",     "Switch4 State", DATA_STRING, f4_latch_state,
             "switch5",     "Switch5 State", DATA_STRING, f5_latch_state,
-            "raw_message", "Raw Message",   DATA_STRING, raw_message,
+            //"raw_message", "Raw Message",   DATA_STRING, raw_message,
             NULL);
     /* clang-format on */
 

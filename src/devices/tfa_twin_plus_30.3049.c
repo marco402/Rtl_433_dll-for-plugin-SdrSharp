@@ -54,7 +54,8 @@ static int32_t tfa_twin_plus_303049_callback(r_device *decoder, bitbuffer_t *bit
     data_t *data;
     uint8_t *b;
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)

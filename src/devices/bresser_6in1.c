@@ -100,7 +100,7 @@ static int32_t bresser_6in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
 
     uint8_t msg[18];
 
-    if (bitbuffer->num_rows != 1
+    if (bitbuffer->bits_per_row[1] != 0
             || bitbuffer->bits_per_row[0] < 160
             || bitbuffer->bits_per_row[0] > 440) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);

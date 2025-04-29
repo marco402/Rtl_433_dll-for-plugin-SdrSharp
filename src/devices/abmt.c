@@ -45,7 +45,8 @@ static int32_t abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
     int16_t temp;
     uint8_t const sync_pattern[3] = {0x55, 0xAA, 0xAA};
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     // Find repeats
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 90);
@@ -64,8 +65,8 @@ static int32_t abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
     // sync bitstream
     bitbuffer_manchester_decode(bitbuffer, row, bitpos - SYNC_PATTERN_START_OFF, &packet_bits, 48);
     bitbuffer_invert(&packet_bits);
-
-    b      = packet_bits.bb[0];
+	row = 0;
+    b      = packet_bits.bb[row];
     id     = b[0];
     temp   = bcd2int(b[3]) * 10 + bcd2int(b[4] >> 4);
     temp_c = (float)temp;
@@ -77,7 +78,7 @@ static int32_t abmt_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
              "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
              NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
+    decoder_output_data(decoder, data, &packet_bits, row, nbRepeat, startPulses, package_type);
     return 1;
 }
 

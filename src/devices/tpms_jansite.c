@@ -39,7 +39,7 @@ static int32_t tpms_jansite_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     int32_t temperature;
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 56);
-
+	row = 0;
     if (packet_bits.bits_per_row[row] < 56) {  // to see
         return DECODE_FAIL_SANITY;
         // decoder_logf(decoder, 3, __func__, "packet_bits.bits_per_row = %d", packet_bits.bits_per_row[0]);
@@ -73,7 +73,7 @@ static int32_t tpms_jansite_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

@@ -42,7 +42,8 @@ With fresh batteries and button pressed:
 static int32_t rftech_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 24);
 

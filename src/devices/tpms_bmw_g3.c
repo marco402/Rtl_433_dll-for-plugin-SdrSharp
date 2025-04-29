@@ -46,7 +46,7 @@ static int32_t tpms_bmwg3_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     // preamble = 0xcccd
     uint8_t const preamble_pattern[] = {0xcc, 0xcd};
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         decoder_logf(decoder, 2, __func__, "row error");
         return DECODE_ABORT_EARLY;
     }
@@ -103,7 +103,7 @@ static int32_t tpms_bmwg3_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
             NULL);
     /* clang-format on */
 	int32_t row = 0;
-	decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses,package_type);
+	decoder_output_data(decoder, data, &decoded, row, 0, startPulses,package_type);
     return 1;
 }
 

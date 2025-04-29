@@ -57,7 +57,8 @@ static int32_t schou_72543_rain_decode(r_device *decoder, bitbuffer_t *bitbuffer
         return DECODE_ABORT_LENGTH;
     }
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     // Check if the first 64 bits of at least two rows are alike
     int32_t row = bitbuffer_find_repeated_prefix(bitbuffer, nbRepeat, 64);

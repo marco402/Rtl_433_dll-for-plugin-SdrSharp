@@ -84,6 +84,8 @@ static int32_t atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     
 	//before 6/12/2024
 	//uint32_t nbRepeat = 3;
+	//if (decoder->_sourceIsFile)
+	//	nbRepeat = 0;
  //   if (bitbuffer->num_rows != nbRepeat) //2 if  .reset_limit = 4000,   //9000,
 	////if (bitbuffer->num_rows < nbRepeat-1)
  //                                 //#endif

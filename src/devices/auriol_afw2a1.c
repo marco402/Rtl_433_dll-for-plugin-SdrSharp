@@ -63,7 +63,8 @@ static int32_t auriol_afw2a1_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     float temp_c;
     int32_t humidity;
 	uint32_t nbRepeat = 12;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0) {

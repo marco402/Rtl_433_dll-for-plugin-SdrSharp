@@ -143,7 +143,7 @@ static int32_t watts_thermostat_decode(r_device *decoder, bitbuffer_t *bitbuffer
         bitbuffer_extract_bytes(bitbuffer, row, bitpos, chk, WATTSTHERMO_CHKSUM_BITLEN);
         reflect_bytes(chk, 1);
         if (chk[0] != chksum) {
-            decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Checksum fail");
+            decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Checksum fail", 0, 0);
             return DECODE_FAIL_MIC;
 		}
 

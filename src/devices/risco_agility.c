@@ -104,7 +104,7 @@ static int32_t risco_agility_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     uint8_t const preamble_pattern[] = {0x55, 0x5a};
     uint8_t len_msg = 16; // default for sensor message, could be 33 bytes for other Agility message not yet decoded
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
 
@@ -167,7 +167,7 @@ static int32_t risco_agility_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, 0, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &decoded, 0, 0, startPulses, package_type);
     return 1;
 }
 

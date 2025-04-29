@@ -43,13 +43,14 @@ Example datagram:
 
 static int32_t wec2103_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    if (bitbuffer->num_rows != 6 || bitbuffer->bits_per_row[2] != 42) {
+    if (bitbuffer->num_rows != 6 || bitbuffer->bits_per_row[2] != 42 || bitbuffer->bb[2]=="") {
         return DECODE_ABORT_LENGTH;
     }
 	int32_t row = 3;
     uint8_t b[5];
     bitbuffer_extract_bytes(bitbuffer, row, 0, b, 40);
-
+	if(b=="")
+        return DECODE_ABORT_LENGTH;
     int32_t crc_received = b[1] >> 4;
     b[1] = (b[1] & 0x0F) | ((b[4] & 0x0f) << 4);
     int32_t crc_calculated = crc4(b, sizeof(b) - 1, 3, 0) ^ (b[4] >> 4);

@@ -53,7 +53,7 @@ static int32_t tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
 {
     bitbuffer_t packet_bits = {0};
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 76);
-
+	row = 0;
     if (packet_bits.bits_per_row[row] < 76) {
         return 0; // DECODE_FAIL_SANITY;
     }
@@ -91,7 +91,7 @@ static int32_t tpms_truck_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

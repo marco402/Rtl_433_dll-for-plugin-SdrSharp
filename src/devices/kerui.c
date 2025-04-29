@@ -37,7 +37,8 @@ static int32_t kerui_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
     int32_t cmd;
     uint8_t const *cmd_str;
 	uint32_t nbRepeat = 9;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 25); // expected are 25 packets, require 9
     if (row < 0)

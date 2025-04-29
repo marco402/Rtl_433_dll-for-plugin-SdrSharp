@@ -36,7 +36,8 @@ static int32_t kw9015b_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32
     uint8_t chksum;
     float temp_c;
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0)

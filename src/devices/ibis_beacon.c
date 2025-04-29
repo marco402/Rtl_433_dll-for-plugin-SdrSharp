@@ -36,7 +36,7 @@ static int32_t ibis_beacon_callback(r_device *decoder, bitbuffer_t *bitbuffer, i
     uint8_t code_str[63];
 
     // 224 bits data + 12 bits preamble
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 232 || bitbuffer->bits_per_row[row] > 250) {
+    if (bitbuffer->bits_per_row[1] != 0 || bitbuffer->bits_per_row[row] < 232 || bitbuffer->bits_per_row[row] > 250) {
         return DECODE_ABORT_LENGTH; // Unrecognized data
     }
 

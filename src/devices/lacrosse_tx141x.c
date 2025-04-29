@@ -109,12 +109,15 @@ Addition of TX141W and TX145wsdth:
     // reduce false positives, require at least 5 out of 12 or 3 of 4 repeats.
     // allows 4-repeats transmission to contain a bogus extra row.
 	uint32_t nbRepeat = bitbuffer->num_rows > 5 ? 4 : 3;   // marc replace 5 by 4 for replay
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 32); // 32
     if (row < 0) {
         // try again for TX141W/TX145wsdth, require at least 2 out of 3-7 repeats.
 		nbRepeat = 2;
+		if (decoder->_sourceIsFile)
+			nbRepeat = 0;
         row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 64); // 65
     }
     if (row < 0) {

@@ -44,7 +44,7 @@ static int32_t fordremote_callback(r_device *decoder, bitbuffer_t *bitbuffer, in
             continue; // DECODE_ABORT_EARLY
         }
 
-        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
+        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "", 0, 0);
 
         bytes     = bitbuffer->bb[row];
         device_id = (bytes[0] << 16) | (bytes[1] << 8) | bytes[2];

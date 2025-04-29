@@ -137,7 +137,7 @@ static int32_t norgo_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
     }
 
     if (b[0] != (uint8_t)~0xFA) {
-        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "wrong preamble");
+        decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "wrong preamble", 0, 0);
         return DECODE_ABORT_EARLY;
     }
 

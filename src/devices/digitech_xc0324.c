@@ -116,7 +116,7 @@ static int32_t decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
 
         /* clang-format off */
         data_t *data = data_make(
-                "model",            "Device Type",      DATA_STRING, "Digitech-XC0324",
+                "model",            "Model",			DATA_STRING, "Digitech-XC0324",
                 "id",               "ID",               DATA_STRING, id,
                 "temperature_C",    "Temperature C",    DATA_FORMAT, "%.1f", DATA_DOUBLE, temperature,
                 "humidity",         "Humidity",         DATA_FORMAT, "%u %%", DATA_INT, humidity,
@@ -170,6 +170,8 @@ static int32_t digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer,
 
     if (events > 0) {
         data = data_int(data, "message_num", "Message repeat count", NULL, events);
+		if (row > 0)
+			row--;
 		decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     }
     return events > 0 ? events : ret;

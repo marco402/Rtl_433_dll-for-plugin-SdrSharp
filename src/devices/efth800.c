@@ -50,7 +50,8 @@ static int32_t eurochron_efth800_decode(r_device *decoder, bitbuffer_t *bitbuffe
     /* Look for clock packet */
     uint8_t dcf77_str[20] = {0}; // "2064-16-32T32:64:64"
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 65);
     if (row > 0) {

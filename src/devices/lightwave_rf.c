@@ -133,7 +133,7 @@ static int32_t lightwave_rf_callback(r_device *decoder, bitbuffer_t *bitbuffer, 
     int32_t command = bb[3][1] & 0x0F;
     int32_t parameter = bb[3][0];
 
-    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Row 0 = Input, Row 1 = Zero bit stuffing, Row 2 = Stripped delimiters, Row 3 = Decoded nibbles");
+    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "Row 0 = Input, Row 1 = Zero bit stuffing, Row 2 = Stripped delimiters, Row 3 = Decoded nibbles", 0, 0);
 
     /* clang-format off */
     data = data_make(

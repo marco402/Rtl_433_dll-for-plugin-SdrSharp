@@ -63,7 +63,7 @@ static int32_t tfa_marbella_callback(r_device *decoder, bitbuffer_t *bitbuffer, 
         return DECODE_FAIL_MIC;
     }
 
-    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 1, __func__, bitbuffer, "", 0, 0);
 
     int32_t temp_raw = (msg[7] << 4) | (msg[8] >> 4);
     float temp_c = (temp_raw - 400) * 0.1f;

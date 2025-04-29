@@ -43,7 +43,7 @@ The payload data is 7 bytes:
 #include "decoder.h"
 
 /// out needs to be at least (bits / 26, usually 7) bytes long
-static int32_t proflame2_mc(bitbuffer_t *bitbuffer, int32_t row, uint32_t start, uint8_t *out)
+static int32_t proflame2_mc(bitbuffer_t *bitbuffer, int32_t row, uint32_t start, uint8_t *out,bitbuffer_t decoded)
 {
     uint8_t *b   = bitbuffer->bb[row];
     uint32_t pos = start;
@@ -59,14 +59,15 @@ static int32_t proflame2_mc(bitbuffer_t *bitbuffer, int32_t row, uint32_t start,
         if (sync != 0xe)
             return f;
 
-        bitbuffer_t decoded = {0};
+        /*bitbuffer_t decoded = {0};*/
         pos = bitbuffer_manchester_decode(bitbuffer, row, pos, &decoded, 11);
-        if (decoded.bits_per_row[row] != 11)  // to see 
+		int32_t row1 = 0; // to see plugin row-->0
+        if (decoded.bits_per_row[row1] != 11)  // to see plugin row-->0
             return f;
 
         // invert IEEE MC to G.E.T. MC
-        uint8_t data = decoded.bb[row][0] ^ 0xff;
-        uint8_t flag = decoded.bb[row][1] ^ 0xe0;
+        uint8_t data = decoded.bb[row1][0] ^ 0xff;
+        uint8_t flag = decoded.bb[row1][1] ^ 0xe0;
 
         int32_t pad = (flag >> 7) & 1;
         int32_t par = (flag >> 6) & 1;
@@ -89,9 +90,10 @@ static int32_t proflame2_mc(bitbuffer_t *bitbuffer, int32_t row, uint32_t start,
 
 static int32_t proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
+	bitbuffer_t decoded = { 0 };
     for (int32_t row = 0; row < bitbuffer->num_rows; ++row) {
         uint8_t b[7] = {0};
-        int32_t ret = proflame2_mc(bitbuffer, row, 0, b);
+        int32_t ret = proflame2_mc(bitbuffer, row, 0, b,decoded);
 
         if (ret != 7)
             continue;
@@ -131,7 +133,7 @@ static int32_t proflame2_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
                 NULL);
         /* clang-format on */
         uint32_t bit_offset = 0;
-
+		decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;
     }
     return 0;

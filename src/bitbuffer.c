@@ -153,7 +153,7 @@ uint32_t bitbuffer_manchester_decode(bitbuffer_t *inbuf, int32_t row, uint32_t s
     uint8_t *bits     = inbuf->bb[row];
     uint32_t len  = inbuf->bits_per_row[row];
     uint32_t ipos = start;
-
+	outbuf->len_rows[0] = inbuf->len_rows[row];	//add plugin
     if (max && len > start + (max * 2))
         len = start + (max * 2);
 
@@ -179,7 +179,7 @@ uint32_t bitbuffer_differential_manchester_decode(bitbuffer_t *inbuf, int32_t ro
     uint32_t len  = inbuf->bits_per_row[row];
     uint32_t ipos = start;
     uint8_t bit1, bit2 = 0;
-
+	outbuf->len_rows[0] = inbuf->len_rows[row];	//add plugin
     if (max && len > start + (max * 2))
         len = start + (max * 2);
 

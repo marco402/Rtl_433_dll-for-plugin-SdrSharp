@@ -40,6 +40,8 @@ The sensors can be bought at Clas Ohlsen (Nexus) and Pearl (infactory/FreeTec).
 static int32_t nexus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
 	uint32_t nbRepeat = 3;
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
     if (row < 0) {
         return DECODE_ABORT_EARLY;

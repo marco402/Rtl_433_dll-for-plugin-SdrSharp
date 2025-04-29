@@ -43,7 +43,8 @@ static int32_t eurochron_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
 
     /* Validation checks */
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
 

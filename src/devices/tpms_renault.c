@@ -37,7 +37,8 @@ static int32_t tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
     // require 72 data bits
-    if (packet_bits.bits_per_row[row] < 72) {  // to see
+	row = 0;
+    if (packet_bits.bits_per_row[row] < 72) { 
         return 0;
     }
     b = packet_bits.bb[row];
@@ -74,7 +75,7 @@ static int32_t tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

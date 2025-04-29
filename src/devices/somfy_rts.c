@@ -147,10 +147,10 @@ static int32_t somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
 
     bitbuffer_t decoded = {0};
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &decoded, 80);
-    if (decoded.num_rows == 0 || decoded.bits_per_row[row] < 56)  // to see row=0?
+    if (decoded.num_rows == 0 || decoded.bits_per_row[0] < 56)
         return DECODE_ABORT_LENGTH;
-
-    uint8_t *b = decoded.bb[row]; // to see row=0?
+	row = 0;
+    uint8_t *b = decoded.bb[row];
 
     // descramble
     for (int32_t i = 6; i > 0; i--)
@@ -190,7 +190,7 @@ static int32_t somfy_rts_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &decoded, row, 0, startPulses, package_type);
     return 1;
 }
 

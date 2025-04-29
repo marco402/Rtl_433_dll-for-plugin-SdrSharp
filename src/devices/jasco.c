@@ -66,7 +66,7 @@ static int32_t jasco_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
 
     return 1;
 }

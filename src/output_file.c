@@ -15,6 +15,7 @@ History : V1.00 2021-04-01 - First release
 
  All text above must be included in any redistribution.
 */
+#include "decoder_util.h"
 #include "dll_rtl_433.h" //for fprintf
 #include "output_file.h"
 
@@ -23,7 +24,7 @@ History : V1.00 2021-04-01 - First release
 #include "r_util.h"
 #include "logger.h"
 #include "fatal.h"
-#include "decoder_util.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

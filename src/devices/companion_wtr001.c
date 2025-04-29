@@ -52,7 +52,8 @@ static int32_t companion_wtr001_decode(r_device *decoder, bitbuffer_t *bitbuffer
     uint8_t b[2];
     float temperature;
 	uint32_t nbRepeat = MYDEVICE_MINREPEATS;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, MYDEVICE_BITLEN);
     if (row < 0 || bitbuffer->bits_per_row[row] != 14) {

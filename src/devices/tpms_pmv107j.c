@@ -42,11 +42,11 @@ static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     if (bit_offset - bit_offset < 67 * 2) {
         return 0;
     }
-    decoder_log_bitbuffer(decoder, 2, __func__, &packet_bits, "");
+    decoder_log_bitbuffer(decoder, 2, __func__, &packet_bits, "", 0, 0);
 
     // realign the buffer, prepending 6 bits of 0.
     b[0] = packet_bits.bb[0][0] >> 6;
-    bitbuffer_extract_bytes(&packet_bits, row, 2, b + 1, 64);
+    bitbuffer_extract_bytes(&packet_bits, row, 2, b + 1, 64);     // to see why not row=0?
     decoder_log_bitrow(decoder, 2, __func__, b, 72, "Realigned");
 
     int32_t crc = b[8];
@@ -91,7 +91,7 @@ static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
             NULL);
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

@@ -66,8 +66,8 @@ static int32_t tpms_nissan_decode(r_device *decoder, bitbuffer_t *bitbuffer, uin
             "unknown",          "",             DATA_INT,    unknown,
             NULL);
     /* clang-format on */
-
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+	row = 0;
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

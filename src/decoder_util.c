@@ -9,12 +9,18 @@
     (at your option) any later version.
 */
 
-#include "decoder_util.h"
+
+#include "data.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "fatal.h"
+#include "r_api.h"
+#include "pulse_detect.h"
+#include "dll_rtl_433.h" //for fprintf
+#include "decoder_util.h"
 // create decoder functions
 #define OOK_EST_LOW_RATIO 1024           // Constant for slowness of OOK low level (noise) estimator (very slow)
+
 r_device *decoder_create(r_device const *dev_template, uint32_t user_data_size)
 {
 	r_device *r_dev = calloc(1, sizeof(*r_dev));
@@ -61,13 +67,155 @@ void initDeviceToPlugin()
 		}
 	}
 }
+#if (ANALYZE | LISTEDEVICES)
+	int32_t nbLineUsed = 0;
+#endif
+#if ANALYZE
 
-void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type)
+int32_t deviceOK = 0;
+
+void testUnKnown(int32_t length, int32_t startPulses, int32_t package_type, r_device *decoder)
 {
+	if (!deviceOK)
+		return;
+    defDeviceToPlugin *ptrDeviceToPlugin = &deviceToPlugin;
+	deviceToPlugin.lenForDisplay = length * 2;
+	deviceToPlugin.lenForRecord = (length + OOK_EST_LOW_RATIO) * 2;
+	deviceToPlugin.startForDisplay = startPulses * 2;
+	deviceToPlugin.startForRecord = (startPulses - OOK_EST_LOW_RATIO) * 2;
+	deviceToPlugin.package_type = package_type;
+	deviceToPlugin.nbInfosDevice = nbLineUsed;
+	fctInfosToPlugin(ptrDeviceToPlugin);
+}
+#endif
+#if (ANALYZE | LISTEDEVICES)
+void AddKeyValueDevice(char * key, char *  value)
+{
+
+	defDeviceToPlugin *ptrDeviceToPlugin = &deviceToPlugin;
+#if ANALYZE
+	if (key == "Raw Message:")
+		//{
+
+		//	for (int i = 0; i < 100; i++) {
+		//		deviceToPlugin.row_bits[i] = value[i];
+		//	}
+		//}
+			//strcpy(ptrDeviceToPlugin->row_bits, value);
+		ptrDeviceToPlugin->row_bits = value;
+	else if (key == "Raw Message\\:")
+		//strcpy(ptrDeviceToPlugin->row_bitsNot, value);
+		ptrDeviceToPlugin->row_bitsNot = value;
+	else
+	{
+#endif
+		uint8_t cara[LENLINES] = { "" };
+		strcpy(ptrDeviceToPlugin->Key_Device[nbLineUsed], key);
+		snprintf(cara, LENLINES, "%s", value);
+		strcpy(ptrDeviceToPlugin->Value_Device[nbLineUsed], cara);
+		nbLineUsed++;
+		if (nbLineUsed == nbLine)
+			//realloc to nbline+NBLINES
+		{
+			ptrDeviceToPlugin->Key_Device = (uint8_t **)realloc(ptrDeviceToPlugin->Key_Device, (nbLine + NBLINES) * sizeof(intptr_t));
+			for (int32_t i = nbLine; i < nbLine + NBLINES; i++)
+				ptrDeviceToPlugin->Key_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+			ptrDeviceToPlugin->Value_Device = (uint8_t **)realloc(ptrDeviceToPlugin->Value_Device, (nbLine + NBLINES) * sizeof(intptr_t));
+			for (int32_t i = nbLine; i < nbLine + NBLINES; i++)
+				ptrDeviceToPlugin->Value_Device[i] = (uint8_t*)calloc(LENLINES, sizeof(uint8_t));
+			nbLine += NBLINES;
+		}
+#if ANALYZE
+	}
+#endif
+}
+#endif
+#if LISTEDEVICES
+void listDevices(struct r_cfg *cfg)
+{
+	char str[30];
+	defDeviceToPlugin *ptrDeviceToPlugin = &deviceToPlugin;
+	for (int32_t i = 0; i < cfg->num_r_devices; i++)
+	{
+		razKeyValueDeviceToPlugin();
+		sprintf(str, "%d", cfg->devices[i].protocol_num);
+		AddKeyValueDevice("Protocol", str);
+		//sprintf(str, "%d", cfg->devices[i].name);
+		AddKeyValueDevice("Name", cfg->devices[i].name);
+		sprintf(str, "%d", cfg->devices[i].modulation);
+		AddKeyValueDevice("Modulation", str);
+		sprintf(str, "%d", cfg->devices[i].disabled);
+		AddKeyValueDevice("Disabled", str);
+		sprintf(str, "%f", cfg->devices[i].short_width);
+		AddKeyValueDevice("Short_width", str);
+		sprintf(str, "%f", cfg->devices[i].long_width);
+		AddKeyValueDevice("Long_width", str);
+		sprintf(str, "%f", cfg->devices[i].tolerance);
+		AddKeyValueDevice("Tolerance", str);
+		sprintf(str, "%f", cfg->devices[i].gap_limit);
+		AddKeyValueDevice("Gap_limit", str);
+		sprintf(str, "%f", cfg->devices[i].reset_limit);
+		AddKeyValueDevice("Reset_limit", str);
+		sprintf(str, "%d", cfg->devices[i].priority);
+		AddKeyValueDevice("Priority", str);
+		deviceToPlugin.nbInfosDevice = nbLineUsed;
+		fctInfosToPlugin(ptrDeviceToPlugin);
+	}
+}
+#endif
+
+void razKeyValueDeviceToPlugin()
+{
+#if ANALYZE
+	deviceOK = 1;
+#endif
     for (int32_t i = 0; i < nbLine; i++) {
         strcpy((char *)deviceToPlugin.Key_Device[i], "");
         strcpy((char *)deviceToPlugin.Value_Device[i], "");
     }
+#if ANALYZE | LISTEDEVICES
+	nbLineUsed = 0;
+#endif
+}
+void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type)
+{
+	razKeyValueDeviceToPlugin();
+#if ANALYZE
+	uint8_t row_bytes[MAXROWCODE + 1] = { 0 };
+	uint8_t row_bytesBarre[MAXROWCODE + 1] = { 0 };
+	deviceToPlugin.row_bitsNot = row_bytesBarre;
+	getRow(row_bytes, bitbuffer->bb[row], bitbuffer->bits_per_row[row]);
+	deviceToPlugin.row_bits = row_bytes;
+
+	//free(row_bytes);
+	//deviceToPlugin.row_bitsNot = raw_str;
+
+	//sprintf(str, "%f ", device->short_width);
+	//AddKeyValueDevice("device->short_width:", str);
+	//sprintf(str, "%f ", device->long_width);
+	//AddKeyValueDevice("device->long_width:", str);
+	//sprintf(str, "%f ", device->sync_width);
+	//AddKeyValueDevice("device->sync_width:", str);
+	//sprintf(str, "%f ", device->reset_limit);
+	//AddKeyValueDevice("device->reset_limit:", str);
+	//sprintf(str, "%f", device->gap_limit);
+	//AddKeyValueDevice("device->gap_limit:", str);
+  	data = data_prepend(data,
+		"short_width:", "", DATA_DOUBLE, decoder->short_width,
+		NULL);
+	data = data_prepend(data,
+		"long_width:", "", DATA_DOUBLE, decoder->long_width,
+		NULL);
+	data = data_prepend(data,
+		"sync_width:", "", DATA_DOUBLE, decoder->sync_width,
+		NULL);
+	data = data_prepend(data,
+		"reset_limit:", "", DATA_DOUBLE, decoder->reset_limit,
+		NULL);
+	data = data_prepend(data,
+		"gap_limit:", "", DATA_DOUBLE, decoder->gap_limit,
+		NULL);
+#endif
 	deviceToPlugin.package_type = package_type;
 
 // ********************part display**************************
@@ -85,21 +233,25 @@ void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer
 	deviceToPlugin.startForRecord = deviceToPlugin.startForDisplay -  OOK_EST_LOW_RATIO;  //2048  ;  replay atech - 1024 -1024 et
 	deviceToPlugin.lenForRecord = bitbuffer->len_rows[row] +  OOK_EST_LOW_RATIO;   //2048   + 1024->ajoute 1 entetes a la fin =>pb synchro(Acurite-3n1); + 1024 for atech(196) no for 3 & 138
 	//add repeat
-	if(nbRepeat>0)
+	//plantage gt_wt_03 nbRepeat=12 len > buffer
+	/*if(nbRepeat>0)
 	{
 		if (bitbuffer->num_rows >= (uint16_t)(row + nbRepeat))
 		{
 			for (uint16_t r = row + 1; r < (uint16_t)(row + nbRepeat); r++)
 				deviceToPlugin.lenForRecord += bitbuffer->len_rows[r];
 		}
-	}
+	}*/
  	// *******************************************************
 	deviceToPlugin.startForDisplay *= 2;    //2 for IQ
 	deviceToPlugin.lenForDisplay *= 2;
 	deviceToPlugin.lenForRecord *= 2;
 	deviceToPlugin.startForRecord *= 2;
 
-    decoder->output_fn(decoder, data, &deviceToPlugin); //-->data_acquired_handler
+	if(decoder->output_fn)
+ 		decoder->output_fn(decoder, data, &deviceToPlugin); //-->data_acquired_handler
+	else
+		data_acquired_handler(decoder, data, &deviceToPlugin);
 }
 
 // helper
@@ -128,9 +280,8 @@ static uint8_t *bitrow_asprint_code(uint8_t const *bitrow, uint32_t bit_len)
         WARN_MALLOC("decoder_output_bitbuffer()");
         return NULL; // NOTE: returns NULL on alloc failure.
     }
-    sprintf(row_code, "{%u}%s", bit_len, row_bytes);
-
-    return row_code;
+	sprintf(row_code, "%s", row_bytes);
+	return row_code;
 }
 
 static uint8_t *bitrow_asprint_bits(uint8_t const *bitrow, uint32_t bit_len)
@@ -196,47 +347,49 @@ void decoder_logf(r_device *decoder, int32_t level, uint8_t const *func, _Printf
     //}
 }
 
-void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, uint8_t const *msg)
+void decoder_log_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, bitbuffer_t *bitbuffer, uint8_t const *msg, int32_t startPulses, uint16_t package_type)
 {
+#if !ANALYZE
 	return;
-   // if (decoder->verbose >= level) {
-   //     // note that decoder levels start at LOG_WARNING
-   //     level += 4;
-
-   //     uint8_t *row_codes[BITBUF_ROWS] = {0};
-   //     uint8_t *row_bits[BITBUF_ROWS]  = {0};
-
-   //     uint32_t num_rows = bitbuffer->num_rows;
-   //     for (uint32_t i = 0; i < num_rows; i++) {
-   //         row_codes[i] = bitrow_asprint_code(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
-
-   //         if (decoder->verbose_bits) {
-   //             row_bits[i] = bitrow_asprint_bits(bitbuffer->bb[i], bitbuffer->bits_per_row[i]);
-   //         }
-   //     }
-
-   //     /* clang-format off */
-   //     data_t *data = data_make(
-   //             "src",     "",     DATA_STRING, func,
-   //             "lvl",      "",     DATA_INT,    level,
-   //             "msg",      "",     DATA_STRING, msg,
-   //             "num_rows", "",     DATA_INT, num_rows,
-   //             "codes",    "",     DATA_ARRAY, data_array(num_rows, DATA_STRING, row_codes),
-   //             NULL);
-   //     /* clang-format on */
-
-   //     if (decoder->verbose_bits) {
-			//data = data_ary(data, "bits", "", NULL, data_array(num_rows, DATA_STRING, row_bits));
-   //     }
-
-   //     decoder_output_log(decoder, level, data);
-
-   //     for (uint32_t i = 0; i < num_rows; i++) {
-   //         free(row_codes[i]);
-   //         free(row_bits[i]);
-   //     }
-   // }
-}
+#else
+    if (decoder->verbose >= level) {
+        // note that decoder levels start at LOG_WARNING
+        level += 4;
+		if(!decoder->decode_fn)
+		{
+			int32_t row = 0;
+		uint32_t maxBit = 0;
+		for (uint32_t i = 0; i < bitbuffer->num_rows; i++)
+		{
+			if(bitbuffer->bits_per_row[i]>maxBit)
+			{
+				maxBit = bitbuffer->bits_per_row[i];
+				row = i;
+		    }
+			if (bitbuffer->bits_per_row[i] == 0)
+				break;
+		}
+		maxBit = maxBit > MAXROWCODE ? MAXROWCODE : maxBit;
+		deviceOK = 1;
+			if (maxBit < MINPULSES)
+				deviceOK = 0;
+			else
+			{
+				uint8_t row_bytes[MAXROWCODE + 1];
+				uint8_t row_bytesBarre[MAXROWCODE + 1];
+				row_bytes[0] = '\0';
+				row_bytesBarre[0] = '\0';
+				getRow(row_bytes, bitbuffer->bb[row], bitbuffer->bits_per_row[row]);
+				AddKeyValueDevice("Raw Message:", row_bytes);
+				bitbuffer_invert(bitbuffer);
+				getRow(row_bytesBarre, bitbuffer->bb[row], bitbuffer->bits_per_row[row]);
+ 				AddKeyValueDevice("Raw Message\\:", row_bytesBarre);
+				testUnKnown(bitbuffer->len_rows[row], startPulses, PULSE_DATA_OOK, decoder);
+			 }
+		}
+    }
+#endif
+ }
 
 void decoder_logf_bitbuffer(r_device *decoder, int32_t level, uint8_t const *func, const bitbuffer_t *bitbuffer, _Printf_format_string_ const uint8_t *format, ...)
 {

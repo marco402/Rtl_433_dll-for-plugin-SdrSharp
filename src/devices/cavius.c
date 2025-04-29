@@ -64,7 +64,6 @@ static int32_t cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &databits, 11 * 8);
     bitbuffer_invert(&databits);
-
     // we require 11 bytes
     if (databits.bits_per_row[row] < 11 * 8) {
         return DECODE_FAIL_SANITY; // manchester_decode fail
@@ -116,7 +115,7 @@ static int32_t cavius_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
     /* clang-format on */
 
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &databits, row, 0, startPulses, package_type);
     return 1;
 }
 

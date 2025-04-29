@@ -54,6 +54,8 @@ enum decode_return_codes {
 };
 #define NBLINES  10
 #define LENLINES  30
+#define MAXROWCODE  50
+#define MINPULSES 5
 struct bitbuffer;
 struct data;
 typedef struct strDeviceToPlugin {
@@ -65,6 +67,10 @@ typedef struct strDeviceToPlugin {
 	int32_t startForDisplay;              //now free was for test use IQ for graph
 	uint16_t nbInfosDevice;
 	uint16_t package_type;
+#if ANALYZE
+	uint8_t const *row_bits;
+	uint8_t const *row_bitsNot;
+#endif
 } defDeviceToPlugin;
 /** Device protocol decoder struct. */
 typedef struct r_device {
@@ -101,6 +107,7 @@ typedef struct r_device {
     /* private for flex decoder and output callback */
     void *decode_ctx;
     void *output_ctx;
+	bool _sourceIsFile;
 } r_device;
 
 //31

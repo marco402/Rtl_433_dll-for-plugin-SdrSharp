@@ -33,7 +33,7 @@ static int32_t ecowitt_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
         };
 
     // All Ecowitt packets have one row.
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_LENGTH;
     }
 

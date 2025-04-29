@@ -129,7 +129,7 @@ static int32_t ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t
 
     if (decoder_verbose(decoder) > 1) {
         decoder_log(decoder, 0, __func__, "TTX201 received raw data");
-        decoder_log_bitbuffer(decoder, 0, __func__, bitbuffer, "");
+        decoder_log_bitbuffer(decoder, 0, __func__, bitbuffer, "", 0, 0);
         decoder_logf(decoder, 0, __func__, "Data decoded:" \
                 " r  cs    K   ID    S   B  C  X    T    M     J\n");
         decoder_logf(decoder, 0, __func__, "%2u  %2d    %2d  %3d  0x%01x  %1d  %1d  %1d  %4d  0x%02x",

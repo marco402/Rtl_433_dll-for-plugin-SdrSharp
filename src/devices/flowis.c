@@ -53,7 +53,7 @@ static int32_t flowis_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
             0xd3, 0x91, 0xd3, 0x91       // sync word
     };
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY;
     }
 

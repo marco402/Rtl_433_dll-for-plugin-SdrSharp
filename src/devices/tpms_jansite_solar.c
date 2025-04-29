@@ -52,7 +52,7 @@ static int32_t tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuff
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 88);
     bitbuffer_invert(&packet_bits);
-
+	row = 0;
     if (packet_bits.bits_per_row[row] < 88) {  //to see
         return DECODE_FAIL_SANITY;
     }
@@ -93,8 +93,8 @@ static int32_t tpms_jansite_solar_decode(r_device *decoder, bitbuffer_t *bitbuff
             NULL);
     /* clang-format on */
 
-        
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
+    //decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
     return 1;
 }
 
@@ -107,7 +107,13 @@ static int32_t tpms_jansite_solar_callback(r_device *decoder, bitbuffer_t *bitbu
     uint32_t bit_offset = 0;
     int32_t ret         = 0;
     int32_t events      = 0;
-
+///*	bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 24) + 80;
+//
+//		tpms_jansite_solar_decode(deco*/der, bitbuffer, row, bit_offset, startPulses, package_type);
+		//if (ret > 0)
+		//	events += ret;
+		//bit_offset += 2;
+	
     while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 24)) + 80 <=
             bitbuffer->bits_per_row[row]) {
 

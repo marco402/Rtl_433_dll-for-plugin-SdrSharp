@@ -95,7 +95,7 @@ static int32_t holman_ws5029pcm_decode(r_device *decoder, bitbuffer_t *bitbuffer
     data_t *data;
     uint8_t b[18];
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         decoder_logf(decoder, 1, __func__, "Wrong number of rows (%d)", bitbuffer->num_rows);
         return DECODE_ABORT_EARLY;
     }
@@ -269,7 +269,8 @@ static int32_t holman_ws5029pwm_decode(r_device *decoder, bitbuffer_t *bitbuffer
     // and validated prior to inverting the buffer. Invert
     // only if we have a valid row to process.
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 96);
     if (row < 0 || bitbuffer->bits_per_row[row] != 96)

@@ -52,7 +52,8 @@ static int32_t honeywell_wdb_callback(r_device *decoder, bitbuffer_t *bitbuffer,
 
     // The device transmits many rows, check for 4 matching rows.
 	uint32_t nbRepeat = 4;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 48);
     if (row < 0) {

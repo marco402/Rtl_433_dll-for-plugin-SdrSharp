@@ -55,7 +55,8 @@ static int32_t thermopro_tp12_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
     data_t *data;
     uint8_t ic;
 	uint32_t nbRepeat = (bitbuffer->num_rows > 5) ? 5 : 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     // The device transmits 16 rows, let's check for 3 matching.
     // (Really 17 rows, but the last one doesn't match because it's missing a trailing 1.)

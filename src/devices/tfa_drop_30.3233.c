@@ -121,7 +121,8 @@ static int32_t tfa_drop_303233_decode(r_device *decoder, bitbuffer_t *bitbuffer,
 {
     bitbuffer_invert(bitbuffer);
 	uint32_t nbRepeat = TFA_DROP_MINREPEATS;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat,
             TFA_DROP_BITLEN);

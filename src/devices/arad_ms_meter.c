@@ -44,7 +44,8 @@ static int32_t arad_mm_dialog3g_decode(r_device *decoder, bitbuffer_t *bitbuffer
 {
     uint8_t const preamble_pattern[] = {0x96, 0xf5, 0x13, 0x85, 0x37, 0xb4}; // 48 bit preamble
 	uint32_t nbRepeat = 1;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 168); // expected 1 row with minimum of 48+120= 168 bits.
     if (row < 0) {

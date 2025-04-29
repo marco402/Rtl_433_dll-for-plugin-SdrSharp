@@ -62,7 +62,8 @@ static int32_t missil_ml0757_callback(r_device *decoder, bitbuffer_t *bitbuffer,
     float temp_c, rainfall, wind_kph;
     int32_t flag_bat, flag_rwp;
 	uint32_t nbRepeat = 5;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
     if (row < 0)

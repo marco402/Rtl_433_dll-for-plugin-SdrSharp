@@ -43,7 +43,7 @@ static int32_t tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     int32_t crc;
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 88);
-
+	row = 0;
     // decoder_logf(decoder, 3, __func__, "bits %d", packet_bits.bits_per_row[0]);
     if (packet_bits.bits_per_row[row] < 80) {  // to see
         return DECODE_FAIL_SANITY; // sanity check failed
@@ -89,7 +89,7 @@ static int32_t tpms_citroen_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

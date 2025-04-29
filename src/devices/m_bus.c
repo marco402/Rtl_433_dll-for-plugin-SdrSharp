@@ -1141,7 +1141,7 @@ static int32_t m_bus_mode_s_callback(r_device *decoder, bitbuffer_t *bitbuffer, 
 
     if (!m_bus_decode_format_a(decoder, &data_in, &data_out, &block1))    return 0;
 
-    m_bus_output_data(decoder, bitbuffer, &data_out, &block1, "S", startPulses, package_type, 0);
+    m_bus_output_data(decoder, &packet_bits, &data_out, &block1, "S", startPulses, package_type, 0);
 
     return 1;
 }

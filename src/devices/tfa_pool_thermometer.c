@@ -35,7 +35,8 @@ static int32_t tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbu
 
     // require 7 of 10 repeats
 	uint32_t nbRepeat = 7;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 28);
     if (row < 0) {

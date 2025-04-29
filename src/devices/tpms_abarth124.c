@@ -77,7 +77,8 @@ static int32_t tpms_abarth124_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
             "mic",              "Integrity",    DATA_STRING, "CHECKSUM",
             NULL);
     /* clang-format on */
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+	row = 0;
+    decoder_output_data(decoder, data, &packet_bits, row, 0, startPulses, package_type);
     return 1;
 }
 

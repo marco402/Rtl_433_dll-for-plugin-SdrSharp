@@ -74,7 +74,7 @@ static int32_t bresser_leakage_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0x2d, 0xd4};
     uint8_t msg[18];
 
-    if (bitbuffer->num_rows != 1
+    if (bitbuffer->bits_per_row[1] != 0
             || bitbuffer->bits_per_row[row] < 160
             || bitbuffer->bits_per_row[row] > 440) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[row]);

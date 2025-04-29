@@ -43,7 +43,8 @@ static int32_t ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
 
     /* Find row repeated at least twice */
 	uint32_t nbRepeat = 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 6*16+3*8);
     if (row < 0) {
@@ -70,8 +71,8 @@ static int32_t ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
     /* Get the decoded data fields */
     /* IIIIIIII IIIIIIII CCCCCCCC FFFFFFFF FFFFFFFF FFFFSSSS
        SSSSSSSS SSSSSSSS UUUUUUUU UUUUUUUU UUUUxxxx*/
-
-    b = decoded.bb[0];
+	int32_t row1 = 0;
+    b = decoded.bb[row1];
 
     /* Reverse the bit order per nibble */
     reflect_nibbles(b, ret / 8);
@@ -93,7 +94,7 @@ static int32_t ced7000_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
     /* clang-format on */
 
 
-    decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type); 
+    decoder_output_data(decoder, data, &decoded, row1, nbRepeat, startPulses, package_type);
     return 1;
 }
 

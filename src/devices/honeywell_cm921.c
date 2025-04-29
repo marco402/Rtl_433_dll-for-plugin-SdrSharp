@@ -173,7 +173,7 @@ static int32_t honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     const uint8_t preamble_bit_length = 30;
     const int32_t row = 0; // we expect a single row only.
 
-    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60) {
+    if (bitbuffer->bits_per_row[1] != 0 || bitbuffer->bits_per_row[row] < 60) {
         return DECODE_ABORT_LENGTH;
     }
 
@@ -237,7 +237,7 @@ static int32_t honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer,
 
     message_t msg;
 
-    int32_t pr = parse_msg(&packet, 0, &msg);
+    int32_t pr = parse_msg(&packet, row, &msg);
 
     if (pr <= 0) {
         return pr;
@@ -437,7 +437,7 @@ static int32_t honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     data = data_str(data, "mic",      "Integrity",    NULL, "CHECKSUM");
     /* clang-format on */
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &packet, row, 0, startPulses, package_type);
 
     return 1;
 }

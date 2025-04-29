@@ -46,13 +46,13 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     double offset;
 
     bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
-
-    if (packet_bits.bits_per_row[row] < 64) {
+	int32_t row1 = 0; // add plugin
+    if (packet_bits.bits_per_row[row1] < 64) {  // to see why not row=0?
         return DECODE_ABORT_LENGTH; // too short to be a whole packet
     }
-    decoder_log_bitbuffer(decoder, 1, __func__, &packet_bits, "");
+    decoder_log_bitbuffer(decoder, 1, __func__, &packet_bits, "", 0, 0);
 
-    b = packet_bits.bb[row];
+    b = packet_bits.bb[row1];
 
     id            = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
     pressure_raw  = b[4];
@@ -107,7 +107,7 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     /* clang-format on */
 
         
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type); 
+    decoder_output_data(decoder, data, &packet_bits, row1, 0, startPulses, package_type);
     return 1;
 }
 

@@ -285,7 +285,7 @@ static int32_t schrader_SMD3MA4_decode(r_device *decoder, bitbuffer_t *bitbuffer
     /* clang-format on */
     uint32_t bit_offset = 0;
 
-    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    decoder_output_data(decoder, data, &decoded, row, 0, startPulses, package_type);
     return 1;
 }
 

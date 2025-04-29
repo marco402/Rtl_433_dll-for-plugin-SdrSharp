@@ -44,7 +44,8 @@ static int32_t tfa_303221_callback(r_device *decoder, bitbuffer_t *bitbuffer, in
 
     // Device send 4 row, checking for two repeated
 	uint32_t nbRepeat = (bitbuffer->num_rows > 4) ? 4 : 2;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 40);
     if (row < 0)

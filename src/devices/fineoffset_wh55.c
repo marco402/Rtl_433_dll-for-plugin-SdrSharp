@@ -47,7 +47,7 @@ static int32_t fineoffset_wh55_decode(r_device *decoder, bitbuffer_t *bitbuffer,
 {
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4, 0x55}; // part of preamble, sync word, and message type
 
-    if (bitbuffer->num_rows != 1) {
+    if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY; // We expect a single row
     }
 

@@ -143,7 +143,8 @@ static int32_t govee_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
         return DECODE_ABORT_EARLY; // truncated transmission
     }
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 6 * 8);
     if (row < 0) {
@@ -331,7 +332,8 @@ static int32_t govee_h5054_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
         return DECODE_ABORT_EARLY;
     }
 	uint32_t nbRepeat = 3;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, GOVEE_H5054_BITLEN);
     if (row < 0) {

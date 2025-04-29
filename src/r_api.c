@@ -241,7 +241,7 @@ void r_free_cfg(r_cfg_t *cfg)
 
 /* device decoder protocols */
 
-void register_protocol(r_cfg_t *cfg, r_device *r_dev, uint8_t *arg)
+void register_protocol(r_cfg_t *cfg, r_device *r_dev, bool _sourceIsFile, uint8_t *arg)
 {
     // use arg of 'v', 'vv', 'vvv' as device verbosity
     int32_t dev_verbose = 0;
@@ -275,7 +275,7 @@ void register_protocol(r_cfg_t *cfg, r_device *r_dev, uint8_t *arg)
 
     p->output_fn  = data_acquired_handler;
     p->output_ctx = cfg;
-
+	p->_sourceIsFile = _sourceIsFile;
     list_push(&cfg->demod->r_devs, p);
 #ifdef DLL_RTL_433
     if (cfg->verbosity)
@@ -305,12 +305,12 @@ void unregister_protocol(r_cfg_t *cfg, r_device *r_dev)
     }
 }
 
-void register_all_protocols(r_cfg_t *cfg, uint32_t disabled)
+void register_all_protocols(r_cfg_t *cfg, uint32_t disabled,bool _sourceIsFile)
 {
     for (int32_t i = 0; i < cfg->num_r_devices; i++) {
         // register all device protocols that are not disabled
         if (cfg->devices[i].disabled <= disabled) {
-            register_protocol(cfg, &cfg->devices[i], NULL);
+            register_protocol(cfg, &cfg->devices[i],_sourceIsFile	, NULL);
         }
     }
 }
@@ -677,20 +677,20 @@ void data_acquired_handler(r_device *r_dev, data_t *data, defDeviceToPlugin *ptr
 //#if SYNCHROGRAPH
 //    fprintf(stderr, "len_row_bits %d \n", len);
 //#endif
-#ifndef NDEBUG
-    // check for undeclared csv fields
-    for (data_t *d = data; d; d = d->next) {
-        int32_t found = 0;
-        for (uint8_t const *const *p = r_dev->fields; *p; ++p) {
-            if (!strcmp(d->key, *p)) {
-                found = 1;
-                break;
-            }
-        }
-        if (!found) {
-            fprintf(stderr, "WARNING: Undeclared field \"%s\" in [%u] \"%s\"\n", d->key, r_dev->protocol_num, r_dev->name);
-        }
-    }
+#ifndef NDEBUG  //marc for analyzer 
+    //// check for undeclared csv fields
+    //for (data_t *d = data; d; d = d->next) {
+    //    int32_t found = 0;
+    //    for (uint8_t const *const *p = r_dev->fields; *p; ++p) {
+    //        if (!strcmp(d->key, *p)) {
+    //            found = 1;
+    //            break;
+    //        }
+    //    }
+    //    if (!found) {
+    //        fprintf(stderr, "WARNING: Undeclared field \"%s\" in [%u] \"%s\"\n", d->key, r_dev->protocol_num, r_dev->name);
+    //    }
+    //}
 #endif
 
     if (cfg->conversion_mode == CONVERT_SI) {
@@ -837,17 +837,22 @@ void data_acquired_handler(r_device *r_dev, data_t *data, defDeviceToPlugin *ptr
                 "protocol", "Protocol", DATA_INT, r_dev->protocol_num,
                 NULL);
     }
-
+		char str[LENLINES];
+		sprintf(str, "%d", r_dev->modulation);
     if (cfg->report_meta && cfg->demod->fsk_pulse_data.fsk_f2_est) {
-		data = data_str(data, "mod", "Modulation", NULL, "FSK");
+
+		//deviceToPlugin.package_type = package_type;
+
+		//sprintf(str, "%d", decoder->modulation);
+		data = data_str(data, "mod", "Modulation", NULL, str);
 		data = data_dbl(data, "freq1", "Freq1", "%.1f MHz", cfg->demod->fsk_pulse_data.freq1_hz / 1000000.0);
-		data = data_dbl(data, "freq2", "Freq2", "%.1f MHz", cfg->demod->fsk_pulse_data.freq2_hz / 1000000.0);
+ 		data = data_dbl(data, "freq2", "Freq2", "%.1f MHz", cfg->demod->fsk_pulse_data.freq2_hz / 1000000.0);
 		data = data_dbl(data, "rssi", "RSSI", "%.1f dB", cfg->demod->fsk_pulse_data.rssi_db);
 		data = data_dbl(data, "snr", "SNR", "%.1f dB", cfg->demod->fsk_pulse_data.snr_db);
 		data = data_dbl(data, "noise", "Noise", "%.1f dB", cfg->demod->fsk_pulse_data.noise_db);
     }
     else if (cfg->report_meta) {
-		data = data_str(data, "mod", "Modulation", NULL, "ASK");
+		data = data_str(data, "mod", "Modulation", NULL, str);
 		data = data_dbl(data, "freq", "Freq", "%.1f MHz", cfg->demod->pulse_data.freq1_hz / 1000000.0);
 		data = data_dbl(data, "rssi", "RSSI", "%.1f dB", cfg->demod->pulse_data.rssi_db);
 		data = data_dbl(data, "snr", "SNR", "%.1f dB", cfg->demod->pulse_data.snr_db);

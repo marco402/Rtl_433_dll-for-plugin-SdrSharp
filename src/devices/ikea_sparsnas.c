@@ -148,7 +148,7 @@ static int32_t ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     uint16_t bitpos = bitbuffer_search(bitbuffer, 0, 0, preamble_pattern, IKEA_SPARSNAS_PREAMBLE_BITLEN);
 
     if ((bitbuffer->bits_per_row[0] == bitpos) || (bitpos + IKEA_SPARSNAS_MESSAGE_BITLEN > bitbuffer->bits_per_row[0])) {
-        decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "malformed package, preamble not found. (Expected 0xAAAAD201)");
+        decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "malformed package, preamble not found. (Expected 0xAAAAD201)", 0, 0);
         return DECODE_ABORT_EARLY;
     }
 
@@ -156,7 +156,7 @@ static int32_t ikea_sparsnas_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     uint8_t buffer[IKEA_SPARSNAS_MESSAGE_BYTELEN];
     bitbuffer_extract_bytes(bitbuffer, 0, bitpos + IKEA_SPARSNAS_PREAMBLE_BITLEN, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN);
 
-    decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "");
+    decoder_log_bitbuffer(decoder, 2, __func__, bitbuffer, "", 0, 0);
     decoder_log_bitrow(decoder, 2, __func__, buffer, IKEA_SPARSNAS_MESSAGE_BITLEN, "Encrypted message");
     // CRC check
     uint16_t crc_calculated = crc16(buffer, IKEA_SPARSNAS_MESSAGE_BYTELEN - 2, IKEA_SPARSNAS_CRC_POLY, IKEA_SPARSNAS_CRC_INIT);

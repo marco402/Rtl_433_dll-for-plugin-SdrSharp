@@ -77,7 +77,8 @@ static int32_t gt_tmbbq05_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
 
     // 33 bit, repeated multiple times (technically it is repeated 8 times, look for 5 identical versions)
 	uint32_t nbRepeat = 5;
-	
+	if (decoder->_sourceIsFile)
+		nbRepeat = 0;
 		
     int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 33);
 

@@ -94,7 +94,7 @@ static int32_t oil_watchman_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
         /* clang-format on */
 
         
-        decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+        decoder_output_data(decoder, data, &databits, row, 0, startPulses, package_type);
         events++;
     }
     return events;
