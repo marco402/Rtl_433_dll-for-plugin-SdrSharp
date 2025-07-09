@@ -11,14 +11,14 @@ index c9c40863..55bd01e1 100644
  
      ctl_msg.callback = cb;
      memcpy(ctl_msg.message, data, len);
--    dummy = MG_SEND_FUNC(mgr->ctl[0], (char *) &ctl_msg,
-+    ret = MG_SEND_FUNC(mgr->ctl[0], (char *) &ctl_msg,
+-    dummy = MG_SEND_FUNC(mgr->ctl[0], (uint8_t *) &ctl_msg,
++    ret = MG_SEND_FUNC(mgr->ctl[0], (uint8_t *) &ctl_msg,
                           offsetof(struct ctl_msg, message) + len, 0);
--    dummy = MG_RECV_FUNC(mgr->ctl[0], (char *) &len, 1, 0);
+-    dummy = MG_RECV_FUNC(mgr->ctl[0], (uint8_t *) &len, 1, 0);
 -    (void) dummy; /* https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25509 */
 +    if (ret < 0)
 +      perror("mg_broadcast() send failed, check UDP loopback device");
-+    ret = MG_RECV_FUNC(mgr->ctl[0], (char *) &len, 1, 0);
++    ret = MG_RECV_FUNC(mgr->ctl[0], (uint8_t *) &len, 1, 0);
 +    if (ret < 0)
 +      perror("mg_broadcast() recv failed, check firewall UDP loopback rules");
    }
@@ -27,7 +27,7 @@ index c9c40863..55bd01e1 100644
 @@ -4116,9 +4119,12 @@ static void mg_mgr_handle_ctl_sock(struct mg_mgr *mgr) {
    struct ctl_msg ctl_msg;
    int32_t len =
-       (int32_t) MG_RECV_FUNC(mgr->ctl[1], (char *) &ctl_msg, sizeof(ctl_msg), 0);
+       (int32_t) MG_RECV_FUNC(mgr->ctl[1], (uint8_t *) &ctl_msg, sizeof(ctl_msg), 0);
 -  size_t dummy = MG_SEND_FUNC(mgr->ctl[1], ctl_msg.message, 1, 0);
 +  if (len < 0)
 +    perror("mg_mgr_handle_ctl_sock() recv failed, check firewall UDP loopback rules");

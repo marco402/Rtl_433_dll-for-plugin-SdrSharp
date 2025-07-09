@@ -100,7 +100,7 @@ static int32_t rosstech_dcu706_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "msg_type",

@@ -242,7 +242,7 @@ static int32_t thermopro_tp829b_decode(r_device *decoder, bitbuffer_t *bitbuffer
     return 1;
 }
 
-static char const *const tp828b_output_fields[] = {
+static uint8_t const *const tp828b_output_fields[] = {
         "model",
         "id",
         "display_u",
@@ -268,7 +268,7 @@ r_device const thermopro_tp828b = {
         .fields      = tp828b_output_fields,
 };
 
-static char const *const tp829b_output_fields[] = {
+static uint8_t const *const tp829b_output_fields[] = {
         "model",
         "id",
         "display_u",

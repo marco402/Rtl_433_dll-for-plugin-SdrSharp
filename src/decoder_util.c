@@ -89,7 +89,7 @@ void testUnKnown(int32_t length, int32_t startPulses, int32_t package_type, r_de
 }
 #endif
 #if (ANALYZE | LISTEDEVICES)
-void AddKeyValueDevice(char * key, char *  value)
+void AddKeyValueDevice(uint8_t * key, uint8_t *  value)
 {
 
 	defDeviceToPlugin *ptrDeviceToPlugin = &deviceToPlugin;
@@ -97,7 +97,7 @@ void AddKeyValueDevice(char * key, char *  value)
 	if (key == "Raw Message:")
 		//{
 
-		//	for (int i = 0; i < 100; i++) {
+		//	for (int32_t i = 0; i < 100; i++) {
 		//		deviceToPlugin.row_bits[i] = value[i];
 		//	}
 		//}
@@ -133,7 +133,7 @@ void AddKeyValueDevice(char * key, char *  value)
 #if LISTEDEVICES
 void listDevices(struct r_cfg *cfg)
 {
-	char str[30];
+	uint8_t str[30];
 	defDeviceToPlugin *ptrDeviceToPlugin = &deviceToPlugin;
 	for (int32_t i = 0; i < cfg->num_r_devices; i++)
 	{
@@ -170,8 +170,8 @@ void razKeyValueDeviceToPlugin()
 	deviceOK = 1;
 #endif
     for (int32_t i = 0; i < nbLine; i++) {
-        strcpy((char *)deviceToPlugin.Key_Device[i], "");
-        strcpy((char *)deviceToPlugin.Value_Device[i], "");
+        strcpy((uint8_t *)deviceToPlugin.Key_Device[i], "");
+        strcpy((uint8_t *)deviceToPlugin.Value_Device[i], "");
     }
 #if ANALYZE | LISTEDEVICES
 	nbLineUsed = 0;

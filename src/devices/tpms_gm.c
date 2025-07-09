@@ -121,7 +121,7 @@ static int32_t tpms_gm_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t
 }
 
 /** Output fields for rtl_433 */
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",

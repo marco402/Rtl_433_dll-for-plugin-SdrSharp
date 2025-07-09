@@ -316,12 +316,12 @@ if (data->num_pulses < MINPULSES) {
  /*   fprintf(stderr, "Analyzing pulses...\n");
     fprintf(stderr, "Total count: %4u,  width: %4.2f ms\t\t(%5i S)\n",
             data->num_pulses, pulse_total_period * to_ms, pulse_total_period);*/
-	//char str[30];
+	//uint8_t str[30];
 	//sprintf(str, "%d", data->num_pulses);
 	//AddKeyValueDevice("Total count:", str);
 	AddKeyValueDevice("Name:", "Analyzer Device");
 
-	char str[LENLINES];
+	uint8_t str[LENLINES];
 	r_cfg_t *cfg = device->output_ctx;
 	uint8_t time_str[LOCAL_TIME_BUFLEN];
 	time_pos_str(cfg, 0, time_str);

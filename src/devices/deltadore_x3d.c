@@ -310,7 +310,7 @@ static int32_t deltadore_x3d_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     struct deltadore_x3d_message_header head = {0};
     uint8_t bytes_read                       = 2; // step over length and FF field
     bytes_read += deltadore_x3d_parse_message_header(&frame[bytes_read], &head);
-    const char *class, *wnd_stat, *temp_type;
+    const uint8_t *class, *wnd_stat, *temp_type;
 
     /* clang-format off */
     switch (head.type) {
@@ -367,7 +367,7 @@ static int32_t deltadore_x3d_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
         bytes_read += deltadore_x3d_parse_message_payload(&frame[bytes_read], &body);
 
         // Max hex string len is 2 * (maximum packet length - crc) + NUL character
-        char raw_str[2 * (DELTADORE_X3D_MAX_PKT_LEN - 2) + 1];
+		uint8_t raw_str[2 * (DELTADORE_X3D_MAX_PKT_LEN - 2) + 1];
 
         /* clang-format off */
         data = data_int(data, "retry",         "Retry",             NULL, body.retry);
@@ -386,7 +386,7 @@ static int32_t deltadore_x3d_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     return 1;
 }
 
-static const char *const output_fields[] = {
+static const uint8_t *const output_fields[] = {
         "model",
         "id",
         "network",

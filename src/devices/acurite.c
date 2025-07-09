@@ -449,7 +449,7 @@ static int32_t acurite_6045_decode(r_device *decoder, bitbuffer_t *bitbuffer, ui
 	 * to the structured data output to allow future analysis without
 	 * having to enable debug for long running rtl_433 processes.
 	 */
-/*	char raw_str[31];
+/*	uint8_t raw_str[31];
 	data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);*/
 
     decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
@@ -907,7 +907,7 @@ static int32_t acurite_atlas_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 	// message that could possibly hold some data. Add the raw message hex to
 	// to the structured data output to allow future analysis without
 	// having to enable debug for long running rtl_433 processes.
-	//char raw_str[31];
+	//uint8_t raw_str[31];
 	//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, MIN(browlen, 15), raw_str);
 
     decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
@@ -1001,7 +1001,7 @@ static int32_t acurite_tower_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
 		// later analysis of unexpected/possibly undecoded data
 		/* clang-format off */
 		data = data_int(data, "exception", "Data Exception", NULL, exception);
-		//char buf_str[31];
+		//uint8_t buf_str[31];
 		//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_TXR_BYTELEN, buf_str);
 		/* clang-format on */
     }
@@ -1135,7 +1135,7 @@ static int32_t acurite_515_decode(r_device *decoder, bitbuffer_t *bitbuffer, uin
 		// later analysis of unexpected/possibly undecoded data
 		/* clang-format off */
 		data = data_int(data, "exception", "Data Exception", NULL, exception);
-		//char buf_str[31];
+		//uint8_t buf_str[31];
 		//data = data_hex(data, "raw_msg", "Raw Message", NULL, bb, ACURITE_515_BYTELEN, buf_str);
 		/* clang-format on */
 

@@ -292,7 +292,9 @@ static int32_t ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuff
 
             int32_t id         = (b[2] << 8) | b[3];
             int32_t battery_v  = (b[4] & 0x1f);
-            int32_t battery_lvl = battery_v <= 9 ? 0 : ((battery_v - 9) / 6 * 100); // 0.9V-1.5V is 0-100
+            //int32_t battery_lvl = battery_v <= 9 ? 0 : ((battery_v - 9) / 6 * 100); // 0.9V-1.5V is 0-100
+			int32_t battery_lvl = battery_v <= 9 ? 0 : 100 * (battery_v - 9) / 6; // 0.9V-1.5V is 0-100
+
             int32_t rain_raw   = (b[5] << 8) | b[6];
             uint8_t extra[11];
             snprintf(extra, sizeof(extra), "%02x%02x%02x%02x%02x", b[9], b[10], b[11], b[12], b[13]);
@@ -305,7 +307,7 @@ static int32_t ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuff
                     "model",            "",                DATA_STRING, "EcoWitt-WH40",
                     "id",               "",                DATA_INT,    id,
                     "battery_V",        "Battery Voltage", DATA_COND, battery_v != 0, DATA_FORMAT, "%f V", DATA_DOUBLE, battery_v * 0.1f,
-                    "battery_ok",       "Battery",         DATA_COND, battery_v != 0, DATA_DOUBLE, battery_lvl * 0.01f,
+				    "battery_ok",       "Battery level",   DATA_COND, battery_v != 0, DATA_DOUBLE, battery_lvl * 0.01f,
                     "rain_mm",          "Total Rain",      DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain_raw * 0.1,
                     "data",             "Extra Data",      DATA_STRING, extra,
                     "mic",              "Integrity",       DATA_STRING, "CRC",

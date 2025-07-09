@@ -68,7 +68,7 @@ History : V1.00 2021-04-01 - First release
 
 const uint8_t *__stdcall version_string(void)  //download zip, version in CHANGELOG.md
 {
-	return "Rtl_433:Release 24.10 (2024-10-30)\n"; 
+	return "Rtl_433:Release 25.02 (2025-02-19)\n"; 
 }
 
 /* helper */
@@ -321,8 +321,11 @@ void calc_rssi_snr(r_cfg_t *cfg, pulse_data_t *pulse_data)
 {
     float ook_high_estimate   = (float)(pulse_data->ook_high_estimate > 0 ? pulse_data->ook_high_estimate : 1);
     float ook_low_estimate    = (float)(pulse_data->ook_low_estimate > 0 ? pulse_data->ook_low_estimate : 1);
-    float asnr                = ook_high_estimate / ook_low_estimate;
-    float foffs1              = (float)(pulse_data->fsk_f1_est / INT16_MAX * cfg->samp_rate / 2.0f);
+    //float asnr                = ook_high_estimate / ook_low_estimate;
+	int32_t const OOK_MAX_HIGH_LEVEL = DB_TO_AMP(0); // Maximum estimate for high level (-0 dB)
+	float ook_max_estimate = ook_high_estimate < OOK_MAX_HIGH_LEVEL ? ook_high_estimate : OOK_MAX_HIGH_LEVEL;
+	float asnr = ook_max_estimate / ook_low_estimate;
+	float foffs1              = (float)(pulse_data->fsk_f1_est / INT16_MAX * cfg->samp_rate / 2.0f);
     float foffs2              = (float)(pulse_data->fsk_f2_est / INT16_MAX * cfg->samp_rate / 2.0f);
     pulse_data->freq1_hz      = (foffs1 + cfg->center_frequency);
     pulse_data->freq2_hz      = (foffs2 + cfg->center_frequency);
@@ -837,7 +840,7 @@ void data_acquired_handler(r_device *r_dev, data_t *data, defDeviceToPlugin *ptr
                 "protocol", "Protocol", DATA_INT, r_dev->protocol_num,
                 NULL);
     }
-		char str[LENLINES];
+	uint8_t str[LENLINES];
 		sprintf(str, "%d", r_dev->modulation);
     if (cfg->report_meta && cfg->demod->fsk_pulse_data.fsk_f2_est) {
 

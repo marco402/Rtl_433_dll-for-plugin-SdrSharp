@@ -171,7 +171,7 @@ static int32_t risco_agility_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
     return 1;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "counter",

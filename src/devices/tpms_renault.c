@@ -10,7 +10,7 @@
 */
 /**
 FSK 9 byte Manchester encoded TPMS with CRC.
-Seen on Renault Clio, Renault Captur and maybe Dacia Sandero.
+Seen on Renault Clio, Renault Captur, Renault Zoe and maybe Dacia Sandero.
 
 Packet nibbles:
 
@@ -29,31 +29,38 @@ Packet nibbles:
 static int32_t tpms_renault_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    uint8_t *b;
-    int32_t flags;
-    uint32_t id;
-    int32_t pressure_raw, temp_c, unknown;
-    double pressure_kpa;
+    //uint8_t *b;
+    //int32_t flags;
+    //uint32_t id;
+    //int32_t pressure_raw, temp_c, unknown;
+    //double pressure_kpa;
 
     bitbuffer_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
     // require 72 data bits
 	row = 0;
     if (packet_bits.bits_per_row[row] < 72) { 
-        return 0;
+        return 0; // DECODE_ABORT_LENGTH
     }
-    b = packet_bits.bb[row];
+    //b = packet_bits.bb[row];
+	uint8_t *b = packet_bits.bb[0];
 
     // 0x83; 0x107 FOP-8; ATM-8; CRC-8P
     if (crc8(b, 8, 0x07, 0x00) != b[8]) {
-        return 0;
+        return 0; // DECODE_FAIL_MIC
     }
 
-    flags        = b[0] >> 2;
-    id           = b[5] << 16 | b[4] << 8 | b[3]; // little-endian
-    pressure_raw = (b[0] & 0x03) << 8 | b[1];
-    pressure_kpa = pressure_raw * 0.75;
-    temp_c       = b[2] - 30;
-    unknown      = b[7] << 8 | b[6]; // little-endian, fixed 0xffff?
+    //flags        = b[0] >> 2;
+    //id           = b[5] << 16 | b[4] << 8 | b[3]; // little-endian
+    //pressure_raw = (b[0] & 0x03) << 8 | b[1];
+    //pressure_kpa = pressure_raw * 0.75;
+    //temp_c       = b[2] - 30;
+    //unknown      = b[7] << 8 | b[6]; // little-endian, fixed 0xffff?
+	int32_t flags = b[0] >> 2;
+	uint32_t id = b[5] << 16 | b[4] << 8 | b[3]; // little-endian
+	int32_t pressure_raw = (b[0] & 0x03) << 8 | b[1];
+	double pressure_kpa = pressure_raw * 0.75;
+	int32_t temp_c = b[2] - 30;
+	int32_t unknown = b[7] << 8 | b[6]; // little-endian, fixed 0xffff?
 
     uint8_t flags_str[3];
     snprintf(flags_str, sizeof(flags_str), "%02x", flags);

@@ -168,7 +168,7 @@ static int32_t ttx201_decode(r_device *decoder, bitbuffer_t *bitbuffer, uint32_t
         int32_t hour = (b[3] & 0x07) << 2 | (b[4] & 0xc0) >> 6;
         int32_t minute = b[4] & 0x3f;
         int32_t second = (b[5] & 0x7e) >> 1;
-        char clock_str[25];
+		uint8_t clock_str[25];
         snprintf(clock_str, sizeof(clock_str), "%04d-%02d-%02dT%02d:%02d:%02d %s", year + 2000, month, day, hour, minute, second, cest ? "CEST" : "CET");
 
         /* clang-format off */
@@ -224,7 +224,7 @@ static int32_t ttx201_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",

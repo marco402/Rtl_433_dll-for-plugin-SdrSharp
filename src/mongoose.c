@@ -2,7 +2,7 @@
 #include "rtl_433.h"
 /* MSG_NOSIGNAL is Linux and most BSDs only, not macOS or Windows */
 #ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
+//#define MSG_NOSIGNAL 0 
 #endif
 #ifdef MG_MODULE_LINES
 #line 1 "mongoose/src/mg_internal.h"

@@ -127,6 +127,7 @@ static int32_t tpms_ave_callback(r_device *decoder, bitbuffer_t *bitbuffer, int3
     for (row = 0; row < bitbuffer->num_rows; ++row) {
         bit_offset = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
+		//0 or row?
         while ((bit_offset = bitbuffer_search(bitbuffer, 0, bit_offset, preamble_pattern, 32)) + 132 <= bitbuffer->bits_per_row[row]) {
             ret = tpms_ave_decode(decoder, bitbuffer, row, bit_offset + 32, startPulses, package_type);
             if (ret > 0) {

@@ -20,7 +20,7 @@ static inline int32_t bit(const uint8_t *bytes, uint32_t b)
 }
 
 /// extract all mask bits skipping unmasked bits of a number up to 32/64 bits
-static unsigned long compact_number(uint8_t *data, uint32_t bit_offset, unsigned long mask)
+static unsigned long compact_number(uint8_t *data, uint32_t bit_offset, uint32_t mask)
 {
     // clz (fls) is not worth the trouble
     int32_t top_bit = 0;
@@ -119,7 +119,7 @@ static void render_getters(data_t *data, uint8_t *bits, struct flex_params *para
         struct flex_get *getter = &params->getter[g];
 		unsigned long val;
         if (getter->mask)
-            val = compact_number(bits, getter->bit_offset, getter->mask);
+            val = compact_number(bits, getter->bit_offset, (uint32_t)getter->mask);
         else
             val = extract_number(bits, getter->bit_offset, getter->bit_count);
         int32_t m;
@@ -130,7 +130,7 @@ static void render_getters(data_t *data, uint8_t *bits, struct flex_params *para
             }
         }
         if (!getter->map[m].val) {
-			data_int(data, getter->name, "", getter->format, val);
+			data_int(data, getter->name, "", getter->format,(int32_t) val);
         }
     }
 }
@@ -281,7 +281,7 @@ static int32_t flex_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
         render_getters(data, bitbuffer->bb[row], params);
         uint32_t bit_offset = 0;
 
-        decoder_output_data(decoder, data, bitbuffer, 0, nbRepeat, startPulses, package_type);
+        decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
         return 1;
     }
 
@@ -571,7 +571,7 @@ static const uint8_t *parse_map(const uint8_t *arg, struct flex_get *getter)
         c = e;
 
         // store result
-        getter->map[i].key = key;
+        getter->map[i].key = (uint32_t)key;
         getter->map[i].val = val;
         i++;
     }

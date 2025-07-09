@@ -48,7 +48,7 @@ void initDeviceToPlugin();
 
 void razKeyValueDeviceToPlugin();
 
-void AddKeyValueDevice(char * key, char *  value);
+void AddKeyValueDevice(uint8_t * key, uint8_t *  value);
 /// Output data.
 void decoder_output_data(r_device *decoder, data_t *data, bitbuffer_t *bitbuffer, int32_t row, uint32_t nbRepeat, int32_t startPulses, uint16_t package_type);
 

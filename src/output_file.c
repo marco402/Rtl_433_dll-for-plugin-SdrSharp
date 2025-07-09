@@ -241,9 +241,9 @@ typedef struct {
         }
         uint8_t *key = *data->pretty_key ? data->pretty_key : data->key;
 		snprintf(cara, LENLINES, "%-10s: ", key);
-		strcpy((char *)ptrDeviceToPlugin->Key_Device[i], cara);
+		strcpy((uint8_t *)ptrDeviceToPlugin->Key_Device[i], cara);
 		traitementValue(data->type, data->value, data->format, cara);
-		strcpy((char *)ptrDeviceToPlugin->Value_Device[i], cara);
+		strcpy((uint8_t *)ptrDeviceToPlugin->Value_Device[i], cara);
         i++;
 		if (i == nbLine)
 			//realloc to nbline+NBLINES

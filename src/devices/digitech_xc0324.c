@@ -102,7 +102,7 @@ static int32_t decode_xc0324_message(r_device *decoder, bitbuffer_t *bitbuffer,
     // Decode only once, skip if we already have data
     if (*data_out == NULL) {
         // Extract the id as hex string
-        char id[3] = {0};
+		uint8_t id[3] = {0};
         snprintf(id, sizeof(id), "%02X", b[1]);
 
         // Decode temperature (b[2]), plus 1st 4 bits b[3], LSB first order!
@@ -177,7 +177,7 @@ static int32_t digitech_xc0324_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     return events > 0 ? events : ret;
 }
 
-static char const *const output_fields[] = {
+static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "temperature_C",

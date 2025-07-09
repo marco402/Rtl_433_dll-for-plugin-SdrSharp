@@ -982,6 +982,12 @@
     <ClCompile Include="..\src\devices\new_template.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\devices\apator_metra_erm30.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\rainpoint_hcs012arf.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="rtl_433.def">

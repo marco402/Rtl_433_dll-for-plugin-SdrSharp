@@ -428,6 +428,7 @@
     <ClCompile Include="..\src\devices\abmt.c" />
     <ClCompile Include="..\src\devices\acurite_01185m.c" />
     <ClCompile Include="..\src\devices\ant_antplus.c" />
+    <ClCompile Include="..\src\devices\apator_metra_erm30.c" />
     <ClCompile Include="..\src\devices\arad_ms_meter.c" />
     <ClCompile Include="..\src\devices\arexx_ml.c" />
     <ClCompile Include="..\src\devices\atech_ws308.c">
@@ -484,6 +485,7 @@
     <ClCompile Include="..\src\devices\proflame2.c" />
     <ClCompile Include="..\src\devices\quinetic.c" />
     <ClCompile Include="..\src\devices\rainpoint.c" />
+    <ClCompile Include="..\src\devices\rainpoint_hcs012arf.c" />
     <ClCompile Include="..\src\devices\regency_fan.c" />
     <ClCompile Include="..\src\devices\revolt_nc5462.c" />
     <ClCompile Include="..\src\devices\revolt_zx7717.c" />
