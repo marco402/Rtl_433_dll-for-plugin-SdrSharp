@@ -75,7 +75,7 @@ static int32_t tpms_eezrv_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     // preamble is ffff
     uint8_t const preamble_pattern[] = {0xff, 0xff};
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
     int32_t pos = 0;

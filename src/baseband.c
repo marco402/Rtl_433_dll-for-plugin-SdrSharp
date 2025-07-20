@@ -213,7 +213,7 @@ void baseband_demod_FM_reset(demodfm_state_t *demod_fm)
 
 /// Fast Instantaneous frequency and Low Pass filter, CU8 samples
 //__declspec(dllexport) void __stdcall baseband_demod_FM(uint8_t const *x_buf, int16_t *y_buf, uint64_t num_samples, uint32_t samp_rate, float low_pass, demodfm_state_t *state)
-__declspec(dllexport) void __stdcall baseband_demod_FM(demodfm_state_t *state, uint8_t const *x_buf, int16_t *y_buf, unsigned long num_samples, uint32_t samp_rate, float low_pass)
+__declspec(dllexport) void __stdcall baseband_demod_FM(demodfm_state_t *state, uint8_t const *x_buf, int16_t *y_buf, uint64_t num_samples, uint32_t samp_rate, float low_pass)
 {
     // Select filter coeffs, [b,a] = butter(1, cutoff)
     // e.g [b,a] = butter(1, 0.1) -> 3x tau (95%) ~10 samples, 250k -> 40us, 1024k -> 10us
@@ -311,7 +311,7 @@ static int32_t atan2_int32(int32_t y, int32_t x)
 
 /// Fast Instantaneous frequency and Low Pass filter, CS16 samples.
 //void baseband_demod_FM_cs16(int16_t const *x_buf, int16_t *y_buf, uint64_t num_samples, uint32_t samp_rate, float low_pass, demodfm_state_t *state)
-void baseband_demod_FM_cs16(demodfm_state_t *state, int16_t const *x_buf, int16_t *y_buf, unsigned long num_samples, uint32_t samp_rate, float low_pass)
+void baseband_demod_FM_cs16(demodfm_state_t *state, int16_t const *x_buf, int16_t *y_buf, uint64_t num_samples, uint32_t samp_rate, float low_pass)
 {
     // Select filter coeffs, [b,a] = butter(1, cutoff)
     // e.g [b,a] = butter(1, 0.1) -> 3x tau (95%) ~10 samples, 250k -> 40us, 1024k -> 10us

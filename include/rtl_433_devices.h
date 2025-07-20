@@ -1,5 +1,5 @@
 /** @file
-    Declaration of all available decoders.
+	Declaration of all available decoders.
 */
 
 #ifndef INCLUDE_RTL_433_DEVICES_H_
@@ -285,7 +285,11 @@
     DECL(tpms_gm) \
     DECL(rainpoint_hcs012arf) \
     DECL(apator_metra_erm30) \
-    /* Add new decoders here. */
+    DECL(thermopro_tx7b) \
+    DECL(nexus_sauna) \
+    DECL(homelead_hg9901) \
+
+/* Add new decoders here. */
 
 #define DECL(name) extern r_device name;
 DEVICES

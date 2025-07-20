@@ -88,7 +88,7 @@ static int32_t ecodhome_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     data_t *data;
     uint8_t msg[13];
 
-    if (bitbuffer->bits_per_row[1] != 0 || bitbuffer->bits_per_row[row] < 128) {
+	if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[0] < 128) {
         decoder_logf(decoder, 2, __func__, "to few bits (%u)", bitbuffer->bits_per_row[row]);
         return DECODE_ABORT_LENGTH; // unrecognized
     }

@@ -9,7 +9,7 @@
     (at your option) any later version.
  */
 
-/** @fn int gridstream_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t gridstream_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 Landis & Gyr Gridstream Power Meters.
 
 - Center Frequency: 915 Mhz

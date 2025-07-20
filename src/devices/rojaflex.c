@@ -87,7 +87,7 @@ static int32_t rojaflex_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     uint8_t msg[DATAFRAME_BYTECOUNT_INCL_CRC];
     uint8_t dataframe_bitcount = 0;
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

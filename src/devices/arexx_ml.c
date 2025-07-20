@@ -69,7 +69,7 @@ static int32_t arexx_ml_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     uint8_t const preamble[] = {0xaa, 0xaa, 0x55}; // 24 bits
 
     //if (bitbuffer->num_rows != 1) {
-   if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {		//if (bitbuffer->bits_per_row[1] != 0) {
         return DECODE_ABORT_EARLY; // we expect a single row
     }
     if (bitbuffer->bits_per_row[0] < 64 || bitbuffer->bits_per_row[1] > 130) {

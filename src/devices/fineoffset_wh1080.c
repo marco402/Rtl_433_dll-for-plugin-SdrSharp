@@ -132,7 +132,7 @@ static int32_t fineoffset_wh1080_callback(r_device *decoder, bitbuffer_t *bitbuf
     float temperature;
     uint8_t const fsk_preamble[] = {0xAA, 0x2D, 0xD4};
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

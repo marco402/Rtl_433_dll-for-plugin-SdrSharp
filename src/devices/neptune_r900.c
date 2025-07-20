@@ -85,7 +85,7 @@ static int32_t neptune_r900_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     uint8_t const preamble[] = {0x55, 0x55, 0x55, 0xa9, 0x66, 0x69, 0x65};
     int32_t const preamble_length = sizeof(preamble) * 8;
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_LENGTH;
     }
 

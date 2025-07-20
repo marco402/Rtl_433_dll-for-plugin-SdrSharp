@@ -14,6 +14,7 @@
 #include "pulse_slicer.h"
 #include "pulse_data.h"
 #include "bitbuffer.h"
+#include "c_util.h" // for MIN(), MAX()
 #include "bit_util.h"
 #include "logger.h"
 #include "decoder_util.h" // TODO: this should be refactored
@@ -26,6 +27,10 @@
 
 static int32_t account_event(r_device *device, bitbuffer_t *bits, uint8_t const *demod_name, int32_t startPulses, uint16_t package_type)
 {
+
+	if (bits->len_rows[bits->num_rows-1] == 0)
+		bits->num_rows -= 1;
+
     // run decoder
     int32_t ret = 0;
     if (device->decode_fn) {

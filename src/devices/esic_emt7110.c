@@ -48,7 +48,7 @@ static int32_t esic_emt7110_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     data_t *data;
     uint8_t b[12];
 
-    if (bitbuffer->bits_per_row[1] != 0)
+	if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
     if ((bitbuffer->bits_per_row[row] < 120) || (bitbuffer->bits_per_row[row] > 140))
         return DECODE_ABORT_LENGTH;

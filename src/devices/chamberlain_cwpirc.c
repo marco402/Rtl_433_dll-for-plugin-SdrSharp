@@ -39,7 +39,7 @@ static int32_t chamberlain_cwpirc_decode(r_device *decoder, bitbuffer_t *bitbuff
 {
     uint8_t const preamble[] = {0x55, 0x2D, 0xD4};
 	int32_t row = 0;
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         decoder_logf(decoder, 2, __func__, "Expected 1 Row, here %d", bitbuffer->num_rows);
         return DECODE_ABORT_EARLY;
     }

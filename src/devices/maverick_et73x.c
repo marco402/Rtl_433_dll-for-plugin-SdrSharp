@@ -45,7 +45,7 @@ static int32_t maverick_et73x_callback(r_device *decoder, bitbuffer_t *bitbuffer
     data_t *data;
     bitbuffer_t mc = {0};
 
-    if (bitbuffer->bits_per_row[1] != 0)
+	if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
     //check correct data length

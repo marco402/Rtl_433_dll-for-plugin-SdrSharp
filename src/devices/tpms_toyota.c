@@ -28,8 +28,9 @@ The pressure seems to be 1/4 PSI offset by -7 PSI (i.e. 28 raw = 0 PSI).
 
 #include "decoder.h"
 
-static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset,int32_t startPulses, uint16_t package_type)
+static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bitpos,int32_t startPulses, uint16_t package_type)
 {
+	unsigned int start_pos;
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
     uint32_t id;
@@ -37,8 +38,8 @@ static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
     int32_t crc;
 
     // skip the first 1 bit, i.e. raw "01" to get 72 bits
-    bit_offset = bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 80);
-    if (bit_offset - bit_offset < 144) {
+	start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 80);
+    if (start_pos - bitpos < 144) {
         return 0;
     }
 	row = 0; 
@@ -88,17 +89,17 @@ static int32_t tpms_toyota_callback(r_device *decoder, bitbuffer_t *bitbuffer, i
     // could be shorter   11 0101 0011 11
     uint8_t const preamble_pattern[2] = {0xa9, 0xe0}; // 12 bits (but pass last bit to decode)
 
-    uint32_t bit_offset = 0;
+    uint32_t bitpos = 0;
     int32_t ret         = 0;
     int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 12)) + 156 <=
+    while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos, preamble_pattern, 12)) + 156 <=
             bitbuffer->bits_per_row[row]) {
-        ret = tpms_toyota_decode(decoder, bitbuffer, row, bit_offset + 11, startPulses, package_type);
+        ret = tpms_toyota_decode(decoder, bitbuffer, row, bitpos + 11, startPulses, package_type);
         if (ret > 0)
             events += ret;
-        bit_offset += 2;
+		bitpos += 2;
     }
 
     return events > 0 ? events : ret;

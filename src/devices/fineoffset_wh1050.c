@@ -203,7 +203,7 @@ static int32_t fineoffset_wh1050_callback(r_device *decoder, bitbuffer_t *bitbuf
     uint32_t bitpos = 0;
     int32_t events      = 0;
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

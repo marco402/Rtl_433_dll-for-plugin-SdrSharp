@@ -13,6 +13,7 @@
 #include "r_api.h"
 #include "pulse_analyzer.h"
 #include "pulse_slicer.h"
+#include "c_util.h" // for MIN(), MAX()
 #include "bit_util.h"
 #include <stdio.h>
 #include <stdlib.h>

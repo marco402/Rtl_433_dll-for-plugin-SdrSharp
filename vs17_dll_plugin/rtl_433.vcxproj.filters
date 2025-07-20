@@ -988,6 +988,12 @@
     <ClCompile Include="..\src\devices\rainpoint_hcs012arf.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\devices\thermopro_tx7b.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\homelead_hg9901.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="rtl_433.def">

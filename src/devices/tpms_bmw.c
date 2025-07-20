@@ -91,7 +91,7 @@ static int32_t tpms_bmw_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     int32_t flags3      =  0;
     uint8_t msg_str[23];
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         decoder_logf(decoder, 2, __func__, "row error");
         return DECODE_ABORT_EARLY;
     }

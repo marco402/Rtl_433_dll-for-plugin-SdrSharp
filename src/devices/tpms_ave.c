@@ -30,7 +30,7 @@ Packet nibbles:
 
 #include "decoder.h"
 
-static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
+static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
@@ -45,7 +45,7 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     double ratio;
     double offset;
 
-    bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 160);
+    bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
 	int32_t row1 = 0; // add plugin
     if (packet_bits.bits_per_row[row1] < 64) {  // to see why not row=0?
         return DECODE_ABORT_LENGTH; // too short to be a whole packet
@@ -120,21 +120,21 @@ static int32_t tpms_ave_callback(r_device *decoder, bitbuffer_t *bitbuffer, int3
     uint8_t const preamble_pattern[] = {0xcc, 0xcc, 0xcc, 0xcd}; // Raw pattern, before differential Manchester coding
 
     int32_t row;
-    uint32_t bit_offset;
+    uint32_t bitpos;
     int32_t ret    = 0;
     int32_t events = 0;
 
     for (row = 0; row < bitbuffer->num_rows; ++row) {
-        bit_offset = 0;
+		bitpos = 0;
         // Find a preamble with enough bits after it that it could be a complete packet
 		//0 or row?
-        while ((bit_offset = bitbuffer_search(bitbuffer, 0, bit_offset, preamble_pattern, 32)) + 132 <= bitbuffer->bits_per_row[row]) {
-            ret = tpms_ave_decode(decoder, bitbuffer, row, bit_offset + 32, startPulses, package_type);
+        while ((bitpos = bitbuffer_search(bitbuffer, 0, bitpos, preamble_pattern, 32)) + 132 <= bitbuffer->bits_per_row[row]) {
+            ret = tpms_ave_decode(decoder, bitbuffer, row, bitpos + 32, startPulses, package_type);
             if (ret > 0) {
                 events += ret;
-                bit_offset += 132;
+				bitpos += 132;
             }
-            bit_offset += 31;
+			bitpos += 31;
         }
     }
 

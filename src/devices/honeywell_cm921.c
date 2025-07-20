@@ -173,7 +173,7 @@ static int32_t honeywell_cm921_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     const uint8_t preamble_bit_length = 30;
     const int32_t row = 0; // we expect a single row only.
 
-    if (bitbuffer->bits_per_row[1] != 0 || bitbuffer->bits_per_row[row] < 60) {
+    if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60) {
         return DECODE_ABORT_LENGTH;
     }
 

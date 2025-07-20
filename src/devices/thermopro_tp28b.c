@@ -79,7 +79,7 @@ static int32_t thermopro_tp28b_decode(r_device *decoder, bitbuffer_t *bitbuffer,
 
     uint8_t b[18];
 
-    if (bitbuffer->num_rows > 1) {
+	if (bitbuffer->num_rows > 1) {
         decoder_logf(decoder, 1, __func__, "Too many rows: %d", bitbuffer->num_rows);
         return DECODE_FAIL_SANITY;
     }

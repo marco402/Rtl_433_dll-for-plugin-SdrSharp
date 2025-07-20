@@ -72,8 +72,7 @@ static int32_t bresser_5in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     uint8_t msg[26];
     uint16_t sensor_id;
     uint32_t len = 0;
-	//if (bitbuffer->num_rows != 1) {
-    if (bitbuffer->bits_per_row[1] != 0
+	if (bitbuffer->num_rows != 1
             || bitbuffer->bits_per_row[0] < 248
             || bitbuffer->bits_per_row[0] > 440) {
         decoder_logf(decoder, 2, __func__, "bit_per_row %u out of range", bitbuffer->bits_per_row[0]);

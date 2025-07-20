@@ -61,7 +61,7 @@ static int32_t thermopro_tp828b_decode(r_device *decoder, bitbuffer_t *bitbuffer
     // Message len is 9 byte for tp829b and 12 byte for tp828b
     uint8_t b[12];
 
-    if (bitbuffer->num_rows > 1) {
+	if (bitbuffer->num_rows > 1) {
         decoder_logf(decoder, 1, __func__, "Too many rows: %d", bitbuffer->num_rows);
         return DECODE_FAIL_SANITY;
     }

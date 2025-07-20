@@ -70,7 +70,7 @@ static int32_t esperanza_ews_callback(r_device *decoder, bitbuffer_t *bitbuffer,
     if (bitbuffer->bits_per_row[0] != 0 || bitbuffer->bits_per_row[1] != 0)
         return DECODE_FAIL_SANITY;
 
-    if (bitbuffer->num_rows != 14 || bitbuffer->bits_per_row[15] != 0)
+    if (bitbuffer->num_rows != 14)   // || bitbuffer->bits_per_row[15] != 0)
         return DECODE_ABORT_LENGTH;
 	int32_t row = 0;
     for ( row = 2; row < bitbuffer->num_rows - 3; row += 2) {

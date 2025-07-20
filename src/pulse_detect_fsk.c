@@ -12,6 +12,7 @@
 */
 
 #include "pulse_detect_fsk.h"
+#include "c_util.h" // for MIN(), MAX()
 #include "bit_util.h"
 #include <limits.h>
 #include <stdio.h>

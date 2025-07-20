@@ -39,7 +39,7 @@ static int32_t maverick_xr30_callback(r_device *decoder, bitbuffer_t *bitbuffer,
 {
     data_t *data;
 
-    if (bitbuffer->bits_per_row[1] != 0)
+	if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
     //check correct data length

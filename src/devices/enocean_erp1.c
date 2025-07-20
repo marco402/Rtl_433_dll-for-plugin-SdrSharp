@@ -49,7 +49,7 @@ static int32_t enocean_erp1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
 {
     int32_t row = 0;
     uint32_t bit_offset = 0;
-    if (bitbuffer->bits_per_row[1] != 0)
+	if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
     bitbuffer_invert(bitbuffer);

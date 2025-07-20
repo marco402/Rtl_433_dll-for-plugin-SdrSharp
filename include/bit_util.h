@@ -13,7 +13,7 @@
 #define INCLUDE_BIT_UTIL_H_
 
 #include <stdint.h>
-#include "c_util.h"
+
 /// Reverse (reflect) the bits in an 32 bit byte.
 ///
 /// @param x input byte
@@ -52,9 +52,16 @@ void reflect_nibbles(uint8_t message[], uint32_t num_bytes);
 /// @param num_bits message length in bits
 /// @param dst target buffer for extracted nibbles, at least num_bits/5 size
 /// @return number of successfully unstuffed nibbles.
-uint32_t extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+unsigned extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
-uint32_t extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+/// UART "8n1" (10-to-8) decoder with 1 start bit (0), no parity, 1 stop bit (1), LSB-first bit-order.
+///
+/// @param message bytes of message data
+/// @param offset_bits start offset of message in bits
+/// @param num_bits message length in bits
+/// @param dst target buffer for extracted bytes, at least num_bits/10 size
+/// @return number of successful decoded bytes
+unsigned extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
 /// UART "8o1" (11-to-8) decoder with 1 start bit (1), odd parity, 1 stop bit (0), MSB-first bit-order.
 ///
@@ -63,17 +70,7 @@ uint32_t extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32
 /// @param num_bits message length in bits
 /// @param dst target buffer for extracted bytes, at least num_bits/11 size
 /// @return number of successful decoded bytes
-
-uint32_t extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
-
-/////// UART "8n1" (10-to-8) decoder with 1 start bit (0), no parity, 1 stop bit (1), LSB-first bit-order.
-///////
-/////// @param message bytes of message data
-/////// @param offset_bits start offset of message in bits
-/////// @param num_bits message length in bits
-/////// @param dst target buffer for extracted bytes, at least num_bits/10 size
-/////// @return number of successful decoded bytes
-////uint32_t extract_bytes_uart(uint8_t *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+unsigned extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
 /// Decode symbols to bits.
 ///
@@ -85,7 +82,7 @@ uint32_t extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits,
 /// @param sync symbol for sync bit, ignored at start, terminates at end
 /// @param dst target buffer for extracted bits, at least num_bits/symbol_x_len size
 /// @return number of successful decoded bits
-uint32_t extract_bits_symbols(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst);
+unsigned extract_bits_symbols(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst);
 
 /// CRC-4.
 ///
@@ -147,20 +144,29 @@ uint16_t crc16lsb(uint8_t const message[], uint32_t nBytes, uint16_t polynomial,
 /// @return CRC value
 uint16_t crc16(uint8_t const message[], uint32_t nBytes, uint16_t polynomial, uint16_t init);
 
-/// Digest-8 by "LFSR-based Toeplitz hash".
+/// Digest-8 by "LFSR-based Toeplitz hash", bits MSB to LSB.
 ///
 /// @param message bytes of message data
 /// @param bytes number of bytes to digest
-/// @param gen key stream generator, needs to includes the MSB if the LFSR is rolling
+/// @param gen key stream generator, needs to includes the MSB for ROR if the LFSR is rolling
 /// @param key initial key
 /// @return digest value
 uint8_t lfsr_digest8(uint8_t const message[], uint32_t bytes, uint8_t gen, uint8_t key);
 
-/// Digest-8 by "LFSR-based Toeplitz hash", byte reflect, bit reflect.
+/// Digest-8 by "LFSR-based Toeplitz hash", byte reversed, bits MSB to LSB.
 ///
-/// @param message bytes of message data
+/// @param message bytes of message data, read in reverse
 /// @param bytes number of bytes to digest
-/// @param gen key stream generator, needs to includes the MSB if the LFSR is rolling
+/// @param gen key stream generator, needs to includes the MSB for ROR if the LFSR is rolling
+/// @param key initial key
+/// @return digest value
+uint8_t lfsr_digest8_reverse(uint8_t const message[], int32_t bytes, uint8_t gen, uint8_t key);
+
+/// Digest-8 by "LFSR-based Toeplitz hash", byte reversed, bit reflect (LSB to MSB).
+///
+/// @param message bytes of message data, read in reverse
+/// @param bytes number of bytes to digest
+/// @param gen key stream generator, needs to includes the LSB for ROL if the LFSR is rolling
 /// @param key initial key
 /// @return digest value
 uint8_t lfsr_digest8_reflect(uint8_t const message[], int32_t bytes, uint8_t gen, uint8_t key);

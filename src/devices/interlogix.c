@@ -111,7 +111,7 @@ static int32_t interlogix_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     uint8_t const *f4_latch_state;
     uint8_t const *f5_latch_state;
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

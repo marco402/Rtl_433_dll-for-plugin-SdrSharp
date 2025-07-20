@@ -7,7 +7,7 @@
     (at your option) any later version.
 */
 
-/** @fn int apator_metra_erm30_decode(r_device *decoder, bitbuffer_t *bitbuffer)
+/** @fn int32_t apator_metra_erm30_decode(r_device *decoder, bitbuffer_t *bitbuffer)
 Apator Metra E-RM 30 Electronic Radio Module for Residential Water Meters.
 
 All messages appear to have the same length and are transmitted with a preamble
@@ -61,7 +61,7 @@ static void decrypt_payload(uint8_t plen, uint8_t *payload_encr, uint8_t *payloa
 static void extract_id(uint8_t *p, uint8_t *m, uint8_t *id_str);
 static void extract_volume(uint8_t *p, uint8_t *m, uint8_t *volume_str);
 static void extract_date(uint8_t *p, uint8_t *m, uint8_t *date_str);
-
+ 
 static int32_t apator_metra_erm30_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     uint8_t const preamble[] = {

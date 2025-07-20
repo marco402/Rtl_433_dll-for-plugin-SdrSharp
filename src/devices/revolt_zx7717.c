@@ -139,7 +139,7 @@ static int32_t revolt_zx7717_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
 {
     uint8_t const preamble[] = {0x2a}; // sync is 0x2a
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
     // valid message lengths are 0d, 0e, 11, 12, i.e. 13, 14, 17, 18 plus sync and length byte

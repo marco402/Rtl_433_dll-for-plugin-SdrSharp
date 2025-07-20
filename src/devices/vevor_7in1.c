@@ -61,7 +61,7 @@ static int32_t vevor_7in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, int3
     uint8_t const preamble_pattern[] = {0xaa, 0xaa, 0xca, 0xca, 0x54};
 
     // Because of a gap false positive if LUX at max for weather station, only single row to be analyzed with expected 2 repeats inside the data.
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

@@ -258,7 +258,7 @@ static int32_t deltadore_x3d_decode(r_device *decoder, bitbuffer_t *bitbuffer, i
 
     data_t *data;
 
-    if (bitbuffer->bits_per_row[1] != 0) {
+	if (bitbuffer->num_rows != 1) {
         return DECODE_ABORT_EARLY;
     }
 

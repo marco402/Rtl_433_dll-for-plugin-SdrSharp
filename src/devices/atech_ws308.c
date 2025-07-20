@@ -81,28 +81,11 @@ static uint32_t pwm_decode(uint8_t *bits, uint32_t bit_len, uint8_t *out, uint32
 
 static int32_t atech_ws308_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    
-	//before 6/12/2024
-	//uint32_t nbRepeat = 3;
-	//if (decoder->_sourceIsFile)
-	//	nbRepeat = 0;
- //   if (bitbuffer->num_rows != nbRepeat) //2 if  .reset_limit = 4000,   //9000,
-	////if (bitbuffer->num_rows < nbRepeat-1)
- //                                 //#endif
- //       return DECODE_ABORT_EARLY;
-	//end before
-	//replace
     int32_t row = 1;
-	if (bitbuffer->num_rows < 2)
+	if (bitbuffer->num_rows != 2)
 		return DECODE_ABORT_EARLY;
-	row = bitbuffer_find_repeated_row(bitbuffer, 0, 59); // only 3 repeats will give false positives for Alecto/Auriol-v2
-	if (row < 0)
-		return DECODE_ABORT_EARLY;
-	//end replace
-	//////if (bitbuffer->num_rows != 3)   //2--->3
-	//////	return DECODE_ABORT_EARLY;
-    if (bitbuffer->bits_per_row[row] < 58)
-        return DECODE_ABORT_LENGTH;
+	if (bitbuffer->bits_per_row[row] < 58)
+		return DECODE_ABORT_LENGTH;
     uint8_t b[4]; // 28 bit
     int32_t len = pwm_decode(bitbuffer->bb[row], bitbuffer->bits_per_row[row], b, 32);
     //decoder_log_bitrow(decoder, 0, __func__, b, len, "");

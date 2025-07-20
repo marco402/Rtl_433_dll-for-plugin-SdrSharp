@@ -66,7 +66,7 @@ All bytes are reflected/reverse8
 
 static int32_t thermor_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    if (bitbuffer->num_rows != 13 || bitbuffer->bits_per_row[14] != 0) {
+    if (bitbuffer->num_rows != 13) { //|| bitbuffer->bits_per_row[14] != 0
         return DECODE_ABORT_EARLY;
     }
 

@@ -144,7 +144,7 @@ Acurite 896 rain gauge
 
 */
 static int32_t acurite_rain_896_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
-{
+ {
     uint8_t const *b = bitbuffer->bb[0];
     int32_t id;
     float total_rain;

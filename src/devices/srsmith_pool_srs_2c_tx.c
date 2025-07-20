@@ -52,7 +52,7 @@ static int32_t srsmith_pool_srs_2c_tx_decode(r_device *decoder, bitbuffer_t *bit
     uint8_t const preamble[] = {0xaa, 0xd3, 0x91, 0xd3, 0x91};
     int32_t const preamble_length = sizeof(preamble) * 8;
 
-    if (bitbuffer->bits_per_row[1] != 0)
+	if (bitbuffer->num_rows != 1)
         return DECODE_ABORT_EARLY;
 
     // minimum: TOTAL_PACKET_SIZE_BYTES * 8 + sync word length (4)*8 + preamble byte (1*8) == 120

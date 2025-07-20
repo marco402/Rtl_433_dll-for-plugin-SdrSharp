@@ -29,20 +29,22 @@ The data is grouped in 9 nibbles:
     [id0] [id1] [flags] [temp0] [temp1] [temp2] [const] [humi0] [humi1]
 
 - The 8-bit id changes when the battery is changed in the sensor.
-- flags are 4 bits B 0 C C, where B is the battery status: 1=OK, 0=LOW
-- and CC is the channel: 0=CH1, 1=CH2, 2=CH3
+- flags are 4 bits B T C C
+  - B is the battery status: 1=OK, 0=LOW
+  - T is Test mode, 0=Normal, 1=Test
+  - CC is the channel: 0=CH1, 1=CH2, 2=CH3
 - temp is 12 bit signed scaled by 10
 - const is always 1111 (0x0F)
 - humidity is 8 bits
+
+Test mode is entered if the "RES"-button ist held pressed while inserting batteries.
+The sensor will send continuously every 2-15 secs. until the battery is reset.
 
 The sensors can be bought at Clas Ohlsen (Nexus) and Pearl (infactory/FreeTec).
 */
 static int32_t nexus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-	uint32_t nbRepeat = 3;
-	if (decoder->_sourceIsFile)
-		nbRepeat = 0;
-    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 36);
+	int32_t row = bitbuffer_find_repeated_row(bitbuffer, 3, 36);
     if (row < 0) {
         return DECODE_ABORT_EARLY;
     }
@@ -64,12 +66,16 @@ static int32_t nexus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
         return DECODE_ABORT_EARLY;
     }
 
-    int32_t id       = b[0];
-    int32_t battery  = b[1] & 0x80;
-    int32_t channel  = ((b[1] & 0x30) >> 4) + 1;
-    int32_t temp_raw = (int16_t)((b[1] << 12) | (b[2] << 4)); // sign-extend
+    if ((b[1] & 0x30) == 0x30) {
+        return DECODE_ABORT_EARLY; // channel not 1-3
+    }
+	int32_t id       = b[0];
+	int32_t battery  = b[1] & 0x80;
+	int32_t testmode = b[1] & 0x40;
+	int32_t channel  = ((b[1] & 0x30) >> 4) + 1;
+	int32_t temp_raw = (int16_t)((b[1] << 12) | (b[2] << 4)); // sign-extend
     float temp_c = (temp_raw >> 4) * 0.1f;
-    int32_t humidity = (((b[3] & 0x0F) << 4) | (b[4] >> 4));
+	int32_t humidity = (((b[3] & 0x0F) << 4) | (b[4] >> 4));
 
     data_t *data;
     if (humidity == 0x00) { // Thermo
@@ -80,6 +86,7 @@ static int32_t nexus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
                 "channel",       "Channel",     DATA_INT,    channel,
                 "battery_ok",    "Battery",     DATA_INT,    !!battery,
                 "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
+                "test",          "Test?",       DATA_COND,   testmode, DATA_INT,    !!testmode,
                 NULL);
         /* clang-format on */
     }
@@ -92,11 +99,79 @@ static int32_t nexus_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t s
                 "battery_ok",    "Battery",     DATA_INT,    !!battery,
                 "temperature_C", "Temperature", DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
                 "humidity",      "Humidity",    DATA_FORMAT, "%u %%", DATA_INT, humidity,
+                "test",          "Test?",       DATA_COND,   testmode, DATA_INT,    !!testmode,
                 NULL);
         /* clang-format on */
     }
 
-	decoder_output_data(decoder, data, bitbuffer, row, nbRepeat, startPulses, package_type);
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
+    return 1;
+}
+
+/**
+Nexus Sauna sensor with ID, temperature, battery and test flag.
+
+The "Sauna sensor", sends 36 bits 6 times, the nibbles are:
+
+    [id0] [id1] [flags] [const] [temp0] [temp1] [temp2] [temp2] [const2]
+
+- The 8-bit id changes when the battery is changed in the sensor.
+- flags are 4 bits B T C C, where:
+  - B is the battery status: 1=OK, 0=LOW
+  - T is Test mode, 0=Normal, 1=Test.
+  To enter test mode, press and hold Tx/Send button while putting the last battery in, it will send values at ~2sec interval.
+  - CC is the channel: It is always 11 (0x3) for CH4
+- temp is 16 bit signed scaled by 10
+- const is always 1111 (0x0F)
+- const2 is always 0001 (0x1)
+  To be exact, the "Sauna sensor" seems to send niblets 6 times with const2=0x1, and then seventh time sends just 35 bits, so last nibble is 0b000.
+  Maybe this is "data-end" mark. I don't know. Anyway, it can be ignored here, cause data has been parsed already.
+
+Sauna sensor kit is sold by IKH (CRX) and Motonet (Prego).
+*/
+static int32_t nexus_sauna_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
+{
+	int32_t row = bitbuffer_find_repeated_row(bitbuffer, 3, 36);
+    if (row < 0) {
+        return DECODE_ABORT_EARLY;
+    }
+
+    uint8_t *b = bitbuffer->bb[row];
+
+    // we expect 36 bits but there might be a trailing 0 bit
+    if (bitbuffer->bits_per_row[row] > 37) {
+        return DECODE_ABORT_LENGTH;
+    }
+    if ((b[1] & 0xf) != 0xf) {
+        return DECODE_ABORT_EARLY; // const not 1111
+    }
+    // Reduce false positives.
+    if ((b[0] == 0) || ((b[4] & 0x10) != 0x10)) {
+        return DECODE_ABORT_EARLY;
+    }
+    if ((b[1] & 0x30) != 0x30) {
+        return DECODE_ABORT_EARLY; // channel not 4
+    }
+
+	int32_t id       = b[0];
+	int32_t battery  = b[1] & 0x80;
+	int32_t testmode = b[1] & 0x40;
+	int32_t channel  = ((b[1] & 0x30) >> 4) + 1; // always 0x3 = CH4
+	int32_t temp_raw = (int16_t)((b[2] << 8) | (b[3])); // sign-extend
+    float temp_c = temp_raw * 0.1f;
+
+    /* clang-format off */
+    data_t *data = data_make(
+            "model",         "",            DATA_STRING, "Nexus-Sauna",
+            "id",            "House Code",  DATA_INT,    id,
+            "channel",       "Channel",     DATA_INT,    channel,
+            "battery_ok",    "Battery",     DATA_INT,    !!battery,
+            "temperature_C", "Temperature", DATA_FORMAT, "%.1f C", DATA_DOUBLE, temp_c,
+            "test",          "Test?",       DATA_COND,   testmode,   DATA_INT,    !!testmode,
+            NULL);
+    /* clang-format on */
+
+    decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
     return 1;
 }
 
@@ -107,6 +182,7 @@ static uint8_t const *const output_fields[] = {
         "battery_ok",
         "temperature_C",
         "humidity",
+        "test",
         NULL,
 };
 
@@ -120,4 +196,26 @@ r_device const nexus = {
         .decode_fn   = &nexus_decode,
         .priority    = 10, // Eliminate false positives by letting Rubicson-Temperature go earlier
         .fields      = output_fields,
+};
+
+static uint8_t const *const sauna_output_fields[] = {
+        "model",
+        "id",
+        "channel",
+        "battery_ok",
+        "temperature_C",
+        "test",
+        NULL,
+};
+
+r_device const nexus_sauna = {
+        .name        = "Nexus, CRX, Prego sauna temperature sensor",
+        .modulation  = OOK_PULSE_PPM,
+        .short_width = 1000,
+        .long_width  = 2000,
+        .gap_limit   = 3000,
+        .reset_limit = 5000,
+        .decode_fn   = &nexus_sauna_decode,
+        .priority    = 10, // Eliminate false positives by letting Rubicson-Temperature go earlier
+        .fields      = sauna_output_fields,
 };

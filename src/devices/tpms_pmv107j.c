@@ -33,13 +33,13 @@ based on work by Werner Johansson.
 
 #include "decoder.h"
 
-static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bit_offset, int32_t startPulses, uint16_t package_type)
+static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
     uint8_t b[9];
 
-    bit_offset = bitbuffer_differential_manchester_decode(bitbuffer, row, bit_offset, &packet_bits, 70); // 67 bits expected
-    if (bit_offset - bit_offset < 67 * 2) {
+	unsigned start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 70); // 67 bits expected
+    if (start_pos - bitpos < 67 * 2) {
         return 0;
     }
     decoder_log_bitbuffer(decoder, 2, __func__, &packet_bits, "", 0, 0);
@@ -102,17 +102,17 @@ static int32_t tpms_pmv107j_callback(r_device *decoder, bitbuffer_t *bitbuffer, 
     // full preamble is (7 bits) 11111 10
     uint8_t const preamble_pattern[1] = {0xf8}; // 6 bits
 
-    uint32_t bit_offset = 0;
+    uint32_t bitpos = 0;
     int32_t ret         = 0;
     int32_t events      = 0;
 
     // Find a preamble with enough bits after it that it could be a complete packet
-    while ((bit_offset = bitbuffer_search(bitbuffer, row, bit_offset, preamble_pattern, 6)) + 67 * 2 <=
+    while ((bitpos = bitbuffer_search(bitbuffer, row, bitpos, preamble_pattern, 6)) + 67 * 2 <=
             bitbuffer->bits_per_row[row]) {
-        ret = tpms_pmv107j_decode(decoder, bitbuffer, row, bit_offset + 6, startPulses, package_type);
+        ret = tpms_pmv107j_decode(decoder, bitbuffer, row, bitpos + 6, startPulses, package_type);
         if (ret > 0)
             events += ret;
-        bit_offset += 2;
+		bitpos += 2;
     }
 
     return events > 0 ? events : ret;
