@@ -657,6 +657,19 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
         while (package_type && process_frame) {
             int32_t p_events = 0; // Sensor events successfully detected per package
             package_type = pulse_detect_package(demod->pulse_detect, demod->am_buf, demod->buf.fm, (int32_t)n_samples, cfg->samp_rate, cfg->input_pos, &demod->pulse_data, &demod->fsk_pulse_data, fpdm, &start, &startFsk); //
+
+			//uint32_t fpdmPdp = 0;
+			//if ((demod->pulse_data.num_pulses == 0 && package_type == PULSE_DATA_OOK) || (demod->fsk_pulse_data.num_pulses == 0 && package_type == PULSE_DATA_FSK))
+			//	// if (pulseData.num_pulses == 0 && pulseDataFsk.num_pulses == 0)
+			//{
+			//	if (fpdm == FSK_PULSE_DETECT_NEW)
+			//		fpdmPdp = FSK_PULSE_DETECT_OLD;
+			//	else
+			//		fpdmPdp = FSK_PULSE_DETECT_NEW;
+
+			//	package_type = pulse_detect_package(demod->pulse_detect, demod->am_buf, demod->buf.fm, (int32_t)n_samples, cfg->samp_rate, cfg->input_pos, &demod->pulse_data, &demod->fsk_pulse_data, fpdmPdp, &start, &startFsk); //
+			//}
+
             if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses) {                                                                                                           //if (demod->pulse_data.num_pulses > demod->fsk_pulse_data.num_pulses)
                 //fprintf(stderr, "startPulses  %d \n", start);
                 //fprintf(stderr, "num_pulses ook %d \n", demod->pulse_data.num_pulses);
