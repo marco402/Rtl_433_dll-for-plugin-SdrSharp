@@ -52,7 +52,7 @@ void reflect_nibbles(uint8_t message[], uint32_t num_bytes);
 /// @param num_bits message length in bits
 /// @param dst target buffer for extracted nibbles, at least num_bits/5 size
 /// @return number of successfully unstuffed nibbles.
-unsigned extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+uint32_t extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
 /// UART "8n1" (10-to-8) decoder with 1 start bit (0), no parity, 1 stop bit (1), LSB-first bit-order.
 ///
@@ -61,7 +61,7 @@ unsigned extract_nibbles_4b1s(uint8_t const *message, uint32_t offset_bits, uint
 /// @param num_bits message length in bits
 /// @param dst target buffer for extracted bytes, at least num_bits/10 size
 /// @return number of successful decoded bytes
-unsigned extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+uint32_t extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
 /// UART "8o1" (11-to-8) decoder with 1 start bit (1), odd parity, 1 stop bit (0), MSB-first bit-order.
 ///
@@ -70,7 +70,7 @@ unsigned extract_bytes_uart(uint8_t const *message, uint32_t offset_bits, uint32
 /// @param num_bits message length in bits
 /// @param dst target buffer for extracted bytes, at least num_bits/11 size
 /// @return number of successful decoded bytes
-unsigned extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
+uint32_t extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint8_t *dst);
 
 /// Decode symbols to bits.
 ///
@@ -82,7 +82,7 @@ unsigned extract_bytes_uart_parity(uint8_t const *message, uint32_t offset_bits,
 /// @param sync symbol for sync bit, ignored at start, terminates at end
 /// @param dst target buffer for extracted bits, at least num_bits/symbol_x_len size
 /// @return number of successful decoded bits
-unsigned extract_bits_symbols(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst);
+uint32_t extract_bits_symbols(uint8_t const *message, uint32_t offset_bits, uint32_t num_bits, uint32_t zero, uint32_t one, uint32_t sync, uint8_t *dst);
 
 /// CRC-4.
 ///
@@ -190,7 +190,17 @@ uint16_t lfsr_digest16(uint8_t const message[], uint32_t bytes, uint16_t gen, ui
 /// @param buffer bytes of message data
 /// @param buffer_size number of bytes to process
 void ccitt_whitening(uint8_t *buffer, uint32_t buffer_size);
-
+/// Apply IBM data whitening to a buffer.
+///
+/// The IBM data whitening process is built around a 9-bit Linear Feedback Shift Register (LFSR).
+/// CCITT data whitening processes data packets byte-per-byte, whereas IBM data
+/// whitening processes the data packet bit-per-bit
+/// Same, the initial value of the data whitening key is set to all ones, 0x1FF.
+/// s.a. https://www.nxp.com/docs/en/application-note/AN5070.pdf s.5.1
+///
+/// @param buffer bytes of message data
+/// @param buffer_size number of bytes to process
+void ibm_whitening(uint8_t *buffer, uint32_t buffer_size);
 /// Compute bit parity of a single byte (8 bits).
 ///
 /// @param byte single byte to check

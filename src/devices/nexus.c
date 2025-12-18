@@ -32,8 +32,10 @@ The data is grouped in 9 nibbles:
 - flags are 4 bits B T C C
   - B is the battery status: 1=OK, 0=LOW
   - T is Test mode, 0=Normal, 1=Test
-  - CC is the channel: 0=CH1, 1=CH2, 2=CH3
-- temp is 12 bit signed scaled by 10
+  - CC is the channel: 0=CH1, 1=CH2, 2=CH3+- flags are 4 bits B T C C
+  - B is the battery status: 1=OK, 0=LOW
+  - T is Test mode, 0=Normal, 1=Test
+  - CC is the channel: 0=CH1, 1=CH2, 2=CH3- temp is 12 bit signed scaled by 10
 - const is always 1111 (0x0F)
 - humidity is 8 bits
 

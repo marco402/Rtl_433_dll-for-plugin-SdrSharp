@@ -352,8 +352,8 @@ static int32_t ambientweather_whx_decode(r_device *decoder, bitbuffer_t *bitbuff
                     "light_lux",        "Lux",          DATA_FORMAT, "%u lux",   DATA_INT,    light_lux,
                     "wind_avg_m_s",     "Wind Speed",   DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wspeed * 0.1f,
                     "wind_max_m_s",     "Wind Gust",    DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wgust * 0.1f,
-                    "uvi",              "UVI",          DATA_INT,    uvindex,
-                    "wind_dir_deg",     "Wind dir",     DATA_INT,    wdir,
+                    "uvi",              "UVI Index",    DATA_INT,    uvindex,
+                    "wind_dir_deg",     "Wind dir",     DATA_FORMAT, "%.0f", DATA_DOUBLE, (double)uvindex,
                     "data",             "Extra Data",   DATA_STRING, extra,
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);

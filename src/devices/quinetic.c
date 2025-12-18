@@ -73,7 +73,7 @@ static int32_t quinetic_switch_decode(r_device *decoder, bitbuffer_t *bitbuffer,
     // Process Switch-Channel (Button) nibble: b[2]
     //
     // Determine button number in switch (B1/B2/B3) when pressed.
-    // Typical Int Values:
+    // Typical int32_t Values:
     //
     // 192 = generic release
     // 01 = press ( B1 )

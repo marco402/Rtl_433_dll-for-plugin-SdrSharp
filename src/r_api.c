@@ -68,7 +68,7 @@ History : V1.00 2021-04-01 - First release
 
 const uint8_t *__stdcall version_string(void)  //download zip, version in CHANGELOG.md
 {
-	return "Rtl_433:Release 25.02 (2025-02-19)\n"; 
+	return "Rtl_433:Release 25.12 (2025-12-12)\n"; 
 }
 
 /* helper */

@@ -2872,8 +2872,8 @@ size_t mg_match_prefix_n(const struct mg_str pattern, const struct mg_str str);
 #ifdef QUEUE_MACRO_DEBUG
 /* Store the last 2 places the queue element or head was altered */
 struct qm_trace {
-	unsigned long	 lastline;
-	unsigned long	 prevline;
+	uint32_t	 lastline;
+	uint32_t	 prevline;
 	const uint8_t	*lastfile;
 	const uint8_t	*prevfile;
 };
@@ -4017,7 +4017,7 @@ struct mg_connection {
   void *priv_2;
   void *mgr_data; /* Implementation-specific event manager's data. */
   struct mg_iface *iface;
-  unsigned long flags;
+  uint32_t flags;
 /* Flags set by Mongoose */
 #define MG_F_LISTENING (1 << 0)          /* This connection is listening */
 #define MG_F_UDP (1 << 1)                /* This connection is UDP */

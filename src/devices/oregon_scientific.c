@@ -572,11 +572,11 @@ static int32_t oregon_scientific_v2_1_decode(r_device *decoder, bitbuffer_t *bit
 
         /* clang-format off */
         data_t *data = data_make(
-                "model",                    "",                     DATA_STRING, "Oregon-UVR128",
-                "id",                         "House Code", DATA_INT,        device_id,
-                "uv",                         "UV Index",     DATA_FORMAT, "%u", DATA_INT, uvidx,
-                "battery_ok",          "Battery",         DATA_INT,    !battery_low,
-                //"channel",                "Channel",        DATA_INT,        channel,
+                "model",               "",           DATA_STRING, "Oregon-UVR128",
+                "id",                  "House Code", DATA_INT,        device_id,
+			    "uvi",                 "UV Index",   DATA_FORMAT, "%.0f", DATA_DOUBLE, (double)uvidx,
+                "battery_ok",          "Battery",    DATA_INT,    !battery_low,
+                //"channel",           "Channel",    DATA_INT,        channel,
                 NULL);
         /* clang-format on */
         decoder_output_data(decoder, data, &databits, row, 0, startPulses, package_type);
@@ -704,16 +704,17 @@ static int32_t oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbu
             decoder_logf(decoder, 1, __func__, "THGR810 failed value sanity check: temp %.1fC hum %d%%.", temp_c, humidity);
             return DECODE_FAIL_SANITY;
         }
-
+		int32_t tx_button = msg[0] & 1; // unused sensor id bits
         /* clang-format off */
         data_t *data = data_make(
-                "model",                    "",                     DATA_STRING, "Oregon-THGR810",
-                "id",                         "House Code", DATA_INT,        device_id,
-                "channel",                "Channel",        DATA_INT,        channel,
-                "battery_ok",          "Battery",         DATA_INT,    !battery_low,
-                "temperature_C",    "Celsius",        DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
-                "humidity",             "Humidity",     DATA_FORMAT, "%u %%", DATA_INT, humidity,
-                NULL);
+			"model",         "",           DATA_STRING, "Oregon-THGR810",
+			"id",            "House Code", DATA_INT, device_id,
+			"channel",       "Channel",    DATA_INT, channel,
+			"button",        "Button",     DATA_COND, tx_button, DATA_INT, tx_button,
+			"battery_ok",    "Battery",    DATA_INT, !battery_low,
+			"temperature_C", "Celsius",    DATA_FORMAT, "%.2f C", DATA_DOUBLE, temp_c,
+			"humidity",      "Humidity",    DATA_FORMAT, "%u %%", DATA_INT, humidity,
+			NULL);
         /* clang-format on */
         decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
         return 1;                                    //msg[k] = ((msg[k] & 0x0F) << 4) + ((msg[k] & 0xF0) >> 4);
@@ -744,11 +745,11 @@ static int32_t oregon_scientific_v3_decode(r_device *decoder, bitbuffer_t *bitbu
 
         /* clang-format off */
         data_t *data = data_make(
-                "model",                    "",                     DATA_STRING, "Oregon-UV800",
-                "id",                         "House Code", DATA_INT,        device_id,
-                "channel",                "Channel",        DATA_INT,        channel,
-                "battery_ok",          "Battery",         DATA_INT,    !battery_low,
-                "uv",                         "UV Index",     DATA_FORMAT, "%u", DATA_INT, uvidx,
+                "model",               "",             DATA_STRING, "Oregon-UV800",
+                "id",                  "House Code",   DATA_INT,        device_id,
+                "channel",             "Channel",      DATA_INT,        channel,
+                "battery_ok",          "Battery",      DATA_INT,    !battery_low,
+			    "uvi",                 "UV Index",     DATA_FORMAT, "%.0f", DATA_DOUBLE, (double)uvidx,
                 NULL);
         /* clang-format on */
         decoder_output_data(decoder, data, bitbuffer, row, 0, startPulses, package_type);
@@ -980,6 +981,7 @@ static uint8_t const *const output_fields[] = {
         "model",
         "id",
         "channel",
+		"button",
         "battery_ok",
         "temperature_C",
         "humidity",
@@ -991,7 +993,7 @@ static uint8_t const *const output_fields[] = {
         "wind_avg_m_s",
         "wind_dir_deg",
         "pressure_hPa",
-        "uv",
+        "uvi",
         "power_W",
         "energy_kWh",
         "radio_clock",

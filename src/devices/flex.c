@@ -20,13 +20,13 @@ static inline int32_t bit(const uint8_t *bytes, uint32_t b)
 }
 
 /// extract all mask bits skipping unmasked bits of a number up to 32/64 bits
-static unsigned long compact_number(uint8_t *data, uint32_t bit_offset, uint32_t mask)
+static uint32_t compact_number(uint8_t *data, uint32_t bit_offset, uint32_t mask)
 {
     // clz (fls) is not worth the trouble
     int32_t top_bit = 0;
     while (mask >> top_bit)
         top_bit++;
-	unsigned long val = 0;
+	uint32_t val = 0;
     for (int32_t b = top_bit - 1; b >= 0; --b) {
         if (mask & (1 << b)) {
             val <<= 1;
@@ -38,14 +38,14 @@ static unsigned long compact_number(uint8_t *data, uint32_t bit_offset, uint32_t
 }
 
 /// extract a number up to 32/64 bits from given offset with given bit length
-static unsigned long extract_number(uint8_t *data, uint32_t bit_offset, uint32_t bit_count)
+static uint32_t extract_number(uint8_t *data, uint32_t bit_offset, uint32_t bit_count)
 {
     uint32_t pos = bit_offset / 8;            // the first byte we need
     uint32_t shl = bit_offset - pos * 8;      // shift left we need to align
     uint32_t len = (shl + bit_count + 7) / 8; // number of bytes we need
     uint32_t shr = 8 * len - shl - bit_count; // actual shift right
 //    fprintf(stderr, "pos: %d, shl: %d, len: %d, shr: %d\n", pos, shl, len, shr);
-	unsigned long val = data[pos];
+	uint32_t val = data[pos];
     val = (uint8_t)(val << shl) >> shl; // mask off top bits
     for (uint32_t i = 1; i < len - 1; ++i) {
         val = val << 8 | data[pos + i];
@@ -68,7 +68,7 @@ struct flex_map {
 struct flex_get {
     uint32_t bit_offset;
     uint32_t bit_count;
-	unsigned long mask;
+	uint32_t mask;
     const uint8_t *name;
     struct flex_map map[GETTER_MAP_SLOTS];
     const uint8_t *format;
@@ -98,8 +98,9 @@ struct flex_params {
     struct flex_get getter[GETTER_SLOTS];
     uint32_t decode_uart;
     uint32_t decode_dm;
+	uint32_t decode_mc;
     uint8_t const *fields[7 + GETTER_SLOTS + 1]; // NOTE: needs to match output_fields
-};
+}; 
 
 static void print_row_bytes(uint8_t *row_bytes, uint8_t *bits, int32_t num_bits)
 {
@@ -117,7 +118,7 @@ static void render_getters(data_t *data, uint8_t *bits, struct flex_params *para
     // add a data line for each getter
     for (int32_t g = 0; g < GETTER_SLOTS && params->getter[g].bit_count > 0; ++g) {
         struct flex_get *getter = &params->getter[g];
-		unsigned long val;
+		uint32_t val;
         if (getter->mask)
             val = compact_number(bits, getter->bit_offset, (uint32_t)getter->mask);
         else
@@ -261,6 +262,19 @@ static int32_t flex_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t 
         }
     }
 
+	    // IEEE 802.3 MC, may need G.E.Thomas option (bitbuffer_invert_row())
+		if (params->decode_mc) {
+		for (i = 0; i < bitbuffer->num_rows; i++) {
+			// TODO: refactor to bitbuffer_decode_mc_row()
+			uint32_t len = bitbuffer->bits_per_row[i];
+			bitbuffer_t tmp = { 0 };
+			bitbuffer_manchester_decode(bitbuffer, i, 0, &tmp, len);
+			len = tmp.bits_per_row[0];
+			memcpy(bitbuffer->bb[i], tmp.bb[0], (len + 7) / 8); // safe to write over: can only be shorter
+			bitbuffer->bits_per_row[i] = len;
+		}
+	}
+	
     decoder_log_bitbuffer(decoder, 1, params->name, bitbuffer, "", 0, 0);
 
     // discard duplicates
@@ -411,6 +425,7 @@ static void help(void)
             "\treflect : reflect each byte (MSB first to MSB last)\n"
             "\tdecode_uart : UART 8n1 (10-to-8) decode\n"
             "\tdecode_dm : Differential Manchester decode\n"
+		    "\tdecode_mc : Manchester decode\n"
             "\tmatch=<bits> : only match if the <bits> are found\n"
             "\tpreamble=<bits> : match and align at the <bits> preamble\n"
             "\t\t<bits> is a row spec of {<bit count>}<bits as hex number>\n"
@@ -545,7 +560,7 @@ static const uint8_t *parse_map(const uint8_t *arg, struct flex_get *getter)
     if (*c == '[') c++;
 
     while (*c) {
-		unsigned long key;
+		uint32_t key;
         uint8_t *val;
 
         while (*c == ' ') c++;
@@ -717,6 +732,8 @@ r_device *flex_create_device(uint8_t *spec)
 			params->decode_uart = (uint32_t)parse_atoiv(val, 1, "decode_uart: ");
 		else if (!strcasecmp(key, "decode_dm"))
 			params->decode_dm = (uint32_t)parse_atoiv(val, 1, "decode_dm: ");
+		else if (!strcasecmp(key, "decode_mc"))
+			params->decode_mc = (uint32_t)parse_atoiv(val, 1, "decode_mc: ");
 
         else if (!strcasecmp(key, "symbol_zero"))
             params->symbol_zero = parse_symbol(val);

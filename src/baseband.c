@@ -35,7 +35,7 @@ static void calc_squares(void)
 // Subtract the bias (-128) and get an envelope estimation.
 __declspec(dllexport) float __stdcall envelope_detect(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         y_buf[i] = scaled_squares[iq_buf[2 * i]] + scaled_squares[iq_buf[2 * i + 1]];
@@ -49,7 +49,7 @@ __declspec(dllexport) float __stdcall envelope_detect(uint8_t const *iq_buf, uin
 /// Using a LUT is slower for O1 and above.
 float envelope_detect_nolut(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         int16_t x = 127 - iq_buf[2 * i];
@@ -64,7 +64,7 @@ float envelope_detect_nolut(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len
 /// Note that magnitude emphasizes quiet signals / deemphasizes loud signals.
 float magnitude_est_cu8(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         uint16_t x       = abs(iq_buf[2 * i] - 128);
@@ -81,7 +81,7 @@ float magnitude_est_cu8(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 /// True Magnitude for CU8 (sqrt can SIMD but float is slow).
 float magnitude_true_cu8(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         int16_t x = iq_buf[2 * i] - 128;
@@ -95,7 +95,7 @@ float magnitude_true_cu8(uint8_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 /// 122/128, 51/128 Magnitude Estimator for CS16 (SIMD has min/max).
 float magnitude_est_cs16(int16_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         uint32_t x       = abs(iq_buf[2 * i]);
@@ -112,7 +112,7 @@ float magnitude_est_cs16(int16_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 /// True Magnitude for CS16 (sqrt can SIMD but float is slow).
 float magnitude_true_cs16(int16_t const *iq_buf, uint16_t *y_buf, uint32_t len)
 {
-	unsigned long i;
+	uint32_t i;
     uint32_t sum = 0;
     for (i = 0; i < len; i++) {
         int32_t x = iq_buf[2 * i];
@@ -161,7 +161,7 @@ __declspec(dllexport) void __stdcall  baseband_low_pass_filter(filter_state_t *s
 
     // Calculate first sample
     y_buf[0] = (a[1] * state->y[0] + b[0] * (x_buf[0] + state->x[0])) >> (F_SCALE - 1); // note: prescaled, b[0]==b[1]
-    for (unsigned long i = 1; i < len; i++) {
+    for (uint32_t i = 1; i < len; i++) {
         y_buf[i] = (a[1] * y_buf[i - 1] + b[0] * (x_buf[i] + x_buf[i - 1])) >> (F_SCALE - 1); // note: prescaled, b[0]==b[1]
     }
 

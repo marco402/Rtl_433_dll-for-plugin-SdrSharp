@@ -11,7 +11,11 @@
 /**
 TFA pool temperature sensor.
 
-10 24 bits frames
+Tested with TFA-Pool-thermometer 30.3160.
+
+Sends 10 24 bits frames.
+
+Data layout:
 
     CCCCIIII IIIITTTT TTTTTTTT DDBF
 
@@ -27,11 +31,11 @@ TFA pool temperature sensor.
 
 static int32_t tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
-    data_t *data;
+ /*   data_t *data;
     uint8_t *b;
     int32_t checksum, checksum_rx, device, channel, battery;
     int32_t temp_raw;
-    float temp_f;
+    float temp_f;*/
 
     // require 7 of 10 repeats
 	uint32_t nbRepeat = 7;
@@ -46,29 +50,41 @@ static int32_t tfa_pool_thermometer_decode(r_device *decoder, bitbuffer_t *bitbu
         return DECODE_ABORT_LENGTH; // prevent false positives
     }
 
-    b = bitbuffer->bb[row];
-
-    checksum_rx = ((b[0] & 0xF0) >> 4);
-    checksum    = ((b[0] & 0x0F) +
-                (b[1] >> 4) +
-                (b[1] & 0x0F) +
-                (b[2] >> 4) +
-                (b[2] & 0x0F) +
-                (b[3] >> 4) - 1);
+    //b = bitbuffer->bb[row];
+	uint8_t *b = bitbuffer->bb[row];
+    //checksum_rx = ((b[0] & 0xF0) >> 4);
+    //checksum    = ((b[0] & 0x0F) +
+    //            (b[1] >> 4) +
+    //            (b[1] & 0x0F) +
+    //            (b[2] >> 4) +
+    //            (b[2] & 0x0F) +
+    //            (b[3] >> 4) - 1);
+	int32_t checksum_rx = ((b[0] & 0xF0) >> 4);
+	int32_t checksum = ((b[0] & 0x0F)
+		+ (b[1] >> 4)
+		+ (b[1] & 0x0F)
+		+ (b[2] >> 4)
+		+ (b[2] & 0x0F)
+		+ (b[3] >> 4) - 1);
 
     if (checksum_rx != (checksum & 0x0F)) {
         decoder_logf_bitrow(decoder, 2, __func__, b, bitbuffer->bits_per_row[row], "checksum fail (%02x)", checksum);
         return DECODE_FAIL_MIC;
     }
 
-    device      = ((b[0] & 0x0F) << 4) + ((b[1] & 0xF0) >> 4);
-    temp_raw    = ((b[1] & 0x0F) << 8) + b[2];
-    temp_f      = (temp_raw > 2048 ? temp_raw - 4096 : temp_raw) * 0.1f;
-    channel     = ((b[3] & 0xC0) >> 6);
-    battery     = ((b[3] & 0x20) >> 5);
+    //device      = ((b[0] & 0x0F) << 4) + ((b[1] & 0xF0) >> 4);
+    //temp_raw    = ((b[1] & 0x0F) << 8) + b[2];
+    //temp_f      = (temp_raw > 2048 ? temp_raw - 4096 : temp_raw) * 0.1f;
+    //channel     = ((b[3] & 0xC0) >> 6);
+    //battery     = ((b[3] & 0x20) >> 5);
+	int32_t device = ((b[0] & 0x0F) << 4) | ((b[1] & 0xF0) >> 4);
+	int32_t temp_raw = ((b[1] & 0x0F) << 8) | b[2];
+	float temp_f = (temp_raw > 2048 ? temp_raw - 4096 : temp_raw) * 0.1f;
+	int32_t channel = ((b[3] & 0xC0) >> 6);
+	int32_t battery = ((b[3] & 0x20) >> 5);
 
     /* clang-format off */
-    data = data_make(
+	data_t *data = data_make(
             "model",            "",                 DATA_STRING,    "TFA-Pool",
             "id",               "Id",               DATA_INT,       device,
             "channel",          "Channel",          DATA_INT,       channel,

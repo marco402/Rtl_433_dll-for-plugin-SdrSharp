@@ -107,13 +107,13 @@ static int32_t cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
     int32_t temp_raw  = ((b[7] & 0x0f) << 8) | (b[8]);                // [60:12]
     int32_t humidity  = (b[9]);                                       // [72:8]
     int32_t light_lux = (b[10] << 8) | b[11] | ((b[7] & 0x80) << 9);  // [56:1][80:16]
-    int32_t uv        = (b[12]);                                      // [96:8]
+    int32_t uvi        = (b[12]);                                      // [96:8]
     //int32_t crc       = (b[13]);                                      // [104:8]
 
     float temp_c = (temp_raw - 400) * 0.1f;
 
     // On models without a light sensor, the value read for UV index is out of bounds with its top bits set
-    int32_t light_is_valid = (uv <= 150); // error value seems to be 0xfb, lux would be 0xfffb
+	int32_t light_is_valid = (uvi <= 150); // error value seems to be 0xfb, lux would be 0xfffb
 
     /* clang-format off */
     data = data_make(
@@ -128,7 +128,7 @@ static int32_t cotech_36_7959_decode(r_device *decoder, bitbuffer_t *bitbuffer, 
             "wind_avg_m_s",     "Wind",             DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind * 0.1f,
             "wind_max_m_s",     "Gust",             DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, gust * 0.1f,
             "light_lux",        "Light Intensity",  DATA_COND, light_is_valid, DATA_FORMAT, "%u lux", DATA_INT, light_lux,
-            "uv",               "UV Index",         DATA_COND, light_is_valid, DATA_FORMAT, "%.1f", DATA_DOUBLE, uv * 0.1f,
+            "uvi",               "UV Index",         DATA_COND, light_is_valid, DATA_FORMAT, "%.1f", DATA_DOUBLE, uvi * 0.1f,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
@@ -149,7 +149,7 @@ static uint8_t const *const cotech_36_7959_output_fields[] = {
         "wind_avg_m_s",
         "wind_max_m_s",
         "light_lux",
-        "uv",
+        "uvi",
         "mic",
         NULL,
 };

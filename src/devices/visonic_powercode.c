@@ -51,15 +51,15 @@ static int32_t visonic_powercode_decode(r_device *decoder, bitbuffer_t *bitbuffe
     uint8_t msg[32];
     uint8_t lrc;
 
-    // 37 bits expected, 6 packet repetitions, accept 4
+    // 37 bits expected, 6 packet repetitions, accept 2
 	uint32_t nbRepeat = 4;
 	if (decoder->_sourceIsFile)
 		nbRepeat = 0;
 		
-    int32_t row = bitbuffer_find_repeated_row(bitbuffer, nbRepeat, 37);
+	int32_t row = bitbuffer_find_repeated_row(bitbuffer, 2, 37);
 
     // exit if anything other than one row returned (-1 if failed)
-    if (row != 0)
+	if (row == -1)
         return DECODE_ABORT_LENGTH;
 
     // exit if incorrect number of bits in row or none

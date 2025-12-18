@@ -2028,7 +2028,7 @@ int32_t c_vsnprintf(uint8_t *buf, size_t buf_size, const uint8_t *fmt, va_list a
                     field_width);
 #endif
       } else if (ch == 'd' && len_mod == 'q') {
-        i += c_itoa(buf + i, buf_size - i, va_arg(ap, unsigned long), 10, flags,
+        i += c_itoa(buf + i, buf_size - i, va_arg(ap, uint32_t), 10, flags,
                     field_width);
       } else if ((ch == 'x' || ch == 'u') && len_mod == 0) {
         i += c_itoa(buf + i, buf_size - i, va_arg(ap, uint32_t),
@@ -2040,7 +2040,7 @@ int32_t c_vsnprintf(uint8_t *buf, size_t buf_size, const uint8_t *fmt, va_list a
         i += c_itoa(buf + i, buf_size - i, va_arg(ap, size_t),
                     ch == 'x' ? 16 : 10, flags, field_width);
       } else if (ch == 'p') {
-		  unsigned long num = (unsigned long) (uintptr_t) va_arg(ap, void *);
+		  uint32_t num = (uint32_t) (uintptr_t) va_arg(ap, void *);
         C_SNPRINTF_APPEND_CHAR('0');
         C_SNPRINTF_APPEND_CHAR('x');
         i += c_itoa(buf + i, buf_size - i, num, 16, flags, 0);
@@ -2463,7 +2463,7 @@ MG_INTERNAL void mg_call(struct mg_connection *nc,
   }
 #endif
   if (ev_handler != NULL) {
-	  unsigned long flags_before = nc->flags;
+	  uint32_t flags_before = nc->flags;
     ev_handler(nc, ev, ev_data MG_UD_ARG(user_data));
     /* Prevent user handler from fiddling with system flags. */
     if (ev_handler == nc->handler && nc->flags != flags_before) {
@@ -3543,7 +3543,7 @@ double mg_set_timer(struct mg_connection *c, double timestamp) {
    * linked to it. Set up a timer for the DNS connection.
    */
   DBG(("%p %p %d -> %lu", c, c->priv_2, (c->flags & MG_F_RESOLVING ? 1 : 0),
-       (unsigned long) timestamp));
+       (uint32_t) timestamp));
   if ((c->flags & MG_F_RESOLVING) && c->priv_2 != NULL) {
     mg_set_timer((struct mg_connection *) c->priv_2, timestamp);
   }
@@ -3860,7 +3860,7 @@ static sock_t mg_open_listening_socket(union socket_address *sa, int32_t type,
 
 void mg_set_non_blocking_mode(sock_t sock) {
 #ifdef _WIN32
-	unsigned long on = 1;
+	uint32_t on = 1;
   ioctlsocket(sock, FIONBIO, &on);
 #else
   int32_t flags = fcntl(sock, F_GETFL, 0);
@@ -6786,8 +6786,8 @@ void mg_http_handler(struct mg_connection *nc, int32_t ev,
       if (nc->recv_mbuf_limit > 0 && nc->recv_mbuf.len >= nc->recv_mbuf_limit) {
         LOG(LL_ERROR, ("%p recv buffer (%lu bytes) exceeds the limit "
                        "%lu bytes, and not drained, closing",
-                       nc, (unsigned long) nc->recv_mbuf.len,
-                       (unsigned long) nc->recv_mbuf_limit));
+                       nc, (uint32_t) nc->recv_mbuf.len,
+                       (uint32_t) nc->recv_mbuf_limit));
         nc->flags |= MG_F_CLOSE_IMMEDIATELY;
       }
     } else {
@@ -7314,7 +7314,7 @@ void mg_http_send_error(struct mg_connection *nc, int32_t code,
 #if MG_ENABLE_FILESYSTEM
 static void mg_http_construct_etag(uint8_t *buf, size_t buf_len,
                                    const cs_stat_t *st) {
-  snprintf(buf, buf_len, "\"%lx.%" INT64_FMT "\"", (unsigned long) st->st_mtime,
+  snprintf(buf, buf_len, "\"%lx.%" INT64_FMT "\"", (uint32_t) st->st_mtime,
            (int64_t) st->st_size);
 }
 
@@ -7534,7 +7534,7 @@ void mg_send_http_chunk(struct mg_connection *nc, const uint8_t *buf, size_t len
   uint8_t chunk_size[50];
   int32_t n;
 
-  n = snprintf(chunk_size, sizeof(chunk_size), "%lX\r\n", (unsigned long) len);
+  n = snprintf(chunk_size, sizeof(chunk_size), "%lX\r\n", (uint32_t) len);
   mg_send(nc, chunk_size, n);
   mg_send(nc, buf, (int32_t)len);
   mg_send(nc, "\r\n", 2);
@@ -7760,7 +7760,7 @@ int32_t mg_http_create_digest_auth_header(uint8_t *buf, size_t buf_len,
   static const size_t one = 1;
   uint8_t ha1[33], resp[33], cnonce[40];
 
-  snprintf(cnonce, sizeof(cnonce), "%lx", (unsigned long) mg_time());
+  snprintf(cnonce, sizeof(cnonce), "%lx", (uint32_t) mg_time());
   cs_md5(ha1, user, (size_t) strlen(user), colon, one, auth_domain,
          (size_t) strlen(auth_domain), colon, one, passwd,
          (size_t) strlen(passwd), NULL);
@@ -7781,8 +7781,8 @@ int32_t mg_http_create_digest_auth_header(uint8_t *buf, size_t buf_len,
  * Assumption: nonce is a hexadecimal number of seconds since 1970.
  */
 static int32_t mg_check_nonce(const uint8_t *nonce) {
-	unsigned long now = (unsigned long) mg_time();
-	unsigned long val = (unsigned long) strtoul(nonce, NULL, 16);
+	uint32_t now = (uint32_t) mg_time();
+	uint32_t val = (uint32_t) strtoul(nonce, NULL, 16);
   return (now >= val) && (now - val < 60 * 60);
 }
 
@@ -8452,7 +8452,7 @@ void mg_http_send_digest_auth_request(struct mg_connection *c,
             "WWW-Authenticate: Digest qop=\"auth\", "
             "realm=\"%s\", nonce=\"%lx\"\r\n"
             "Content-Length: 0\r\n\r\n",
-            domain, (unsigned long) mg_time());
+            domain, (uint32_t) mg_time());
 }
 
 static void mg_http_send_options(struct mg_connection *nc,
@@ -10782,7 +10782,7 @@ void mg_hexdump_connection(struct mg_connection *nc, const uint8_t *path,
   mg_conn_addr_to_str(nc, dst, sizeof(dst), MG_SOCK_STRINGIFY_IP |
                                                 MG_SOCK_STRINGIFY_PORT |
                                                 MG_SOCK_STRINGIFY_REMOTE);
-  fprintf(fp, "%lu %p %s %s %s %d\n", (unsigned long) mg_time(), (void *) nc,
+  fprintf(fp, "%lu %p %s %s %s %d\n", (uint32_t) mg_time(), (void *) nc,
           src, tag, dst, (int32_t) num_bytes);
   if (num_bytes > 0) {
     mg_hexdumpf(fp, buf, num_bytes);
@@ -11032,8 +11032,8 @@ static void mqtt_handler(struct mg_connection *nc, int32_t ev,
                 nc->recv_mbuf.len >= nc->recv_mbuf_limit) {
               LOG(LL_ERROR, ("%p recv buffer (%lu bytes) exceeds the limit "
                              "%lu bytes, and not drained, closing",
-                             nc, (unsigned long) nc->recv_mbuf.len,
-                             (unsigned long) nc->recv_mbuf_limit));
+                             nc, (uint32_t) nc->recv_mbuf.len,
+                             (uint32_t) nc->recv_mbuf_limit));
               nc->flags |= MG_F_CLOSE_IMMEDIATELY;
             }
           } else {
@@ -13648,12 +13648,12 @@ void fs_slfs_unset_file_flags(const uint8_t *name);
 #if SL_MAJOR_VERSION_NUM < 2
 int32_t slfs_open(const uint8_t *fname, uint32_t flags, uint32_t *token) {
   _i32 fh;
-  _i32 r = sl_FsOpen(fname, flags, (unsigned long *) token, &fh);
+  _i32 r = sl_FsOpen(fname, flags, (uint32_t *) token, &fh);
   return (r < 0 ? r : fh);
 }
 #else /* SL_MAJOR_VERSION_NUM >= 2 */
 int32_t slfs_open(const uint8_t *fname, uint32_t flags, uint32_t *token) {
-  return sl_FsOpen(fname, flags, (unsigned long *) token);
+  return sl_FsOpen(fname, flags, (uint32_t *) token);
 }
 #endif
 

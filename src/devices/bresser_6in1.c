@@ -164,7 +164,7 @@ static int32_t bresser_6in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     // apparently ff01 or 0000 if not available, ???0 if valid inverted BCD
     int32_t uv_ok  = (msg[16] & 0x0f) == 0 && (~msg[15] & 0xff) <= 0x99 && (~msg[16] & 0xf0) <= 0x90;
     int32_t const uv_raw = ((~msg[15] & 0xf0) >> 4) * 100 + (~msg[15] & 0x0f) * 10 + ((~msg[16] & 0xf0) >> 4);
-    float const uv   = uv_raw * 0.1f;
+    float const uvi   = uv_raw * 0.1f;
     int32_t const flags  = (msg[16] & 0x0f); // looks like some flags, not sure
 
     //int32_t const unk_ok  = (msg[16] & 0xf0) == 0xf0;
@@ -217,8 +217,8 @@ static int32_t bresser_6in1_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
             "wind_avg_m_s",     "Wind Speed",   DATA_COND, wind_ok, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind_avg,
             "wind_dir_deg",     "Direction",    DATA_COND, wind_ok, DATA_INT,    wind_dir,
             "rain_mm",          "Rain",         DATA_COND, rain_ok, DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rain_mm,
-            //"unknown",          "Unknown",      DATA_COND, unk_ok, DATA_INT,    unk_raw,
-            "uv",               "UV",           DATA_COND, uv_ok, DATA_FORMAT, "%.1f", DATA_DOUBLE,    uv,
+            //"unknown",          "Unknown",    DATA_COND, unk_ok, DATA_INT,    unk_raw,
+		    "uvi",              "UV Index",     DATA_COND, uv_ok, DATA_FORMAT, "%.1f", DATA_DOUBLE, uvi,
             "startup",          "Startup",      DATA_COND,   startup,   DATA_INT,    startup,
             "flags",            "Flags",        DATA_INT,    flags,
             "mic",              "Integrity",    DATA_STRING, "CRC",
@@ -242,7 +242,7 @@ static uint8_t const *const output_fields[] = {
         "wind_avg_m_s",
         "wind_dir_deg",
         "rain_mm",
-        "uv",
+        "uvi",
         "startup",
         "flags",
         "mic",

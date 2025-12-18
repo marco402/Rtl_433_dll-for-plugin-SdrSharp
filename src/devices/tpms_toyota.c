@@ -30,7 +30,7 @@ The pressure seems to be 1/4 PSI offset by -7 PSI (i.e. 28 raw = 0 PSI).
 
 static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bitpos,int32_t startPulses, uint16_t package_type)
 {
-	unsigned int start_pos;
+	uint32_t start_pos;
     bitbuffer_t packet_bits = {0};
     uint8_t *b;
     uint32_t id;
@@ -71,7 +71,7 @@ static int32_t tpms_toyota_decode(r_device *decoder, bitbuffer_t *bitbuffer, int
             "id",               "",             DATA_STRING,    id_str,
             "status",           "",             DATA_INT,       status,
             "pressure_PSI",     "",             DATA_DOUBLE,    pressure1*0.25-7.0,
-            "temperature_C",    "",             DATA_DOUBLE,    temp-40.0,
+		    "temperature_C",    "",             DATA_FORMAT, "%.0f C", DATA_DOUBLE, temp - 40.0,
             "mic",              "Integrity",    DATA_STRING,    "CRC",
             NULL);
     /* clang-format on */

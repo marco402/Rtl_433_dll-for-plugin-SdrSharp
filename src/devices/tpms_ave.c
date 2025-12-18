@@ -33,17 +33,17 @@ Packet nibbles:
 static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_t row, uint32_t bitpos, int32_t startPulses, uint16_t package_type)
 {
     bitbuffer_t packet_bits = {0};
-    uint8_t *b;
-    uint32_t id;
-    int32_t mode;
-    int32_t pressure_raw;
-    double pressure;
-    int32_t temperature;
-    int32_t battery_level;
-    int32_t flags;
-    int32_t crc;
-    double ratio;
-    double offset;
+    //uint8_t *b;
+    //uint32_t id;
+    //int32_t mode;
+    //int32_t pressure_raw;
+    //double pressure;
+    //int32_t temperature;
+    //int32_t battery_level;
+    //int32_t flags;
+    //int32_t crc;
+    //double ratio;
+    //double offset;
 
     bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 160);
 	int32_t row1 = 0; // add plugin
@@ -52,20 +52,39 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
     }
     decoder_log_bitbuffer(decoder, 1, __func__, &packet_bits, "", 0, 0);
 
-    b = packet_bits.bb[row1];
+    //b = packet_bits.bb[row1];
+	uint8_t *b = packet_bits.bb[row];
+    //id            = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+    //pressure_raw  = b[4];
+    //temperature   = b[5];
+    //mode          = b[6] >> 6 & 0x3;
+    //battery_level = b[6] >> 3 & 0x7;
+    //flags         = b[6] & 0x7;
+    //crc           = b[7];
 
-    id            = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
-    pressure_raw  = b[4];
-    temperature   = b[5];
-    mode          = b[6] >> 6 & 0x3;
-    battery_level = b[6] >> 3 & 0x7;
-    flags         = b[6] & 0x7;
-    crc           = b[7];
-
-    if (crc8(b, 7, 0x31, 0xff) != crc) {
+	if (crc8(b, 8, 0x31, 0xff) != 0) {
         return DECODE_FAIL_MIC; // bad checksum
     }
-
+	uint32_t id = (uint32_t)b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
+	int32_t pressure_raw = b[4];
+	int32_t temperature = b[5];
+	int32_t mode = b[6] >> 6 & 0x3;
+	int32_t battery_raw = b[6] >> 3 & 0x7;
+	int32_t flags = b[6] & 0x7;
+	    // int32_t crc          = b[7];
+		
+		int32_t battery_pct = 100; // any other value, i.e. less than 6
+	if (battery_raw == 6) {
+		battery_pct = 75; // not full
+		
+	}
+	else if (battery_raw == 7) {
+		battery_pct = 25; // low
+		
+	}
+	
+	double ratio;
+	double offset;
     switch (mode) {
     case 0:
         ratio  = 2.352f;
@@ -85,7 +104,7 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
         offset = 0.0f;
         break;
     }
-    pressure = ((double)pressure_raw - offset) * ratio;
+	double pressure = ((double)pressure_raw - offset) * ratio;
 
     uint8_t id_str[9 + 1];
     snprintf(id_str, sizeof(id_str), "%08x", id);
@@ -98,10 +117,9 @@ static int32_t tpms_ave_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
             "mode",             "Mode",          DATA_FORMAT, "M%i", DATA_INT, mode,
             "pressure_kPa",     "Pressure",      DATA_FORMAT, "%.1f kPa", DATA_DOUBLE, pressure,
             "temperature_C",    "Temperature",   DATA_FORMAT, "%.0f C", DATA_DOUBLE, (double)temperature - 50.0,
-            "battery_ok",       "Battery level", DATA_COND, battery_level < 6, DATA_DOUBLE, 1.0,
-            "battery_ok",       "Battery level", DATA_COND, battery_level == 6, DATA_DOUBLE, 0.75,
-            "battery_ok",       "Battery level", DATA_COND, battery_level == 7, DATA_DOUBLE, 0.25,
-            "flags",            "Flags",         DATA_FORMAT, "0x%x", DATA_INT, flags,
+		    "battery_ok",       "Battery",       DATA_INT, battery_raw != 7, // Value 7 means "Low"
+		    "battery_pct",      "Battery level", DATA_INT, battery_pct, // Note: this might change with #3103            "flags",            "Flags",         DATA_FORMAT, "0x%x", DATA_INT, flags,
+		    "flags",            "Flags",         DATA_FORMAT, "0x%x", DATA_INT, flags,
             "mic",              "Integrity",     DATA_STRING, "CRC",
             NULL);
     /* clang-format on */
@@ -145,6 +163,8 @@ static uint8_t const *const output_fields[] = {
         "model",
         "type",
         "id",
+		"battery_ok",
+        "battery_pct",
         "mode",
         "pressure_kPa",
         "temperature_C",

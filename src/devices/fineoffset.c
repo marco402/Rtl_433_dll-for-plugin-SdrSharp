@@ -166,7 +166,7 @@ Example:
     Payload:                              FF II DD VT TT HH WW GG RR RR UU UU LL LL LL CC BB
     Reading: id: 191, temp: 11.8 C, humidity: 78 %, wind_dir 266 deg, wind_speed: 1.12 m/s, gust_speed 2.24 m/s, rainfall: 22.2 mm
 
-The WH65B sends the same data with a slightly longer preamble and postamble
+The WH65B sends the same data with a slightly longer preamble and postamble:
 
             {209} 55 55 55 55 55 51 6e a1 22 83 3f 14 3a 08 00 00 00 08 00 10 00 00 04 60 a1 00 8
     aligned  {208} a aa aa aa aa aa 2d d4 24 50 67 e2 87 41 00 00 00 01 00 02 00 00 00 8c 14 20 1
@@ -190,43 +190,69 @@ The WH65B sends the same data with a slightly longer preamble and postamble
 - L: 24 bit light value
 - C: 8 bit CRC checksum of the 15 data bytes
 - B: 8 bit Bitsum (sum without carry, XOR) of the 16 data bytes
+The WS69 sends the same data with additional 8 bytes (6 bytes plus CRC and SUM):
+
+    {263}aaaaaaaaaaa 2dd4 241c8801ca63000000330000000000 acd5 01ff ffff 002f 835a 0
+    {263}aaaaaaaaaaa 2dd4 241c5981b06304010033000000001e 8e11 01ff ffff 002f 96e5 0
+    {263}aaaaaaaaaaa 2dd4 241c5981b06304000033000000001e c749 01ff ffff 002f 9857 0
+    {263}aaaaaaaaaaa 2dd4 241c5981b06303000033000000001e 9f20 01ff ffff 002f df4c 0
+    {263}aaaaaaaaaaa 2dd4 241c5981b06302000033000000001e 2aaa 01ff ffff 002f 5fe0 0
+    {263}aaaaaaaaaaa 2dd4 241c5981b063000000330000000014 aa1e 01ff ffff 002f b41a 0
+
+The WS69 also seems to sends another type of packet, 100 us FSK PCM, that has not been analyzed:
+
+    5555 5555 d395 d395 d90a ba0b 5cb7 1d
+
+    rtl_433 -f 868.2M -s 1000k -Y minmax -R 0 -X 'n=name,m=FSK_PCM,s=100,l=100,r=3000,preamble=d395d395'
  */
 #define MODEL_WH24 24 /* internal identifier for model WH24, family code is always 0x24 */
 #define MODEL_WH65B 65 /* internal identifier for model WH65B, family code is always 0x24 */
+#define MODEL_WS69 69 /* internal identifier for model WS69, family code is always 0x24 */
 static int32_t fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffer, int32_t startPulses, uint16_t package_type)
 {
     data_t *data;
     uint8_t const preamble[] = {0xAA, 0x2D, 0xD4}; // part of preamble and sync word
-    uint8_t b[17]; // aligned packet data
+	uint8_t b[17]; // aligned packet data, would need 25 bytes for WS69
     uint32_t bit_offset;
     int32_t type;
 
-    // Validate package, WH24 nominal size is 196 bit periods, WH65b is 209 bit periods
-    if (bitbuffer->bits_per_row[0] < 190 || bitbuffer->bits_per_row[0] > 215) {
+	// Validate package, WH24 nominal size is 196 bit periods, WH65b is 209 bit periods, WS69 is 260 bits.
+	if (bitbuffer->bits_per_row[0] < 190 || bitbuffer->bits_per_row[0] > 268) {
+		decoder_logf(decoder, 1, __func__, "wrong package size %u", bitbuffer->bits_per_row[0]);
         return DECODE_ABORT_LENGTH;
     }
 
     // Find a data package and extract data buffer
     bit_offset = bitbuffer_search(bitbuffer, 0, 0, preamble, sizeof(preamble) * 8) + sizeof(preamble) * 8;
     if (bit_offset + sizeof(b) * 8 > bitbuffer->bits_per_row[0]) { // Did not find a big enough package
-        decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "Fineoffset_WH24: short package. Header index: %u", bit_offset);
+		decoder_logf_bitbuffer(decoder, 1, __func__, bitbuffer, "short package. Header index: %u", bit_offset);
         return DECODE_ABORT_LENGTH;
     }
-    // Classification heuristics
-    if (bitbuffer->bits_per_row[0] - bit_offset - sizeof(b) * 8 < 8)
-        if (bit_offset < 61)
-            type = MODEL_WH24; // nominal 3 bits postamble
-        else
-            type = MODEL_WH65B;
-    else
-        type = MODEL_WH65B; // nominal 12 bits postamble
+	// Classification heuristics
+	if (bitbuffer->bits_per_row[0] - bit_offset - sizeof(b) * 8 < 8) {
+		if (bit_offset < 61) {
+			type = MODEL_WH24; // nominal 3 bits postamble
+		}
+		else {
+			type = MODEL_WH65B;
+		}
+	}
+	else {
+		type = MODEL_WH65B; // nominal 12 bits postamble
+	}
+	if (bitbuffer->bits_per_row[0] > 215) { // minimum 27*8=216
+		// we could also check the extra 6 bytes plus crc and sum.
+		type = MODEL_WS69; // nominal 260 bits
+	}
 
     bitbuffer_extract_bytes(bitbuffer, 0, bit_offset, b, sizeof(b) * 8);
 
     decoder_logf_bitrow(decoder, 1, __func__, b, sizeof(b) * 8, "Raw @ bit_offset [%u]", bit_offset);
 
-    if (b[0] != 0x24) // Check for family code 0x24
-        return DECODE_FAIL_SANITY;
+	if (b[0] != 0x24) { // Check for family code 0x24
+		decoder_logf(decoder, 1, __func__, "unknown family code: 0x%02x", b[0]);
+		return DECODE_FAIL_SANITY;
+	}
 
     // Verify checksum, same as other FO Stations: Reverse 1Wire CRC (poly 0x131)
     uint8_t crc = crc8(b, 15, 0x31, 0x00);
@@ -235,7 +261,7 @@ static int32_t fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffe
         checksum += b[n];
     }
     if (crc != b[15] || checksum != b[16]) {
-        decoder_logf(decoder, 1, __func__, "Fineoffset_WH24: Checksum error: %02x %02x", crc, checksum);
+		decoder_logf(decoder, 1, __func__, "Checksum error: %02x %02x", crc, checksum);
         return DECODE_FAIL_MIC;
     }
 
@@ -290,17 +316,18 @@ static int32_t fineoffset_WH24_callback(r_device *decoder, bitbuffer_t *bitbuffe
 
     /* clang-format off */
     data = data_make(
-            "model",            "",                 DATA_STRING, type == MODEL_WH24 ? "Fineoffset-WH24" : "Fineoffset-WH65B",
-            "id",               "ID",               DATA_INT,    id,
-            "battery_ok",       "Battery",          DATA_INT,    !low_battery,
-            "temperature_C",    "Temperature",      DATA_COND, temp_raw != 0x7ff, DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
+			"model",			"",					DATA_COND, type == MODEL_WH24, DATA_STRING, "Fineoffset-WH24",
+			"model",			"",					DATA_COND, type == MODEL_WH65B, DATA_STRING, "Fineoffset-WH65B",
+			"model",			"",					DATA_COND, type == MODEL_WS69, DATA_STRING, "Fineoffset-WS69",
+			"id",				"ID",				DATA_INT, id,
+			"battery_ok",		"Battery",			DATA_INT, !low_battery, "temperature_C",    "Temperature",      DATA_COND, temp_raw != 0x7ff, DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature,
             "humidity",         "Humidity",         DATA_COND, humidity != 0xff, DATA_FORMAT, "%u %%", DATA_INT, humidity,
             "wind_dir_deg",     "Wind direction",   DATA_COND, wind_dir != 0x1ff, DATA_INT, wind_dir,
             "wind_avg_m_s",     "Wind speed",       DATA_COND, wind_speed_raw != 0x1ff, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, wind_speed_ms,
             "wind_max_m_s",     "Gust speed",       DATA_COND, gust_speed_raw != 0xff, DATA_FORMAT, "%.1f m/s", DATA_DOUBLE, gust_speed_ms,
             "rain_mm",          "Rainfall",         DATA_FORMAT, "%.1f mm", DATA_DOUBLE, rainfall_mm,
-            "uv",               "UV",               DATA_COND, uv_raw != 0xffff, DATA_INT, uv_raw,
-            "uvi",              "UVI",              DATA_COND, uv_raw != 0xffff, DATA_INT, uv_index,
+			"uv",				"UV",				DATA_COND, uv_raw != 0xffff, DATA_INT, uv_raw, DATA_DOUBLE, (double)uv_index,
+			"uvi",				"UV Index",			DATA_COND, uv_raw != 0xffff, DATA_FORMAT, "%.0f", DATA_DOUBLE, (double)uv_index,
             "light_lux",        "Light",            DATA_COND, light_raw != 0xffffff, DATA_FORMAT, "%.1f lux", DATA_DOUBLE, light_lux,
             "mic",              "Integrity",        DATA_STRING, "CRC",
             NULL);
@@ -505,7 +532,7 @@ static int32_t fineoffset_WH25_callback(r_device *decoder, bitbuffer_t *bitbuffe
         type = 31;
     }
     else if (msg_type != 0xe0) {
-        decoder_logf(decoder, 1, __func__, "Msg type unknown: %02x", b[0]);
+		decoder_logf(decoder, 1, __func__, "Msg type unknown: 0x%02x", b[0]);
         if (b[0] == 0x41) {
             return fineoffset_WH0290_callback(decoder, bitbuffer, startPulses,package_type); // abort and try WH0290
         }
@@ -616,7 +643,7 @@ static int32_t fineoffset_WH51_callback(r_device *decoder, bitbuffer_t *bitbuffe
 
     // Verify family code
     if (b[0] != 0x51) {
-        decoder_logf(decoder, 1, __func__, "Msg family unknown: %02x", b[0]);
+		decoder_logf(decoder, 1, __func__, "Msg family unknown: 0x%02x", b[0]);
         return DECODE_ABORT_EARLY;
     }
 
@@ -931,7 +958,7 @@ static int32_t fineoffset_WH0530_callback(r_device *decoder, bitbuffer_t *bitbuf
     int32_t sum = (add_bytes(b, 7) & 0xff) - b[7];
 
     if (crc || sum) {
-        decoder_log_bitrow(decoder, 1, __func__, b, sizeof (b) * 8, "Fineoffset_WH0530: Checksum error");
+		decoder_log_bitrow(decoder, 1, __func__, b, sizeof(b) * 8, "Checksum error");
         return DECODE_FAIL_MIC;
     }
 

@@ -881,7 +881,7 @@ static int32_t acurite_atlas_decode(r_device *decoder, bitbuffer_t *bitbuffer, u
         }
 
         /* clang-format off */
-		data = data_int(data, "uv", NULL, NULL, uv);
+		data = data_dbl(data, "uvi", "UV Index", "%.0f", uv);
 		data = data_int(data, "lux", NULL, NULL, lux * 10);
 
         /* clang-format on */
@@ -1909,7 +1909,7 @@ static uint8_t const *const acurite_txr_output_fields[] = {
         "storm_dist",
         "strike_count",
         "strike_distance",
-        "uv",
+        "uvi",
         "lux",
         "active",
         "exception",

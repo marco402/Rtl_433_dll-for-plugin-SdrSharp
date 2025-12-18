@@ -1,5 +1,5 @@
 /** @file
-	Declaration of all available decoders.
+    Declaration of all available decoders.
 */
 
 #ifndef INCLUDE_RTL_433_DEVICES_H_
@@ -288,8 +288,18 @@
     DECL(thermopro_tx7b) \
     DECL(nexus_sauna) \
     DECL(homelead_hg9901) \
+    DECL(maverick_xr50) \
+    DECL(orion_endpoint) \
+    DECL(fineoffset_wh43) \
+    DECL(baldr_therm) \
+    DECL(bm5) \
+    DECL(universalfanctrl) \
+    DECL(fineoffset_ws85) \
+    DECL(oria_wa150km) \
+    DECL(ec3k) \
+    DECL(orion_endpoint_2020) \
 
-/* Add new decoders here. */
+    /* Add new decoders here. */
 
 #define DECL(name) extern r_device name;
 DEVICES

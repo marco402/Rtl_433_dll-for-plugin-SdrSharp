@@ -38,7 +38,7 @@ static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
     bitbuffer_t packet_bits = {0};
     uint8_t b[9];
 
-	unsigned start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 70); // 67 bits expected
+	uint32_t start_pos = bitbuffer_differential_manchester_decode(bitbuffer, row, bitpos, &packet_bits, 70); // 67 bits expected
     if (start_pos - bitpos < 67 * 2) {
         return 0;
     }
@@ -86,7 +86,7 @@ static int32_t tpms_pmv107j_decode(r_device *decoder, bitbuffer_t *bitbuffer, in
 			"rapid_change",     "",             DATA_INT,       rapid_change,
 		    "failed",           "",             DATA_STRING,    failed ? "FAIL" : "OK",
             "pressure_kPa",     "",             DATA_DOUBLE,    pressure_kpa,
-            "temperature_C",    "",             DATA_DOUBLE,    temperature_c,
+		    "temperature_C",    "",             DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature_c,
             "mic",              "Integrity",    DATA_STRING,    "CRC",
             NULL);
     /* clang-format on */

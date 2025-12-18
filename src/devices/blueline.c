@@ -358,7 +358,7 @@ static int32_t blueline_decode(r_device *decoder, bitbuffer_t *bitbuffer, int32_
                     "id",               "",             DATA_INT,    context->current_sensor_id,
                     "flags",            "",             DATA_FORMAT, "%02x", DATA_INT, flags,
                     "battery_ok",       "Battery",      DATA_INT,    !battery,
-                    "temperature_C",    "",             DATA_DOUBLE, temperature_C,
+                    "temperature_C",    "Temperature",  DATA_FORMAT, "%.1f C", DATA_DOUBLE, temperature_C,
                     "mic",              "Integrity",    DATA_STRING, "CRC",
                     NULL);
             /* clang-format on */

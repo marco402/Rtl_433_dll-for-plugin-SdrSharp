@@ -391,7 +391,7 @@ _Noreturn static void help_output(void)
             "\t\t= Output format option =\n"
 		    "  [-F log|kv|json|csv|mqtt|influx|syslog|trigger|rtl_tcp|http|null] Produce decoded output in given format.\n"            "\tWithout this option the default is LOG and KV output. Use \"-F null\" to remove the default.\n"
             "\tAppend output to file with :<filename> (e.g. -F csv:log.csv), defaults to stdout.\n"
-		    "  [-F mqtt[:[//]host[:port][,<options>]] (default: localhost:1883)\n"
+		    "[-F mqtt[s][:[//]host[:port][,<options>]] (default: localhost:1883)\n"
 		    "\tSpecify MQTT server with e.g. -F mqtt://localhost:1883\n"
             "\tAdd MQTT options with e.g. -F \"mqtt://host:1883,opt=arg\"\n"
             "\tMQTT options are: user=foo, pass=bar, retain[=0|1], <format>[=topic]\n"
@@ -404,7 +404,8 @@ _Noreturn static void help_output(void)
             "\t  devices: posts device and sensor info in nested topics\n"
             "\tAny topic string overrides the base topic and will expand keys like [/model]\n"
             "\tE.g. -F \"mqtt://localhost:1883,user=USERNAME,pass=PASSWORD,retain=0,devices=rtl_433[/id]\"\n"
-            "\tWith MQTT each rtl_433 instance needs a distinct driver selection. The MQTT Client-ID is computed from the driver string.\n"
+		    "\tFor TLS use e.g. -F \"mqtts://host,tls_cert=<path>,tls_key=<path>,tls_ca_cert=<path>\"\n"
+		    "\tWith MQTT each rtl_433 instance needs a distinct driver selection. The MQTT Client-ID is computed from the driver string.\n"
             "\tIf you use multiple RTL-SDR, perhaps set a serial and select by that (helps not to get the wrong antenna).\n"
 		    "  [-F influx[:[//]host[:port][/<path and options>]]\n"
 		    "\tSpecify InfluxDB 2.0 server with e.g. -F \"influx://localhost:9999/api/v2/write?org=<org>&bucket=<bucket>,token=<authtoken>\"\n"
@@ -621,11 +622,11 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
             // CU8
             demod->memo_demod_FM_state = demod->demod_FM_state;
             //baseband_demod_FM(iq_buf, demod->buf.fm, n_samples, cfg->samp_rate, low_pass, &demod->demod_FM_state); //ici
-			baseband_demod_FM(&demod->demod_FM_state, iq_buf, demod->buf.fm,(unsigned long) n_samples, cfg->samp_rate, low_pass);
+			baseband_demod_FM(&demod->demod_FM_state, iq_buf, demod->buf.fm,(uint32_t) n_samples, cfg->samp_rate, low_pass);
         }
         else { // CS16
             //baseband_demod_FM_cs16((int16_t *)iq_buf, demod->buf.fm, (uint64_t)n_samples, cfg->samp_rate, low_pass, &demod->demod_FM_state);
-			baseband_demod_FM_cs16(&demod->demod_FM_state, (int16_t *)iq_buf, demod->buf.fm, (unsigned long)n_samples, cfg->samp_rate, low_pass);
+			baseband_demod_FM_cs16(&demod->demod_FM_state, (int16_t *)iq_buf, demod->buf.fm, (uint32_t)n_samples, cfg->samp_rate, low_pass);
         }
     }
 
@@ -857,91 +858,91 @@ static void sdr_callback(uint8_t *iq_buf, uint32_t len, void *ctx)
         if (!dumper->file || dumper->format == VCD_LOGIC || dumper->format == PULSE_OOK)
             continue;
         uint8_t *out_buf      = iq_buf; // Default is to dump IQ samples
-		unsigned long out_len = (unsigned long)(n_samples * demod->sample_size);
+		uint32_t out_len = (uint32_t)(n_samples * demod->sample_size);
 
         if (dumper->format == CU8_IQ) {
             if (demod->sample_size == 4) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((uint8_t *)demod->buf.temp)[n] = (((int16_t *)iq_buf)[n] / 256) + 128; // scale Q0.15 to Q0.7
                 out_buf = (uint8_t *)demod->buf.temp;
-                out_len = (unsigned long)(n_samples * 2 * sizeof(uint8_t));
+                out_len = (uint32_t)(n_samples * 2 * sizeof(uint8_t));
             }
         }
         else if (dumper->format == CS16_IQ) {
             if (demod->sample_size == 2) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((int16_t *)demod->buf.temp)[n] = (iq_buf[n] * 256) - 32768; // scale Q0.7 to Q0.15
                 out_buf = (uint8_t *)demod->buf.temp;                            // this buffer is too small if out_block_size is large
-                out_len = (unsigned long)(n_samples * 2 * sizeof(int16_t));
+                out_len = (uint32_t)(n_samples * 2 * sizeof(int16_t));
             }
         }
         else if (dumper->format == CS8_IQ) {
             if (demod->sample_size == 2) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((int8_t *)demod->buf.temp)[n] = (iq_buf[n] - 128);
             }
             else if (demod->sample_size == 4) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((int8_t *)demod->buf.temp)[n] = ((int16_t *)iq_buf)[n] >> 8;
             }
             out_buf = (uint8_t *)demod->buf.temp;
-            out_len = (unsigned long)(n_samples * 2 * sizeof(int8_t));
+            out_len = (uint32_t)(n_samples * 2 * sizeof(int8_t));
         }
         else if (dumper->format == CF32_IQ) {
             if (demod->sample_size == 2) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((float *)demod->buf.temp)[n] = (iq_buf[n] - 128) / 128.0f;
             }
             else if (demod->sample_size == 4) {
-                for (unsigned long n = 0; n < n_samples * 2; ++n)
+                for (uint32_t n = 0; n < n_samples * 2; ++n)
                     ((float *)demod->buf.temp)[n] = ((int16_t *)iq_buf)[n] / 32768.0f;
             }
             out_buf = (uint8_t *)demod->buf.temp; // this buffer is too small if out_block_size is large
-            out_len = (unsigned long)(n_samples * 2 * sizeof(float));
+            out_len = (uint32_t)(n_samples * 2 * sizeof(float));
         }
         else if (dumper->format == S16_AM) {
             out_buf = (uint8_t *)demod->am_buf;
-            out_len = (unsigned long)(n_samples * sizeof(int16_t));
+            out_len = (uint32_t)(n_samples * sizeof(int16_t));
         }
         else if (dumper->format == S16_FM) {
             out_buf = (uint8_t *)demod->buf.fm;
-            out_len = (unsigned long)(n_samples * sizeof(int16_t));
+            out_len = (uint32_t)(n_samples * sizeof(int16_t));
         }
         else if (dumper->format == F32_AM) {
-            for (unsigned long n = 0; n < n_samples; ++n)
+            for (uint32_t n = 0; n < n_samples; ++n)
                 demod->f32_buf[n] = demod->am_buf[n] * (1.0f / 0x8000); // scale from Q0.15
             out_buf = (uint8_t *)demod->f32_buf;
-            out_len = (unsigned long)(n_samples * sizeof(float));
+            out_len = (uint32_t)(n_samples * sizeof(float));
         }
         else if (dumper->format == F32_FM) {
-            for (unsigned long n = 0; n < n_samples; ++n)
+            for (uint32_t n = 0; n < n_samples; ++n)
                 demod->f32_buf[n] = demod->buf.fm[n] * (1.0f / 0x8000); // scale from Q0.15
             out_buf = (uint8_t *)demod->f32_buf;
-            out_len = (unsigned long)(n_samples * sizeof(float));
+            out_len = (uint32_t)(n_samples * sizeof(float));
         }
         else if (dumper->format == F32_I) {
             if (demod->sample_size == 2)
-                for (unsigned long n = 0; n < n_samples; ++n)
+                for (uint32_t n = 0; n < n_samples; ++n)
                     demod->f32_buf[n] = (iq_buf[n * 2] - 128) * (1.0f / 0x80); // scale from Q0.7
             else
-                for (unsigned long n = 0; n < n_samples; ++n)
+                for (uint32_t n = 0; n < n_samples; ++n)
                     demod->f32_buf[n] = ((int16_t *)iq_buf)[n * 2] * (1.0f / 0x8000); // scale from Q0.15
             out_buf = (uint8_t *)demod->f32_buf;
-            out_len = (unsigned long)(n_samples * sizeof(float));
+            out_len = (uint32_t)(n_samples * sizeof(float));
         }
         else if (dumper->format == F32_Q) {
             if (demod->sample_size == 2)
-                for (unsigned long n = 0; n < n_samples; ++n)
+                for (uint32_t n = 0; n < n_samples; ++n)
                     demod->f32_buf[n] = (iq_buf[n * 2 + 1] - 128) * (1.0f / 0x80); // scale from Q0.7
             else
-                for (unsigned long n = 0; n < n_samples; ++n)
+                for (uint32_t n = 0; n < n_samples; ++n)
                     demod->f32_buf[n] = ((int16_t *)iq_buf)[n * 2 + 1] * (1.0f / 0x8000); // scale from Q0.15
             out_buf = (uint8_t *)demod->f32_buf;
-            out_len = (unsigned long)(n_samples * sizeof(float));
+            out_len = (uint32_t)(n_samples * sizeof(float));
         }
         else if (dumper->format == U8_LOGIC) { // state data
             out_buf = demod->u8_buf;
-            out_len = (unsigned long)n_samples;
+            out_len = (uint32_t)n_samples;
         }
 
         if (fwrite(out_buf, 1, out_len, dumper->file) != out_len) {
@@ -1598,31 +1599,37 @@ console_handler(int32_t signum)
 #else
 static void sighandler(int32_t signum)
 {
-    if (signum == SIGPIPE) {
-        signal(SIGPIPE, SIG_IGN);
-    }
-    else if (signum == SIGINFO /* TODO: maybe SIGUSR1 */) {
-        g_cfg.stats_now++;
-        return;
-    }
-    else if (signum == SIGUSR1) {
-        g_cfg.hop_now = 1;
-        return;
-    }
-    else {
-        write_err("Signal caught, exiting!\n");
-    }
-    g_cfg.exit_async = 1;
+	if (signum == SIGPIPE) {
+		// NOTE: we already ignore most network SIGPIPE's, this might be a STDOUT/STDERR problem.
+		// Printing is likely not the correct way to handle this.
+		write_err("Signal SIGPIPE caught, broken pipe, exiting!\n");
+	}
+	else if (signum == SIGHUP) {
+		sig_hup = 1;
+		return;
+	}
+	else if (signum == SIGINFO/* TODO: maybe SIGUSR1 */) {
+		g_cfg.stats_now++;
+		return;
+	}
+	else if (signum == SIGUSR1) {
+		g_cfg.hop_now = 1;
+		return;
+	}
+	else {
+		write_err("Signal caught, exiting!\n");
+	}
+	g_cfg.exit_async = 1;
 
-    // Uninstall handler, next Ctrl-C is a hard abort
-    struct sigaction sigact;
-    sigact.sa_handler = NULL;
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGPIPE, &sigact, NULL);
+	// Uninstall handler, next Ctrl-C is a hard abort
+	struct sigaction sigact;
+	sigact.sa_handler = NULL;
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = 0;
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGQUIT, &sigact, NULL);
+	sigaction(SIGPIPE, &sigact, NULL);
 }
 #endif
 
@@ -2069,7 +2076,7 @@ int32_t main(int32_t argc, uint8_t **argv)
 
             // default case for file-inputs
             int32_t n_blocks = 0;
-			unsigned long n_read;
+			uint32_t n_read;
             delay_timer_t delay_timer;
             delay_timer_init(&delay_timer);
             do {
@@ -2083,9 +2090,9 @@ int32_t main(int32_t argc, uint8_t **argv)
                 }
                 // Convert CF32 file to CS16 buffer
                 if (demod->load_info.format == CF32_IQ) {
-                    n_read = (unsigned long) fread(test_mode_float_buf, sizeof(float), DEFAULT_BUF_LENGTH / 2, in_file);
+                    n_read = (uint32_t) fread(test_mode_float_buf, sizeof(float), DEFAULT_BUF_LENGTH / 2, in_file);
                     // clamp float to [-1,1] and scale to Q0.15
-                    for (unsigned long n = 0; n < n_read; n++) {
+                    for (uint32_t n = 0; n < n_read; n++) {
                         int32_t s_tmp = (int32_t) (test_mode_float_buf[n] * INT16_MAX);
                         if (s_tmp < -INT16_MAX)
                             s_tmp = -INT16_MAX;
@@ -2096,11 +2103,11 @@ int32_t main(int32_t argc, uint8_t **argv)
                     n_read *= 2; // convert to byte count
                 }
                 else {
-                    n_read = (unsigned long)fread(test_mode_buf, 1, DEFAULT_BUF_LENGTH, in_file);
+                    n_read = (uint32_t)fread(test_mode_buf, 1, DEFAULT_BUF_LENGTH, in_file);
 
                     // Convert CS8 file to CU8 buffer
                     if (demod->load_info.format == CS8_IQ) {
-                        for (unsigned long n = 0; n < n_read; n++) {
+                        for (uint32_t n = 0; n < n_read; n++) {
                             test_mode_buf[n] = ((int8_t)test_mode_buf[n]) + 128;
                         }
                     }
@@ -2116,7 +2123,7 @@ int32_t main(int32_t argc, uint8_t **argv)
             if (demod->sample_size == 2) {                      // CU8
                 memset(test_mode_buf, 128, DEFAULT_BUF_LENGTH); // 128 is 0 in uint32_t data
                 // or is 127.5 a better 0 in cu8 data?
-                //for (unsigned long n = 0; n < DEFAULT_BUF_LENGTH/2; n++)
+                //for (uint32_t n = 0; n < DEFAULT_BUF_LENGTH/2; n++)
                 //    ((uint16_t *)test_mode_buf)[n] = 0x807f;
             }
             else { // CF32, CS16
