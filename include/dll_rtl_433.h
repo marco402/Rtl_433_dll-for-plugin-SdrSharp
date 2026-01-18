@@ -75,7 +75,13 @@ nombre de devices 01/2024: 214/248  242/248  +25
 
 int32_t my_fprintf(_Inout_ FILE *const _Stream,
         _In_z_ _Printf_format_string_ uint8_t const *const _Format, ...);
-typedef void(__stdcall *prt_call_back_init)(void(__stdcall *)(short *, uint32_t, void *));
+//typedef void(__stdcall *prt_call_back_init)(void(__stdcall *)(short *, uint32_t, void *));
+typedef void(__stdcall* prt_call_back_init)(
+	void(__stdcall* cb)(short*, uint32_t, void*),
+	void* ctx,
+	void* demod
+	);
+
 
 typedef void(__stdcall *prt_call_back_CBStructDevices)( deviceToPlugin );
 

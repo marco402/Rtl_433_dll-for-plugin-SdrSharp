@@ -31,7 +31,7 @@ History : V1.00 2021-04-01 - First release
 #include "fatal.h"
 #include "compat_pthread.h"
 #ifdef RTLSDR
-#include <rtl-sdr.h>
+#include "rtl-sdr.h"
 #if defined(__linux__) && (defined(__GNUC__) || defined(__clang__))
 // not available in rtlsdr 0.5.3, allow weak link for Linux
 int32_t __attribute__((weak)) rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int32_t on);
