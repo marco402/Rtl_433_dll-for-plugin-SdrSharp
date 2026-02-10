@@ -110,12 +110,15 @@
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='debug_V1632|x64'">
     <PlatformToolset>v145</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|x64'" Label="Configuration">
     <PlatformToolset>v145</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='debug_framework|x64'">
     <PlatformToolset>v145</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='release_V1632|x64'">
     <PlatformToolset>v145</PlatformToolset>
@@ -197,6 +200,13 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>C:\marc\tnt\sources\SDRSharp\SDRSharp\bin\release\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|x64'">
+    <OutDir>C:\Marc\tnt\SDRSharp\sdrsharp-x86-next\Plugins\RTL_433\</OutDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|x64'">
+    <OutDir>C:\Marc\tnt\SDRSharp\SDRSharp_v1732</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'">
     <ClCompile>
@@ -430,6 +440,39 @@
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1632|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release_V1632|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\include\abuf.h" />

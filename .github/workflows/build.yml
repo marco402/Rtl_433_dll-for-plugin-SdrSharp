@@ -1,0 +1,41 @@
+name: Build RTL_433 DLL
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        build:
+          - { config: "Release_x32", arch: "x86", artifact: "DLL_RTL_433_x86" }
+          - { config: "Release_x64", arch: "x64", artifact: "DLL_RTL_433_x64" }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ${{ matrix.build.arch }}
+        run: msbuild vs17_dll_plugin/rtl_433.vcxproj /p:Configuration=${{ matrix.build.config }}
+
+      - name: Locate built DLL
+        id: finddll
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Recurse -Filter rtl_433.dll | Select-Object -First 1
+          if (-not $dll) { throw "rtl_433.dll introuvable après compilation" }
+          echo "dllpath=$($dll.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact ${{ matrix.build.artifact }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.build.artifact }}
+          path: ${{ steps.finddll.outputs.dllpath }}
