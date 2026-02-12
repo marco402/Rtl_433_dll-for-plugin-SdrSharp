@@ -1,12 +1,18 @@
 name: Build RTL_433 DLL
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - rtl_433forSDRSharp
   pull_request:
 
 jobs:
   build:
+    outputs:
+      VERSION: ${{ steps.compute_version.outputs.VERSION }}
+
     runs-on: windows-latest
 
     steps:
@@ -23,22 +29,35 @@ jobs:
     # Build x86 (Win32)
     ########################################
     - name: Build Release_x32 (Win32)
-      run: msbuild rtl_433_dll/vs17_dll_plugin/rtl_433.vcxproj /p:Configuration=Release_x32 /p:Platform=Win32
+      run: msbuild vs17_dll_plugin/rtl_433.vcxproj /p:Configuration=CI_x86 /p:Platform=Win32
 
     - name: Upload x86 DLL
       uses: actions/upload-artifact@v4
       with:
         name: RTL_433_x86
-        path: rtl_433_dll/vs17_dll_plugin/Release_x32/*.dll
+        path: vs17_dll_plugin/CI_x86/*.dll
 
     ########################################
     # Build x64
     ########################################
     - name: Build Release_x64 (x64)
-      run: msbuild rtl_433_dll/vs17_dll_plugin/rtl_433.vcxproj /p:Configuration=Release_x64 /p:Platform=x64
+      run: msbuild vs17_dll_plugin/rtl_433.vcxproj /p:Configuration=CI_x64 /p:Platform=x64
+
+    # Compute a simple version based on the commit hash
+    - name: Compute VERSION
+      id: compute_version
+      shell: pwsh
+      run: |
+        # Récupère le hash court du commit HEAD
+        $sha = git rev-parse --short HEAD
+    
+        Write-Host "Computed VERSION = $sha"
+    
+        # Exporte la version comme output du step
+        echo "VERSION=$sha" >> $env:GITHUB_OUTPUT
 
     - name: Upload x64 DLL
       uses: actions/upload-artifact@v4
       with:
         name: RTL_433_x64
-        path: rtl_433_dll/vs17_dll_plugin/Release_x64/*.dll
+        path: vs17_dll_plugin\x64\CI_x64/*.dll

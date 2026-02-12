@@ -7,6 +7,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rtl_433", "rtl_433.vcxproj"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		CI_x64|x64 = CI_x64|x64
+		CI_x64|x86 = CI_x64|x86
+		CI_x86|x64 = CI_x86|x64
+		CI_x86|x86 = CI_x86|x86
 		debug_framework|x64 = debug_framework|x64
 		debug_framework|x86 = debug_framework|x86
 		debug_V1632|x64 = debug_V1632|x64
@@ -25,6 +29,14 @@ Global
 		Release_x64|x86 = Release_x64|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x64|x64.ActiveCfg = CI_x64|x64
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x64|x64.Build.0 = CI_x64|x64
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x64|x86.ActiveCfg = CI_x64|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x64|x86.Build.0 = CI_x64|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x86|x64.ActiveCfg = CI_x86|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x86|x64.Build.0 = CI_x86|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x86|x86.ActiveCfg = CI_x86|Win32
+		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.CI_x86|x86.Build.0 = CI_x86|Win32
 		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.debug_framework|x64.ActiveCfg = debug_framework|x64
 		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.debug_framework|x64.Build.0 = debug_framework|x64
 		{7EB4B17A-2185-47A5-8170-ACDC7EA30515}.debug_framework|x86.ActiveCfg = debug_framework|Win32
@@ -62,7 +74,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		        SolutionGuid = {AB160192-D2D5-4F46-92B9-183725AEF55C}
 		SolutionGuid = {4E93C13C-0149-4746-A887-908422DE8AC9}
+		        SolutionGuid = {AB160192-D2D5-4F46-92B9-183725AEF55C}
 	EndGlobalSection
 EndGlobal
