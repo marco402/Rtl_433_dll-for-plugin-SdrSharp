@@ -157,6 +157,9 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='CI_x86|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -199,34 +202,34 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x64-next\Plugins\RTL_433\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <TargetExt>.dll</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x32|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x86-next_7\Plugins\RTL_433\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x64-next\Plugins\RTL_433</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1632|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>C:\marc\tnt\sources\SDRSharp\SDRSharp\bin\Debug\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>C:\marc\tnt\sources\SDRSharp\SDRSharp\bin\Debug\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
@@ -234,26 +237,26 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.dll</TargetExt>
     <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x64-next\Plugins\RTL_433\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CI_x64|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.dll</TargetExt>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_x32|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>C:\marc\tnt\SDRSHarp\sdrsharp-x86-next\Plugins\RTL_433\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CI_x86|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release_V1632|Win32'">
@@ -263,7 +266,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|x64'">
     <OutDir>C:\Marc\tnt\SDRSharp\sdrsharp-x86-next\Plugins\RTL_433\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|x64'">
@@ -271,7 +274,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CI_x64|Win32'">
     <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
-	<IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
+    <IntDir>$(SolutionDir)$(Configuration)\obj\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_x64|x64'">
     <ClCompile>
@@ -286,7 +289,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\..\libusb\MS64\dll;..\..\rtl-sdr\x64\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine>MachineX64</TargetMachine>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
     </Link>
@@ -302,7 +305,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
@@ -332,7 +335,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
@@ -362,7 +365,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>noLISTEDEVICES;RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
@@ -392,7 +395,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>noLISTEDEVICES;RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
@@ -476,7 +479,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
@@ -543,7 +546,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
@@ -569,7 +572,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_framework|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -578,26 +581,26 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>..\..\libusb\MS32\dll;..\..\rtl-sdr\win32\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;rtlsdr.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>rtl_433.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug-V1732|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_V1632|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RTLSDR;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release_V1632|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\;..\..\libusb\include\libusb-1.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\src\;..\..\rtl-sdr\</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='CI_x64|Win32'">

@@ -1,4 +1,4 @@
-/** @file
+﻿/** @file
     rtl_433, turns your Realtek RTL2832 based DVB dongle into a 433.92MHz generic data receiver.
 
     Copyright (C) 2012 by Benjamin Larsson <benjamin@southpole.se>
@@ -1690,7 +1690,7 @@ int32_t main(int32_t argc, uint8_t **argv)
 
     print_version(); // always print the version info
 #ifdef DLL_RTL_433
-    cfg->no_default_devices = 0; //=1 0 device au d�part
+    cfg->no_default_devices = 0; //=1 0 device au départ
 #else
     sdr_redirect_logging();
 #endif
@@ -1796,10 +1796,10 @@ int32_t main(int32_t argc, uint8_t **argv)
     if (!cfg->no_default_devices) {
 #ifdef DLL_RTL_433
         if (cfg->verbosity)
-            fprintf(stderr, "start devices list");
+            fprintf(stderr, "start_devices_list");
         register_all_protocols(cfg, _disabled,_sourceIsFile	); // register f(parameter)
         if (cfg->verbosity)
-            fprintf(stderr, "end devices list");
+            fprintf(stderr, "end_devices_list");
 #else
         register_all_protocols(cfg, 0); // register all defaults
 #endif
