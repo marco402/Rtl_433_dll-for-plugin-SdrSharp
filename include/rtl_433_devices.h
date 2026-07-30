@@ -298,7 +298,7 @@
     DECL(oria_wa150km) \
     DECL(ec3k) \
     DECL(orion_endpoint_2020) \
-
+    DECL(roboguard_ibis) \
     /* Add new decoders here. */
 
 #define DECL(name) extern r_device name;
